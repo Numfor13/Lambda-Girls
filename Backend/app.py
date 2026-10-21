@@ -11,6 +11,7 @@ from health_track.payment_stack import PaymentStack
 from health_track.doctor_stack import DoctorStack
 from health_track.push_stack import PushStack
 from health_track.channel_stack import ChannelStack
+from health_track.extended_stack import ExtendedStack
 
 app = cdk.App()
 config = get_config(app.node)
@@ -57,6 +58,11 @@ push = PushStack(app, f"HealthTrack-Push-{config.env_name}",
     secrets_stack=secrets)
 
 channel = ChannelStack(app, f"HealthTrack-Channel-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth)
+
+extended = ExtendedStack(app, f"HealthTrack-Extended-{config.env_name}",
     env=env, config=config,
     shared_stack=shared,
     auth_stack=auth)
