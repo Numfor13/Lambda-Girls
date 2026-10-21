@@ -9,7 +9,7 @@ from health_track.config import Config
 
 
 class SecretsStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, config: Config, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, config: Config, shared_stack=None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.fapshi_api_key = secretsmanager.Secret(self, "FapshiApiKey",
@@ -26,6 +26,9 @@ class SecretsStack(Stack):
             secret_name=f"/health-track/{config.env_name}/push/vapid-private-key",
             description="VAPID private key for web push notifications",
         )
+
+        # Alias for compatibility with PushStack
+        self.vapid_secret = self.vapid_private_key
 
         self.telco_credentials = secretsmanager.Secret(self, "TelcoCredentials",
             secret_name=f"/health-track/{config.env_name}/telco/sandbox-credentials",
@@ -52,3 +55,4 @@ class SecretsStack(Stack):
             value=self.telco_credentials.secret_arn,
             export_name=f"HealthTrack-TelcoCredentialsArn-{config.env_name}",
         )
+
