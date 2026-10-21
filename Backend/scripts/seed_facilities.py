@@ -655,9 +655,9 @@ FACILITIES = [
 ]
 
 
-def make_facility_id():
-    ts = int(time.time() * 1000)
-    return f"{ts:013x}-{uuid.uuid4().hex[:12]}"
+def make_facility_id(name: str) -> str:
+    # Deterministic ID derived from facility name — ensures idempotent re-runs.
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
 
 
 def seed(env: str, aws_region: str):
@@ -670,7 +670,7 @@ def seed(env: str, aws_region: str):
 
     for facility in FACILITIES:
         item = dict(facility)
-        item["facility_id"] = make_facility_id()
+        item["facility_id"] = make_facility_id(facility["name"])
         item["created_at"] = int(time.time() * 1000)
         # Ensure capabilities is a set for DynamoDB StringSet
         if "capabilities" in item and isinstance(item["capabilities"], set) and item["capabilities"]:
