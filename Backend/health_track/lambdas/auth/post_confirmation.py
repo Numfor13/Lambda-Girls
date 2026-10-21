@@ -1,7 +1,6 @@
 import boto3
 import os
 import time
-from health_track_common.errors import AppError
 
 
 def handler(event, context):
