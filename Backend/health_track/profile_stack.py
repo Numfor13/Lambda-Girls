@@ -33,10 +33,17 @@ class ProfileStack(Stack):
             identity_source="method.request.header.Authorization",
         )
 
-        # API Gateway
+        # Reconstruct layer reference from ARN to avoid cross-stack export lock (I3)
+        common_layer = lambda_.LayerVersion.from_layer_version_arn(
+            self, "CommonLayerRef",
+            layer_version_arn=shared_stack.common_layer.layer_version_arn,
+        )
+
+        # API Gateway (C3: cloud_watch_role; I2: data_trace_enabled only in dev)
         api = apigateway.RestApi(self, "HealthTrackApi",
             rest_api_name=f"health-track-{config.env_name}",
             description="Health Track API",
+            cloud_watch_role=True,
             default_cors_preflight_options=apigateway.CorsOptions(
                 allow_origins=apigateway.Cors.ALL_ORIGINS,
                 allow_methods=apigateway.Cors.ALL_METHODS,
@@ -45,7 +52,7 @@ class ProfileStack(Stack):
             deploy_options=apigateway.StageOptions(
                 stage_name=config.env_name,
                 logging_level=apigateway.MethodLoggingLevel.INFO,
-                data_trace_enabled=True,
+                data_trace_enabled=(config.env_name == "dev"),
             ),
         )
 
@@ -56,7 +63,7 @@ class ProfileStack(Stack):
         }
         lambda_kwargs = dict(
             runtime=lambda_.Runtime.PYTHON_3_12,
-            layers=[shared_stack.common_layer],
+            layers=[common_layer],
             environment=lambda_env,
         )
 

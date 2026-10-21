@@ -16,6 +16,9 @@ class AuthStack(Stack):
     def __init__(self, scope: Construct, id: str, *, env, config: Config, shared_stack: SharedStack, **kwargs) -> None:
         super().__init__(scope, id, env=env, **kwargs)
 
+        # I8: RETAIN in prod, DESTROY elsewhere
+        removal_policy = RemovalPolicy.RETAIN if config.env_name == "prod" else RemovalPolicy.DESTROY
+
         # Cognito User Pool
         user_pool = cognito.UserPool(self, "UserPool",
             user_pool_name=f"health-track-{config.env_name}",
@@ -34,7 +37,7 @@ class AuthStack(Stack):
                 require_symbols=False,
             ),
             account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=removal_policy,
         )
 
         # User Pool Groups
@@ -74,12 +77,18 @@ class AuthStack(Stack):
         )
         user_pool.add_trigger(cognito.UserPoolOperation.PRE_SIGN_UP, pre_signup_fn)
 
+        # Reconstruct layer reference from ARN to avoid cross-stack export lock (I3)
+        common_layer = lambda_.LayerVersion.from_layer_version_arn(
+            self, "CommonLayerRef",
+            layer_version_arn=shared_stack.common_layer.layer_version_arn,
+        )
+
         # Post-confirmation Lambda trigger
         post_confirmation_fn = lambda_.Function(self, "PostConfirmationFn",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="post_confirmation.handler",
             code=lambda_.Code.from_asset("health_track/lambdas/auth"),
-            layers=[shared_stack.common_layer],
+            layers=[common_layer],
             environment={
                 "ENV_NAME": config.env_name,
                 "PROFILE_TABLE": f"HealthTrack-Profiles-{config.env_name}",
@@ -87,13 +96,14 @@ class AuthStack(Stack):
         )
         user_pool.add_trigger(cognito.UserPoolOperation.POST_CONFIRMATION, post_confirmation_fn)
 
+        # I4: Scoped IAM policies
         post_confirmation_fn.add_to_role_policy(iam.PolicyStatement(
             actions=["dynamodb:PutItem"],
-            resources=["*"],
+            resources=[f"arn:aws:dynamodb:{Stack.of(self).region}:{Stack.of(self).account}:table/HealthTrack-Profiles-{config.env_name}"],
         ))
         post_confirmation_fn.add_to_role_policy(iam.PolicyStatement(
             actions=["cognito-idp:AdminAddUserToGroup"],
-            resources=["*"],
+            resources=[f"arn:aws:cognito-idp:{Stack.of(self).region}:{Stack.of(self).account}:userpool/*"],
         ))
 
         # Expose properties

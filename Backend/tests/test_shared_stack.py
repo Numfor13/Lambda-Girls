@@ -117,7 +117,7 @@ class TestIamPolicies:
                             "dynamodb:BatchGetItem",
                         ],
                         "Effect": "Allow",
-                        "Resource": "*",
+                        "Resource": assertions.Match.string_like_regexp(r"arn:aws:dynamodb:.*:table/HealthTrack-\*"),
                     }
                 ],
             },
@@ -135,7 +135,7 @@ class TestIamPolicies:
                             "dynamodb:BatchWriteItem",
                         ],
                         "Effect": "Allow",
-                        "Resource": "*",
+                        "Resource": assertions.Match.string_like_regexp(r"arn:aws:dynamodb:.*:table/HealthTrack-\*"),
                     }
                 ],
             },
@@ -151,7 +151,7 @@ class TestIamPolicies:
                             "s3:ListBucket",
                         ],
                         "Effect": "Allow",
-                        "Resource": "*",
+                        "Resource": assertions.Match.any_value(),
                     }
                 ],
             },
@@ -167,7 +167,7 @@ class TestIamPolicies:
                             "s3:DeleteObject",
                         ],
                         "Effect": "Allow",
-                        "Resource": "*",
+                        "Resource": assertions.Match.string_like_regexp(r"arn:aws:s3:::health-track-"),
                     }
                 ],
             },
