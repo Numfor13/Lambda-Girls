@@ -30,6 +30,12 @@ def template(profile_stack):
     return assertions.Template.from_stack(profile_stack)
 
 
+# Alias used by I9/Minor#4 tests
+@pytest.fixture
+def profile_stack_template(profile_stack):
+    return assertions.Template.from_stack(profile_stack)
+
+
 class TestProfileTable:
     def test_dynamodb_table_exists(self, template):
         template.resource_count_is("AWS::DynamoDB::Table", 1)
@@ -126,3 +132,26 @@ class TestStackProperties:
 
     def test_authorizer_property_exposed(self, profile_stack):
         assert profile_stack.authorizer is not None
+
+
+class TestProfileTableDeletionPolicy:
+    def test_profile_table_deletion_policy(self, profile_stack_template):
+        """ProfileTable must be retained on stack deletion."""
+        profile_stack_template.has_resource("AWS::DynamoDB::Table", {
+            "DeletionPolicy": "Retain",
+        })
+
+    def test_pitr_enabled(self, profile_stack_template):
+        profile_stack_template.has_resource_properties("AWS::DynamoDB::Table", {
+            "PointInTimeRecoverySpecification": {
+                "PointInTimeRecoveryEnabled": True,
+            },
+        })
+
+
+class TestApiAuthorization:
+    def test_cognito_auth_on_at_least_one_method(self, template):
+        """At least one API method must use COGNITO_USER_POOLS auth."""
+        template.has_resource_properties("AWS::ApiGateway::Method", {
+            "AuthorizationType": "COGNITO_USER_POOLS",
+        })

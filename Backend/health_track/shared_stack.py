@@ -57,57 +57,36 @@ class SharedStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # IAM Managed Policies
+        # IAM Managed Policies (I4: scoped to HealthTrack-prefixed resources)
         self.dynamo_read_policy = iam.ManagedPolicy(self, "DynamoReadPolicy",
-            statements=[
-                iam.PolicyStatement(
-                    actions=[
-                        "dynamodb:GetItem",
-                        "dynamodb:Query",
-                        "dynamodb:Scan",
-                        "dynamodb:BatchGetItem",
-                    ],
-                    resources=["*"],
-                )
-            ],
+            statements=[iam.PolicyStatement(
+                actions=["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchGetItem"],
+                resources=[f"arn:aws:dynamodb:{self.region}:{self.account}:table/HealthTrack-*"],
+            )]
         )
 
         self.dynamo_write_policy = iam.ManagedPolicy(self, "DynamoWritePolicy",
-            statements=[
-                iam.PolicyStatement(
-                    actions=[
-                        "dynamodb:PutItem",
-                        "dynamodb:UpdateItem",
-                        "dynamodb:DeleteItem",
-                        "dynamodb:BatchWriteItem",
-                    ],
-                    resources=["*"],
-                )
-            ],
+            statements=[iam.PolicyStatement(
+                actions=["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"],
+                resources=[f"arn:aws:dynamodb:{self.region}:{self.account}:table/HealthTrack-*"],
+            )]
         )
 
         self.s3_read_policy = iam.ManagedPolicy(self, "S3ReadPolicy",
-            statements=[
-                iam.PolicyStatement(
-                    actions=[
-                        "s3:GetObject",
-                        "s3:ListBucket",
-                    ],
-                    resources=["*"],
-                )
-            ],
+            statements=[iam.PolicyStatement(
+                actions=["s3:GetObject", "s3:ListBucket"],
+                resources=[
+                    f"arn:aws:s3:::health-track-{self.account}-*",
+                    f"arn:aws:s3:::health-track-{self.account}-*/*",
+                ],
+            )]
         )
 
         self.s3_write_policy = iam.ManagedPolicy(self, "S3WritePolicy",
-            statements=[
-                iam.PolicyStatement(
-                    actions=[
-                        "s3:PutObject",
-                        "s3:DeleteObject",
-                    ],
-                    resources=["*"],
-                )
-            ],
+            statements=[iam.PolicyStatement(
+                actions=["s3:PutObject", "s3:DeleteObject"],
+                resources=[f"arn:aws:s3:::health-track-{self.account}-*/*"],
+            )]
         )
 
         # CloudFormation Outputs

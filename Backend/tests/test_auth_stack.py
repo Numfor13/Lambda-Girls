@@ -141,3 +141,23 @@ class TestStackProperties:
 
     def test_post_confirmation_fn_property_exposed(self, auth_stack):
         assert auth_stack.post_confirmation_fn is not None
+
+
+class TestUserPoolDeletionPolicy:
+    def test_user_pool_deletion_policy_delete_in_dev(self, template):
+        """In dev env the user pool should be destroyed, not retained."""
+        template.has_resource("AWS::Cognito::UserPool", {
+            "DeletionPolicy": "Delete",
+        })
+
+    def test_all_lambdas_python_312(self, template):
+        """Every Lambda function in the auth stack must use Python 3.12."""
+        template.resource_count_is("AWS::Lambda::Function", 2)
+        template.has_resource_properties("AWS::Lambda::Function", {
+            "Handler": "pre_signup.handler",
+            "Runtime": "python3.12",
+        })
+        template.has_resource_properties("AWS::Lambda::Function", {
+            "Handler": "post_confirmation.handler",
+            "Runtime": "python3.12",
+        })
