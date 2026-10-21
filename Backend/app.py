@@ -5,6 +5,7 @@ from health_track.secrets_stack import SecretsStack
 from health_track.auth_stack import AuthStack
 from health_track.profile_stack import ProfileStack
 from health_track.facility_stack import FacilityStack
+from health_track.triage_stack import TriageStack
 
 app = cdk.App()
 config = get_config(app.node)
@@ -22,5 +23,10 @@ facility = FacilityStack(app, f"HealthTrack-Facility-{config.env_name}",
                          env=env, config=config,
                          shared_stack=shared,
                          auth_stack=auth)
+
+triage = TriageStack(app, f"HealthTrack-Triage-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth)
 
 app.synth()
