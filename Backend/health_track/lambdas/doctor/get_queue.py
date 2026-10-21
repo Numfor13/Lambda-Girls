@@ -5,7 +5,6 @@ from health_track_common.response import ok, err
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 
 def _require_doctor(event) -> tuple:
