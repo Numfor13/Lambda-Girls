@@ -10,7 +10,7 @@
 
 We are **redesigning the frontend** (`Frontend/`) on top of the existing backend. **Backend issues are being handled by someone else.** We design and build only against the functionality that exists today.
 
-> **🚦 Codex: if the owner says "go", open `docs/REDESIGN_BUILD.md` and build the pages listed under "Codex owns".** We are building the redesign directly in code now (no more Figma mockups), in tandem with Claude, with a strict file-ownership split.
+> **🚦 Codex: if the owner says "go", open `docs/REDESIGN_BUILD.md` and build Batch 2 (§3b, C10–C19).** Batch 1 (C1–C9) is done. We are building the redesign directly in code now (no more Figma mockups), in tandem with Claude, with a strict file-ownership split.
 
 Read these documents before doing anything:
 
@@ -104,7 +104,8 @@ npm run build
 
 ### Next steps: current (supersedes the list below)
 
-- **Codex C1–C9 implementation is complete and pushed.** Read the build log §6 for validation and remaining integration limits. Shared feedback/recovery components are available for reuse.
+- **Codex: build Batch 2, `docs/REDESIGN_BUILD.md` §3b (C10–C19)**: tips, appointments, labs, blood, emergency share, history/receipts, operator and admin consoles, anonymous ask, doctor presence. For this batch you also own `App.tsx`, `config/env.ts`, `config/flags.ts`, the API layer (append only) and demo auth roles. Log "Batch 2 done" in §6 when finished.
+- Codex C1–C9 are complete and pushed. Shared feedback/recovery components are available for reuse.
 - **Claude:** finish Consult New/Chat/List and Payment, then final shared-component and cross-screen consistency QA at 375 and 1440. Reconcile the reserved-colour/type/radius requests logged in §6 and plan profile/household offline support with backend idempotency before promising queued writes.
 
 ### Older next steps (Figma phase, kept for history)

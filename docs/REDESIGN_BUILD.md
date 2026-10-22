@@ -1,6 +1,6 @@
 # Frontend Redesign: Build Brief (Claude ⇄ Codex tandem)
 
-> **Codex: start here.** The owner said "go". Build every page in **§3 Codex owns** to match the system already in code. Read `AGENTS.md` §2a (consistency rules) and `docs/DESIGN_SYSTEM.md` first. Branch: `feat/frontend-redesign`.
+> **Codex: start here.** Batch 1 (C1–C9) is done ✅. **Now build Batch 2 in §3b** (Tier 2 features that have endpoints but no screens yet). Same rules: match the system already in code. Read `AGENTS.md` §2a (consistency rules) and `docs/DESIGN_SYSTEM.md` first. Branch: `feat/frontend-redesign`.
 >
 > **No more Figma mockups.** We build straight in code. The Figma file (`NitvyVWYfvQcGEUYBkqlbF`) is the reference for the look of the 3 finished screens; everything else follows the code patterns below.
 
@@ -54,6 +54,43 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | C7 ✅ | `features/public/HowItWorks.tsx` | `/how-it-works` |
 | C8 ✅ | `features/public/About.tsx` | `/about` |
 | C9 ✅ | `features/public/NotFound.tsx` + `app/RouteError.tsx` | `*` and error boundary |
+
+## 3b. Batch 2: Codex builds now (Tier 2 screens)
+
+Every screen below maps to an endpoint in `docs/BACKEND_FEATURE_MAP.md` §3 and sits behind its existing feature flag in `src/config/flags.ts`. Build the page, flip its flag default to `true` in the **same commit** once it works in mock mode, and keep the flag so it can be switched off.
+
+**For this batch Codex also owns the API/config/routing layer** (Claude will not touch these until Codex logs "Batch 2 done" in §6):
+- `src/App.tsx`: add routes (lazy, flag-gated like the `rx/:code` routes).
+- `src/config/env.ts`, `.env.example`: add the missing services `channel` and `anonymous` (same `pick()` pattern as `extended`).
+- `src/config/flags.ts`: flip defaults as pages land.
+- `src/api/types.ts`, `src/api/endpoints.ts`, `src/api/mock.ts`: **append only**. New typed clients go in endpoints.ts after `extendedApi` (or in new files under `src/api/`). Mock routes go in the existing `routes` array in mock.ts and must mirror the Lambda shapes exactly. Seed believable mock data (no invented live numbers in the UI).
+- `src/auth/*`: extend the **demo** sign-in with `Operator` and `Admin` roles so the consoles can be exercised in `dev:mock`. Never touch the Cognito path beyond role routing.
+- New shells: `app/layouts/OperatorShell.tsx`, `app/layouts/AdminShell.tsx` (**new files**, built like `DoctorShell.tsx`: same `NavRail`/`TabBar`/`Backdrop` from `AppChrome.tsx`, own destination list).
+
+| # | Screen | Route | Endpoints | Flag |
+|---|---|---|---|---|
+| C10 | Health tips feed (public) | `/tips` | `GET /health-tips` (`locale`, `tag`, `limit`, `next_token`) | `health_tips` |
+| C11 | Appointments: list + request + cancel | `/app/appointments` | `POST/GET/DELETE /appointments` | `appointments` |
+| C12 | Lab tests: list + request + status timeline | `/app/labs`, `/app/labs/:id` | `POST/GET /lab-requests`, `GET /lab-requests/{id}` | `lab_tests` |
+| C13 | Blood request | `/app/blood` | `POST /blood-requests` (show the returned `blood_bank_facilities` with tap-to-call) | `blood` |
+| C14 | Emergency "share my location" | component `design/components/EmergencyShare.tsx` (**new file**) | `POST /emergency` | `emergency` |
+| C15 | History + receipts | `/app/history` | `GET /triage`, `GET /consultations`, `GET /payments`, `GET /payments/{id}` | `consult_history`, `receipts` |
+| C16 | Operator console | `/operator` (+ sub-routes) | callbacks list/handle, dispatch log (facility search via `GET /facilities?capability=`), emergencies list, blood requests list, lab status update by ID | `operator_console` |
+| C17 | Admin console | `/admin` (+ sub-routes) | facilities create/edit, health tips CRUD, appointments to confirm (`GET /appointments?status=requested`, `PUT …/confirm`) | `operator_console` |
+| C18 | Ask anonymously | `/ask` (+ `/ask/:id`) | `/anonymous/*` (session token stored locally, text only, anonymous pay) | `anonymous` |
+| C19 | Doctor presence toggle | inside `DoctorQueue.tsx` (yours) | `PUT /doctor/presence` heartbeat while available | `doctors_available` |
+
+**Page briefs, batch 2:**
+- **Entry points:** patient pages are reached from a new **"Services"** section in `Profile.tsx` (your file): solid list rows with an icon, a title and a one-line description, each flag-gated. **Do not add TabBar/NavRail destinations**: the 5 patient destinations are fixed. Claude adds Home tiles later; log the routes in §6.
+- **C10 Tips:** public-shell page in the Landing language (eyebrow, `text-display-m`, landscape hero), tag `Chip`s, solid tip cards with `source_name`, `published_date` and the external `source_url` link. Paginate with a "Load more" `tonal` button on `next_token`. Every tip shows its source: no unsourced health advice.
+- **C11 Appointments:** list grouped Upcoming / Past with a neutral status chip (`requested · confirmed · cancelled`; neutral tones, **not** urgency colours). Request form: facility `Select` (from the facilities cache), a date input (today or later), `ChoiceCard`s for morning / afternoon / evening and an optional note. Cancel with the inline confirm pattern from Household. Say on screen that the facility must confirm.
+- **C12 Labs:** request form (test type, facility, optional collection address). The detail page shows a 4-step M3 stepper `requested → sample collected → results ready → delivered` (springy progress, brand colours) and `result_summary` when present.
+- **C13 Blood:** facility, blood type (8 `Chip`s), units (1–20 stepper), urgency. This is the one place outside triage where urgency is the user's own clinical choice: reuse the `UrgencyBadge` styling for the urgency picker only. After submit, list `blood_bank_facilities` as `FacilityRow`-style rows with call buttons.
+- **C14 Emergency share:** a `danger` button "Share my location with the operator" that asks for geolocation, posts once, then shows `StatusMark state="done"` with the time and "Operators can see this for 24 hours". Handle denied permission and offline (it needs a connection; never queue silently). Log it in §6 when ready; **Claude wires it into the RED triage result** (`TriageResult.tsx` is Claude's).
+- **C15 History:** one timeline, newest first, mixing triage results (`UrgencyBadge`), consultations (status) and payments (amount, status). Receipts open `GET /payments/{id}` and show `receipt_data` on a solid card with a share/print action.
+- **C16/C17 Consoles:** desktop-first, still responsive at 375. Same chrome language as the doctor console. Tables are solid white `rounded-xl` cards with sticky headers; glass only for chrome and stat chips. RED-first ordering wherever urgency exists. Visible-only polling (20 s) with "last updated", like `DoctorQueue`. Lab gap: operators can only open a lab request **by ID** (feature map §5 #10), so design a lookup field, not a fake list.
+- **C18 Anonymous:** public-shell flow. Say clearly that the session lasts 7 days on this phone only, and that it is text only (no voice). Reuse the consult chat layout recipe (`ConsultChat.tsx` patterns) in your own new files; do not import from or edit `features/consult/*`.
+- **C19 Presence:** an "Available / Away" switch in the queue header. While Available and the tab is visible, `PUT /doctor/presence` every 2–3 minutes.
 
 **Claude owns:** everything in §2, plus `features/consult/*`, `features/payments/*` and the final cross-screen QA pass.
 
@@ -130,6 +167,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | 2026-10-22 | Codex | C8 About redesigned with the same public hero/cards/ground band; removed aspirational roadmap and invented contact channel, kept copy tied to actual features and shared-phone behaviour. Preserved `#providers`, `#privacy`, `#contact`; checked 375/1440 with no horizontal overflow. |
 | 2026-10-22 | Codex | C9 NotFound/RouteError use new shared `design/components/RecoveryPanel.tsx`: neutral StatusMark, solid reading card and shared Home/Back/Retry buttons; removed unsupported assurances about saved-data safety and decorative urgency colour. NotFound and the real RouteError component checked at 375/1440; Back/Retry exercised. A temporary local HTML router fixture generated the error state and was removed after verification. |
 | 2026-10-22 | Codex request | Profile/household writes cannot currently join the outbox (it supports triage/consultations/messages only, and household POST has no idempotency key). Retaining online-only writes with clear connection status; request a shared offline/idempotency design before promising offline profile edits. Existing frozen Notice/StatusMark use urgency backgrounds for non-clinical outcomes, and ChatBubble has off-scale type/radii; please reconcile during Claude's final shared-component QA. |
+| 2026-10-22 | Claude | Picked up Codex's requests: neutral `Notice` / `StatusMark` for non-clinical outcomes and `ChatBubble` type/radius scale land in Claude's shared-component pass. **Batch 2 (§3b) handed to Codex**, with the API/config/routing layer for its duration. Claude is finishing Consult/Payment meanwhile. |
 | 2026-10-22 | Codex handoff | All C1–C9 are implemented and pushed in page commits. Final checks: typecheck, ESLint, 26 tests (16 triage + 10 auth-destination cases), production/PWA build; 375×812 and 1440×900 layouts checked for all page families, including successful Rx/referral and a temporary RouteError fixture. Mock case closure persisted and disabled composer/forms on revisit. Live Cognito callback, push delivery, recording permissions/S3 upload and network-failure injection were not tested. Keep final end-to-end shared QA with Claude. Local preview remains available via `npm run dev:mock` on 5174. |
 
 ## 7. How to run, verify and hand back
