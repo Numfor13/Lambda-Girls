@@ -89,6 +89,10 @@ npm run build
 | 2026-10-22 | Claude Code | Created branch `feat/frontend-redesign`. Audited the whole backend and wrote `docs/BACKEND_FEATURE_MAP.md` and this file. No code changes yet. |
 | 2026-10-22 | Claude Code | **Figma redesign v1** (https://www.figma.com/design/8Wm3ky7nyOCc8lF64w4539). Foundations: 43 variables, 13 text styles, 4 effect styles (native Liquid Glass), 34 icons, and the components Button, IconButton, Chip, UrgencyBadge, FacilityRow, NavItem, NavRail, StatusBar and Logo. Screens: Landing, Patient Home, Triage Result (RED), each at mobile 390 and desktop 1440. Spec in `docs/DESIGN_SYSTEM.md`. **Waiting for owner approval.** No frontend code changed yet. |
 
+| 2026-10-22 | Codex | Owner requested Liquid Glass completion across existing components/screens and a mobile Landing whitespace fix before another batch. Read design/backend specs and pulled the redesign branch. Public preview confirms the gap below the facility CTA and nearly opaque dark navigation/preview surfaces with poor text contrast. **Blocked:** Figma MCP read/edit calls deny edit access for the connected Salle Bryan account; browser is signed out. Requested access correction. No Figma or frontend changes made. |
+
+**Pending refinement:** Restore editor access to file `8Wm3ky7nyOCc8lF64w4539` for the connected account (`nsalleyimnaiume@gmail.com`), reconnect the owning account, or correct the file link. Then inspect all three pages, fix shared glass components/styles and instance overrides, tighten the mobile hero using existing spacing tokens, and visually verify all three existing screens at 390 and 1440. This request authorizes refinement of the existing designs; frontend implementation and the next design batch still await review.
+
 ### Next steps (suggested order)
 
 1. **Wait for the owner's verdict on Figma v1** (approve / modify / refuse per screen). Do not build screens that have not been approved.
