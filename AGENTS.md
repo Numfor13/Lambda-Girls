@@ -8,9 +8,28 @@
 
 ## 2. Current goal: frontend redesign
 
-We are **redesigning the frontend** (`Frontend/`) on top of the existing backend. Ground truth for what the backend can do (every endpoint, request and response shape, role, known gap, and a proposed screen map) is in:
+We are **redesigning the frontend** (`Frontend/`) on top of the existing backend. **Backend issues are being handled by someone else.** We design and build only against the functionality that exists today.
 
-👉 **`docs/BACKEND_FEATURE_MAP.md`**: read it before touching any API code.
+Read these two documents before doing anything:
+
+👉 **`docs/DESIGN_SYSTEM.md`**: the redesign's tokens, components, screens and **consistency rules**. The Figma file is the visual source of truth: https://www.figma.com/design/8Wm3ky7nyOCc8lF64w4539
+👉 **`docs/BACKEND_FEATURE_MAP.md`**: what the backend can do (every endpoint, shape, role and gap).
+
+## 2a. ⚠️ CONSISTENCY IS THE #1 REQUIREMENT ⚠️
+
+The product owner **explicitly requires strict visual and behavioural consistency.** Treat any inconsistency as a bug, even if it "looks fine". Before you open a PR or mark work done, check every item:
+
+- [ ] **Tokens only.** Every colour, radius and spacing value comes from `docs/DESIGN_SYSTEM.md` §2 (Figma variables = `Frontend/src/index.css` `@theme`). No raw hex, no arbitrary Tailwind values (`p-[13px]`, `#abc`), no new colours.
+- [ ] **Components only.** Buttons, icon buttons, chips, urgency badges, facility rows, nav items, rail and tab bar come from `src/design/components`. If one is missing, build it once to match Figma, then reuse it. Never restyle a component inline.
+- [ ] **Type scale only.** Use the 13 text styles (Display/Headline/Title/Body/Label/Eyebrow). Jakarta for display and headings, Inter for UI.
+- [ ] **One design language.** Material 3 Expressive for structure (pill buttons, tonal containers, expressive corners, rail + FAB) and Liquid Glass **only** for navigation and floating surfaces over imagery. Never glass behind dense text.
+- [ ] **Same shell everywhere.** Mobile: floating glass TabBar. Desktop: NavRail. Same destinations, names, icons and order. Public pages: glass pill nav + landscape hero + dark ground band.
+- [ ] **Same screen, both breakpoints.** Every screen ships as mobile (390) and desktop (1440) with the same content and order; desktop only re-flows it into columns.
+- [ ] **Urgency colours are reserved** for triage urgency (badges, RED/AMBER/GREEN heroes, rule dots). RED results always lead with "Call 15", then directions, then facility; "Ask a doctor" comes last.
+- [ ] **Platform truth.** This is an offline-first health PWA for Buea on low-end Android: no invented features, numbers or claims; every screen maps to an endpoint in the feature map. Show sync/offline state wherever data is written, and keep "advisory, not a diagnosis" on every triage result.
+- [ ] **Match Figma.** Compare your screen side by side with the Figma frame (node IDs in `docs/DESIGN_SYSTEM.md` §4) at 390 and 1440 widths before you call it done.
+
+If a design question is not answered by the Figma file or `DESIGN_SYSTEM.md`, **do not improvise a new pattern**: reuse the closest existing one and note the question in §6 for the owner.
 
 Other context (older and partly aspirational; the code wins over all of these):
 - `Backend/BACKEND_PHASES.md`: original backend plan
@@ -68,16 +87,22 @@ npm run build
 | Date | Who | What |
 |---|---|---|
 | 2026-10-22 | Claude Code | Created branch `feat/frontend-redesign`. Audited the whole backend and wrote `docs/BACKEND_FEATURE_MAP.md` and this file. No code changes yet. |
+| 2026-10-22 | Claude Code | **Figma redesign v1** (https://www.figma.com/design/8Wm3ky7nyOCc8lF64w4539). Foundations: 43 variables, 13 text styles, 4 effect styles (native Liquid Glass), 34 icons, and the components Button, IconButton, Chip, UrgencyBadge, FacilityRow, NavItem, NavRail, StatusBar and Logo. Screens: Landing, Patient Home, Triage Result (RED), each at mobile 390 and desktop 1440. Spec in `docs/DESIGN_SYSTEM.md`. **Waiting for owner approval.** No frontend code changed yet. |
 
 ### Next steps (suggested order)
 
-1. **Agree on the redesign direction** (visual language, IA) using §6.2 of the feature map. Keep the existing route structure unless the design says otherwise.
-2. **Fix the API layer before restyling** (small and safe):
+1. **Wait for the owner's verdict on Figma v1** (approve / modify / refuse per screen). Do not build screens that have not been approved.
+2. After approval, **implement the foundations in code first**: add the new tokens (`glass/*`, `landscape/*`) to `src/index.css`, add the text styles as Tailwind utilities, the glass utility (with a `prefers-reduced-transparency` fallback), the expressive-corner utilities, and the components in §3 of the design system. Then rebuild the 3 approved screens to match Figma at both breakpoints.
+3. Design the next batch in Figma **using the existing Foundations components and variables** (suggested: Facilities list/detail, Triage wizard, Consult chat, Payment, Doctor queue/case, Profile/household). Keep the 3-screens-per-batch review rhythm.
+4. Small, safe API-layer fixes that the redesigned screens need (contract only; backend issues belong to the other owner):
    - Push contract: `pushApi.vapidPublicKey` returns `{ vapid_public_key }`; `subscribe` must POST `{ endpoint, keys }` at the top level and returns `{ subscribed }`; `unsubscribe` returns `{ unsubscribed }`. Update `endpoints.ts`, `usePushSubscription.ts` and `mock.ts`.
-   - Add the service keys `extended`, `channel`, `anonymous` and `i18n` to `src/config/env.ts` and `.env.example`.
-   - Add typed clients for the extended, operator, anonymous and i18n endpoints (shapes in the feature map, §3.8–3.11), plus mock routes.
-3. **Redesign Tier 1 screens first:** landing, facilities, triage, consult/chat, payment, doctor queue/case, profile.
-4. Then the Tier 2 screens behind their flags in `src/config/flags.ts`.
+   - Add the service keys `extended`, `channel`, `anonymous` and `i18n` to `src/config/env.ts` and `.env.example`, plus typed clients and mock routes for the endpoints the new screens use (Home uses `GET /doctors/available` and `GET /health-tips`).
+
+### Working in the Figma file (if you have Figma MCP access)
+
+- Build only with the local variables, text/effect styles and components on the **Foundations** board. Bind every fill, radius and gap to a variable.
+- Place new mobile screens on the row at y=0 (x += 490) and desktop screens on the row at y=2200 (x += 1540), each with a label above.
+- **The Figma account is on the Starter plan, so MCP tool calls are rate-limited.** Batch work into few, large, retry-safe calls.
 
 ## 7. Rules of thumb for this codebase
 
