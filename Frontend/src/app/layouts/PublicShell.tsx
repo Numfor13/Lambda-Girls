@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { useAuth, homeFor } from "@/auth/AuthProvider"
-import { Logo, LogoMark, Wordmark } from "@/design/components/Logo"
+import { Logo, LogoMark } from "@/design/components/Logo"
 import { ButtonLink, buttonClass } from "@/design/components/Button"
 import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
 import { flags } from "@/config/flags"
@@ -205,8 +205,12 @@ export function PublicFooter() {
         className="pointer-events-none flex items-center justify-center gap-4 overflow-hidden px-4 pb-4 opacity-[0.07] select-none sm:gap-8"
         aria-hidden
       >
-        <LogoMark className="h-20 brightness-0 invert sm:h-32 lg:h-40" />
-        <Wordmark light className="h-16 sm:h-28 lg:h-36" />
+        <img
+          src="/CareBridge Healthcare Logo.png"
+          alt=""
+          draggable={false}
+          className="h-20 w-auto brightness-0 invert sm:h-32 lg:h-40"
+        />
       </div>
     </footer>
   )

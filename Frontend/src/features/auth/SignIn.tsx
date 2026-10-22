@@ -4,7 +4,7 @@ import { homeFor, useAuth } from "@/auth/AuthProvider"
 import type { Session } from "@/auth/session"
 import { authConfigured } from "@/config/env"
 import { Button } from "@/design/components/Button"
-import { LogoMark } from "@/design/components/Logo"
+import { Logo } from "@/design/components/Logo"
 import { Notice } from "@/design/components/primitives"
 
 function safeReturn(raw: string | null): string | null {
@@ -28,7 +28,7 @@ export default function SignIn() {
   return (
     <div className="container-page flex justify-center py-16">
       <div className="w-full max-w-md rounded-[20px] border border-line bg-white p-8 shadow-[var(--shadow-float)]">
-        <LogoMark className="h-14" />
+        <Logo size="lg" to="/sign-in" />
         <h1 className="mt-5 text-[28px] font-extrabold">Welcome to CareBridge</h1>
         <p className="mt-2 text-[15px] text-ink-600">
           Sign in or create an account with your phone number or email to message a doctor and
