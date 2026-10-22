@@ -1,68 +1,135 @@
-import { Eyebrow } from "@/design/components/primitives"
+import {
+  HeartHandshake,
+  MapPin,
+  MessageCircle,
+  Shield,
+  Stethoscope,
+} from "lucide-react"
 import { ButtonLink } from "@/design/components/Button"
+import { Landscape } from "@/design/components/Landscape"
 import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
 
-const ROADMAP = [
-  "Community care booths with solar-powered kiosks",
-  "SMS and USSD on any phone, including Pidgin voice menus",
-  "Medication and antenatal reminders",
-  "Patient-held records you can carry on a card",
+const FEATURES = [
+  {
+    icon: MapPin,
+    title: "Find local care",
+    body: "Browse facilities around Buea, check the services listed and call ahead.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Reach a doctor",
+    body: "Describe your concern by text or voice note. Read replies in your consultation.",
+  },
+  {
+    icon: HeartHandshake,
+    title: "Help your household",
+    body: "Use one phone to ask for care for someone you help look after.",
+  },
 ]
-
 export default function About() {
   return (
-    <div className="container-page section-y">
-      <Reveal>
-        <Eyebrow>About CareBridge</Eyebrow>
-        <h1 className="mt-4 max-w-3xl text-[36px] leading-[1.08] font-extrabold tracking-[-0.02em] lg:text-[48px]">
-          Connecting communities with care.
-        </h1>
-        <p className="mt-6 max-w-2xl text-[17px] leading-[28px] text-ink-600">
-          CareBridge helps people in Buea and the surrounding communities of the South West Region
-          find the right care quickly — even with a weak signal or none at all. We bring together 40
-          local facilities, a danger-sign symptom check and doctors you can reach by text or voice
-          note.
-        </p>
-      </Reveal>
-
-      <StaggerContainer className="mt-14 grid gap-5 md:grid-cols-2" stagger={0.1}>
-        <StaggerItem as="section" id="providers" className="scroll-mt-24 rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-6">
-          <h2 className="text-[22px] font-bold">For healthcare providers</h2>
-          <p className="mt-2 text-body-l text-ink-600">
-            Doctors see a queue ordered by urgency, with the reasons behind every symptom check.
-            Pharmacies and facilities can verify prescription and referral codes in seconds.
+    <>
+    <section className="relative isolate overflow-hidden py-14">
+        <Landscape className="-z-10" preserve="xMidYMid slice" />
+        <Reveal className="container-page">
+          <div className="max-w-3xl shape-bl p-6 glass-strong sm:p-10">
+            <p className="eyebrow">About CareBridge · Buea</p>
+            <h1 className="mt-4 text-display-m">Care, closer to home.</h1>
+            <p className="mt-5 text-body-l text-ink-900">
+              CareBridge helps people in Buea and nearby communities find
+              facilities, check danger signs and consult a doctor, including on
+              behalf of a household member.
+            </p>
+            <ButtonLink to="/app/facilities" icon={MapPin} className="mt-6">
+              Explore facilities
+            </ButtonLink>
+          </div>
+        </Reveal>
+      </section>
+      <section className="container-page section-y">
+        <StaggerContainer className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {FEATURES.map((item, i) => (
+            <StaggerItem
+              key={item.title}
+              className={`flex flex-col gap-4 p-6 ${i === 1 ? "shape-br bg-mint" : "shape-bl bg-white shadow-[var(--shadow-elev-1)]"}`}
+            >
+              <item.icon className="size-8 text-brand-700" aria-hidden />
+              <h2 className="text-headline-s">{item.title}</h2>
+              <p className="text-body-l text-ink-600">{item.body}</p>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </section>
+      <section className="bg-ground text-white">
+      <Reveal className="container-page py-14">
+          <p className="text-label-l text-white/80">Health within reach</p>
+          <h2 className="mt-4 max-w-3xl text-display-m text-white">
+            A little guidance. A clearer next step.
+          </h2>
+          <p className="mt-5 max-w-2xl text-body-l text-white/85">
+            The danger-sign check is advisory, not a diagnosis. It does not
+            replace care from a clinician. In an emergency, call 15 and seek
+            emergency care.
+          </p>
+        </Reveal>
+      </section>
+      <StaggerContainer className="container-page grid grid-cols-1 gap-5 section-y lg:grid-cols-2">
+        <StaggerItem
+          as="section"
+          id="providers"
+          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)]"
+        >
+          <Stethoscope className="size-7 text-brand-700" aria-hidden />
+          <h2 className="mt-4 text-headline-s">For healthcare providers</h2>
+          <p className="mt-3 text-body-l text-ink-600">
+            Doctors work an urgency-ordered queue, review linked triage findings
+            and reply by text or voice. Prescription and referral codes can be
+            checked by pharmacies and receiving facilities.
+          </p>
+          <ButtonLink
+            to="/sign-in?returnTo=/doctor"
+            variant="secondary"
+            icon={Stethoscope}
+            className="mt-5"
+          >
+            Provider sign-in
+          </ButtonLink>
+        </StaggerItem>
+        <StaggerItem
+          as="section"
+          id="privacy"
+          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)]"
+        >
+          <Shield className="size-7 text-brand-700" aria-hidden />
+          <h2 className="mt-4 text-headline-s">Privacy on a shared phone</h2>
+          <p className="mt-3 text-body-l text-ink-600">
+            Consultations contain the health details you choose to send. Get
+            permission before asking for care on another person's behalf.
+            Signing out clears locally saved clinical data. You can also clear
+            it from Profile; unsent items will be lost.
           </p>
         </StaggerItem>
-        <StaggerItem as="section" className="rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-6">
-          <h2 className="text-[22px] font-bold">What's coming next</h2>
-          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-body-l text-ink-600">
-            {ROADMAP.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-        </StaggerItem>
-        <StaggerItem as="section" id="privacy" className="scroll-mt-24 rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-6">
-          <h2 className="text-[22px] font-bold">Privacy & terms</h2>
-          <p className="mt-2 text-body-l text-ink-600">
-            Your health information is used only to give you care. Records for a family member are
-            kept apart from your own. Logging out removes health data saved on the phone, which
-            matters on shared devices. Symptom guidance is advisory and never a diagnosis.
+        <StaggerItem
+          as="section"
+          id="contact"
+          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)] lg:col-span-2"
+        >
+          <h2 className="text-headline-s">Get in touch about your care</h2>
+          <p className="mt-3 max-w-3xl text-body-l text-ink-600">
+            Use your consultation thread to ask your doctor a follow-up question
+            while the case is open. To confirm facility hours or services, call
+            the facility directly.
           </p>
-        </StaggerItem>
-        <StaggerItem as="section" id="contact" className="scroll-mt-24 rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-6">
-          <h2 className="text-[22px] font-bold">Contact us</h2>
-          <p className="mt-2 text-body-l text-ink-600">
-            Based in Buea, South West Region, Cameroon. For partnerships or facility updates,
-            reach the CareBridge team through your local health district office.
-          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <ButtonLink to="/app/consults" variant="tonal" icon={MessageCircle}>
+              Your consults
+            </ButtonLink>
+            <ButtonLink to="/app/facilities" variant="secondary" icon={MapPin}>
+              Facility directory
+            </ButtonLink>
+          </div>
         </StaggerItem>
       </StaggerContainer>
-
-      <Reveal delay={0.3}>
-        <ButtonLink to="/app" trailing="arrow" className="mt-10">
-          Get started
-        </ButtonLink>
-      </Reveal>
-    </div>
+    </>
   )
 }
