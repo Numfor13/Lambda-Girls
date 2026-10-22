@@ -123,7 +123,7 @@ class PaymentStack(Stack):
             default_cors_preflight_options=apigateway.CorsOptions(
                 allow_origins=apigateway.Cors.ALL_ORIGINS,
                 allow_methods=apigateway.Cors.ALL_METHODS,
-                allow_headers=["Content-Type", "Authorization", "x-fapshi-signature"],
+                allow_headers=["Content-Type", "Authorization", "x-fapshi-signature", "Accept-Language"],
             ),
             deploy_options=apigateway.StageOptions(
                 stage_name=config.env_name,

@@ -1,6 +1,6 @@
 import boto3, json, logging, os, time, uuid
 from health_track_common.response import ok, err
-from rules.rule_engine import evaluate
+from health_track_common.rules.rule_engine import evaluate
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
