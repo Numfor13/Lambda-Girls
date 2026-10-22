@@ -34,7 +34,7 @@ export default function SignIn() {
     navigate(target, { replace: true })
   }
   return (
-    <section className="relative isolate overflow-hidden py-14 lg:py-20">
+    <section className="relative isolate overflow-hidden py-14">
       <Landscape className="-z-10" preserve="xMidYMid slice" />
       <motion.div
         variants={staggerOnMount()}

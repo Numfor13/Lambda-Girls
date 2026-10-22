@@ -2,7 +2,7 @@
 
 > **Figma (editable source of truth):** https://www.figma.com/design/NitvyVWYfvQcGEUYBkqlbF — **CareBridge — Redesign v1.1**, in Bryan's team Drafts. Duplicated from the original view-only file `8Wm3ky7nyOCc8lF64w4539` on 2026-10-22; use the new file for all further work.
 > Pages: `01 · Foundations` (tokens, type, icons, components), `02 · Mobile (390)` and `03 · Desktop (1440)`. Each screen sits in its own titled Section, ordered left to right by screen number.
-> **Status:** v1.1 finishes the existing glass/spacing pass and is waiting for the owner's review. The 3 screens (×2 breakpoints) remain proposals: approve, modify or refuse before implementation or the next batch. Frontend code has not yet been redesigned.
+> **Status:** The owner approved v1.1 and moved the redesign into code. The current build brief and ownership split are in `docs/REDESIGN_BUILD.md`. Claude's foundations/first screens and Codex C1–C9 pages are implemented; Claude's consult/payment work and final consistency QA remain. Existing Figma frames are visual references; use the approved code patterns for the additional pages.
 
 ---
 
@@ -92,7 +92,7 @@ All Figma fills, radii and gaps are **bound to variables**. In code these map 1:
 | **UrgencyBadge** | Level = RED · AMBER · GREEN; Label | The only place urgency colours appear (plus urgency heroes/dots) |
 | **FacilityRow** | Name, Meta, Distance, Icon | Capability tile, name, a distance pill plus a one-line meta, and a tonal call button (`tel:`) |
 | **NavItem** | State = Active · Default; Label, Icon | Active = mint pill indicator |
-| **NavRail/Patient** | – | Desktop (≥1024) patient shell: logo, extended FAB "New consultation", 7 destinations, sync chip and language at the bottom. Liquid Glass Strong. |
+| **NavRail/Patient** | – | Desktop (≥1024) patient shell: logo, extended FAB "New consultation", the same 5 destinations as mobile (Home · Triage · Consults · Facilities · Profile), sync/account controls at the bottom. Household lives under Profile. Liquid Glass Strong. |
 | **TabBar/Patient** | Active = Home · Triage (current screens); set `2004:162`, variants `2004:118` / `2004:148` | Shared Strong glass mobile shell: 358×72 at 390 width, 5 tabs, 16px from the sides and 32px from the bottom. Both current app screens use instances; reserve content space above the bar. |
 | **StatusBar/iOS**, **Logo/CareBridge**, **Icon/*** (34 lucide icons) | – | Icons are the same lucide set the app already uses |
 
@@ -108,7 +108,7 @@ All Figma fills, radii and gaps are **bound to variables**. In code these map 1:
 
 Shell rules shown in these screens:
 - **Mobile app:** iOS-style status bar, then a content app bar, then content, then the **floating Liquid Glass tab bar** (Home · Triage · Consults · Facilities · Profile).
-- **Desktop app:** the **NavRail** on the left (264px), and main content with 40px side padding. Two-column content: flexible left, fixed right column (380–440px).
+- **Desktop app:** the **NavRail** on the left (264px), and main content with 40px side padding. Reflow into columns when appropriate while preserving the mobile content order. Doctor Case uses a flexible conversation column and a narrower triage/actions column.
 - **Public pages:** a glass pill nav (desktop) or glass top bar (mobile) over the landscape hero, then the dark "ground" band.
 - **RED result:** the whole page tints to `urgent/red-container`. The first action is **Call 15** (Danger), then directions, then the nearest emergency facility. "Ask a doctor" comes **last**, as an Outline button. The advisory disclaimer is always visible.
 
@@ -137,4 +137,4 @@ Shell rules shown in these screens:
 - Softened existing ambient backdrop ellipses (Brand 12%, Red 8%) and allowed blurred edges to extend, avoiding saturated fields and hard seams behind the reading content. Desktop Home's glass hero now has 24px top/bottom padding and enough header height.
 - Shared mobile navigation instances: Home `2005:347`, RED Result `2005:376`. The RED page retains Call 15 → directions → nearest facility, advisory text and doctor action; navigation sits after clear content space.
 - Final screenshot review covered all six frames plus Button, NavRail and both TabBar variants. Structural inspection confirmed editable text/vector/component UI with Inter and Plus Jakarta Sans; only the existing logo is image-filled. No whole-screen raster replacements. New screen heights are recorded in `AGENTS.md` §6.
-- Before frontend implementation, resolve the inherited navigation mismatch (7 desktop destinations versus 5 tabs; "Consultations" versus "Consults") and content differences (desktop-only map/provider cards). Preserve current patterns while awaiting owner direction; do not invent new ones. Existing example names, counts, prices and response times must be backed by actual app data/configuration during implementation.
+- Navigation was subsequently resolved in code by Claude to 5 matching destinations named Home · Triage · Consults · Facilities · Profile. Continue from `docs/REDESIGN_BUILD.md`; the older frame differences above are historical. Example names, counts, prices and response times must come from actual app data/configuration.

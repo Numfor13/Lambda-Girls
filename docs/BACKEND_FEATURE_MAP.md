@@ -285,6 +285,7 @@ Ranked roughly by how much they affect the redesign. "FE" = fix in the frontend,
 | 14 | **The SMS/USSD facility search is a stub** that echoes the area name. Callback urgency is always AMBER. | `channel/session_engine.py` | Simulator demo only | BE |
 | 15 | **Cognito callback URLs are localhost only.** | `auth_stack.py` | Any deployed frontend fails to log in | BE |
 | 16 | **`Frontend/.env` is tracked in git.** It should hold placeholders only; real values belong in `.env.local`, which is gitignored by Vite convention. | repo root | Secret leak risk | Both |
+| 17 | **Profile/household offline writes need a shared design.** The current outbox/sync supports triage, consultations and messages only; household creation accepts no idempotency key. The redesigned profile/member forms retain online-only writes with explicit connection status. Do not automatically retry non-idempotent member creation without a server/client deduplication contract. | `offline/db.ts`, `offline/outbox.ts`, `offline/sync.ts`, profile endpoints | Profile and household edits cannot yet be promised offline | FE + BE (idempotency) |
 
 ---
 
