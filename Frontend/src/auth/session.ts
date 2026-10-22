@@ -39,13 +39,7 @@ export function getUserManager(): UserManager | null {
 export async function signUpRedirect(returnTo?: string): Promise<void> {
   const um = getUserManager()
   if (!um) return
-  // Create the signin request so state/nonce are stored in sessionStorage
-  const req = await um.createSigninRequest({ state: { returnTo: returnTo ?? "/app" } })
-  const params = new URL(req.url).searchParams
-  // Redirect to the Cognito hosted-UI signup page with the same OAuth2 params
-  const signupUrl = new URL(`${env.cognito.domain}/signup`)
-  params.forEach((v, k) => signupUrl.searchParams.set(k, v))
-  window.location.assign(signupUrl.toString())
+  await um.signinRedirect({ state: { returnTo: returnTo ?? "/app" } })
 }
 
 export function sessionFromUser(user: User): Session {

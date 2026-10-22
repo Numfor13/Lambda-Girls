@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LocateFixed, List, Map, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
@@ -126,7 +126,6 @@ export default function FacilityMap() {
   if (!facilities) return <PageSpinner />
 
   const defaultCenter: [number, number] = userPos ?? [4.1537, 9.2317] // Buea, Cameroon
-  const hasEmergency = visible.some((f) => f.capabilities.includes("emergency"))
 
   return (
     <div className="flex flex-col gap-4">

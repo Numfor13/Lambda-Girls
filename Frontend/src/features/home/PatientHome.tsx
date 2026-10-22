@@ -103,8 +103,8 @@ export default function PatientHome() {
             )}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: EASE_OUT, delay: i * 0.08 }}
             {...tapCardProps}
+            transition={{ duration: 0.5, ease: EASE_OUT, delay: i * 0.08 }}
           >
             <t.icon className="size-8" strokeWidth={1.75} aria-hidden />
             <span className="font-display text-[17px] leading-tight font-bold">{t.label}</span>

@@ -181,7 +181,7 @@ export default function RequestRide() {
       {state === "select_facility" && (
         <section>
           <h2 className="mb-3 text-[16px] font-bold">Where do you need to go?</h2>
-          {status === "prompt" || status === "denied" ? (
+          {status !== "granted" && status !== "locating" ? (
             <div className="rounded-[14px] bg-cream p-4 text-sm text-ink-600">
               <p>Enable location so we can calculate distance and fare.</p>
               <button type="button" onClick={locate} className="mt-2 font-semibold text-brand-700">Allow location</button>
