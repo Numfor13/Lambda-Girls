@@ -140,6 +140,10 @@ export default function Payment() {
   const [pending, setPending] = useState<Pending | null>(() => readPending(id))
   const [payer, setPayer] = useState<"me" | "other">("me")
   const [phone, setPhone] = useState(session?.phone ?? "")
+
+  // Derive consult type early — local may be undefined (loading) or null (not found)
+  const consultType = local?.consult_type ?? "general"
+  const fee = env.consultationFees[consultType]
   const consultTypeName = consultType === "lab" ? "Lab Test" : consultType === "specialist" ? "Specialist" : "General"
 
   const initiate = useMutation({
@@ -180,9 +184,6 @@ export default function Payment() {
       </Notice>
     )
   }
-
-  const consultType = local?.consult_type ?? "general"
-  const fee = env.consultationFees[consultType]
 
   const c = consult.data?.consultation
   if (c && c.status !== "pending_payment") {

@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { FlaskConical, Stethoscope, UserCog, Star, Clock, CheckCircle } from "lucide-react"
 import { PageHeader } from "@/design/components/primitives"
-import { StaggerContainer, StaggerItem } from "@/design/motion"
+import { FadeThrough, StaggerContainer, StaggerItem, tapCardProps } from "@/design/motion"
+import { motion } from "motion/react"
 import { env } from "@/config/env"
 import { formatXaf } from "@/lib/format"
 import { ButtonLink } from "@/design/components/Button"
@@ -165,7 +166,10 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
     .slice(0, 2)
 
   return (
-    <div className={`flex flex-col gap-4 rounded-[16px] border bg-white p-4 ${doctor.available ? "border-line" : "border-line opacity-70"}`}>
+    <motion.div
+      {...tapCardProps}
+      className={`flex flex-col gap-4 rounded-[16px] border bg-white p-4 ${doctor.available ? "border-line" : "border-line opacity-70"}`}
+    >
       <div className="flex items-start gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-[16px] font-extrabold text-white">
           {initials}
@@ -204,7 +208,7 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
           Consult
         </ButtonLink>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -240,18 +244,20 @@ export default function DoctorProfiles() {
         ))}
       </div>
 
-      <div className="rounded-[14px] bg-mint px-4 py-3 text-sm text-brand-900">
-        <p className="font-semibold">{cat.label} — {formatXaf(cat.fee)} per consultation</p>
-        <p className="mt-0.5 text-brand-700">{cat.description}</p>
-      </div>
+      <FadeThrough motionKey={active} className="flex flex-col gap-4">
+        <div className="rounded-[14px] bg-mint px-4 py-3 text-sm text-brand-900">
+          <p className="font-semibold">{cat.label} — {formatXaf(cat.fee)} per consultation</p>
+          <p className="mt-0.5 text-brand-700">{cat.description}</p>
+        </div>
 
-      <StaggerContainer as="div" className="flex flex-col gap-3" stagger={0.06}>
-        {filtered.map((d) => (
-          <StaggerItem key={d.id} variant="up">
-            <DoctorCard doctor={d} />
-          </StaggerItem>
-        ))}
-      </StaggerContainer>
+        <StaggerContainer as="div" className="flex flex-col gap-3" stagger={0.06}>
+          {filtered.map((d) => (
+            <StaggerItem key={d.id} variant="up">
+              <DoctorCard doctor={d} />
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </FadeThrough>
 
       <div className="rounded-[14px] border border-line p-4 text-sm text-ink-600">
         <p className="font-semibold text-ink-900">How it works</p>

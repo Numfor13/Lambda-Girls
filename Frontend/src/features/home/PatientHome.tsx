@@ -6,7 +6,7 @@ import { Car, ChevronRight, Download, FlaskConical, MapPin, MessagesSquare, Phon
 import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
 import { ButtonLink } from "@/design/components/Button"
-import { EASE_OUT } from "@/design/motion"
+import { EASE_OUT, tapCardProps } from "@/design/motion"
 import { Avatar } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { useProfile } from "@/features/profile/useProfile"
@@ -98,12 +98,13 @@ export default function PatientHome() {
             key={t.label}
             to={t.to}
             className={cn(
-              "flex min-h-32 flex-col justify-between rounded-[16px] p-4 transition-transform active:scale-[0.98]",
+              "flex min-h-32 flex-col justify-between rounded-[16px] p-4",
               t.tone,
             )}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: EASE_OUT, delay: i * 0.08 }}
+            {...tapCardProps}
           >
             <t.icon className="size-8" strokeWidth={1.75} aria-hidden />
             <span className="font-display text-[17px] leading-tight font-bold">{t.label}</span>

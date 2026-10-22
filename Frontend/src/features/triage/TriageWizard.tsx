@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { AnimatePresence, motion } from "motion/react"
 import { ulid } from "ulid"
 import { Baby, Check, ChevronLeft, Search, Siren, User, UserPlus, Users } from "lucide-react"
 import type { Sex, SymptomPayload } from "@/api/types"
@@ -8,7 +7,7 @@ import { useAuth } from "@/auth/AuthProvider"
 import { Button } from "@/design/components/Button"
 import { ChoiceCard, Field, Input, Select } from "@/design/components/Field"
 import { AdvisoryNote, Notice } from "@/design/components/primitives"
-import { EASE_OUT } from "@/design/motion"
+import { SlideStep } from "@/design/motion"
 import { useProfile } from "@/features/profile/useProfile"
 import { ageInMonths, describeAge } from "@/lib/format"
 import { useNow } from "@/lib/hooks"
@@ -72,6 +71,7 @@ export default function TriageWizard() {
   const [stepIndex, setStepIndex] = useState(0)
   const [search, setSearch] = useState("")
   const [saving, setSaving] = useState(false)
+  const dirRef = useRef<1 | -1>(1)
 
   const ageMonths = Number(a.years || 0) * 12 + Number(a.months || 0)
   const ageKnown = a.years !== "" || a.months !== ""
@@ -108,8 +108,8 @@ export default function TriageWizard() {
         : `Someone else (${describeAge(ageMonths)}, ${a.sex || "sex not given"})`
 
   const update = (patch: Partial<Answers>) => setA((prev) => ({ ...prev, ...patch }))
-  const next = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1))
-  const back = () => (stepIndex === 0 ? navigate(-1) : setStepIndex((i) => i - 1))
+  const next = () => { dirRef.current = 1; setStepIndex((i) => Math.min(i + 1, steps.length - 1)) }
+  const back = () => { dirRef.current = -1; stepIndex === 0 ? navigate(-1) : setStepIndex((i) => i - 1) }
 
   const chooseSubject = (subject: Subject, memberId: string | null = null) => {
     const patch: Partial<Answers> = { subject, memberId }
@@ -196,15 +196,7 @@ export default function TriageWizard() {
         </span>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={step}
-        className="mt-6 flex-1"
-        initial={{ opacity: 0, x: 18 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -18 }}
-        transition={{ duration: 0.22, ease: EASE_OUT }}
-      >
+      <SlideStep stepKey={step} direction={dirRef.current} className="mt-6 flex-1">
         {step === "who" && (
           <section>
             <h1 className="text-[26px] font-extrabold">Who is this for?</h1>
@@ -449,8 +441,7 @@ export default function TriageWizard() {
             <AdvisoryNote className="mt-4" />
           </section>
         )}
-      </motion.div>
-      </AnimatePresence>
+      </SlideStep>
 
       {step !== "who" && (
         <div className="sticky bottom-20 mt-8 bg-white/95 py-3 lg:bottom-0">
