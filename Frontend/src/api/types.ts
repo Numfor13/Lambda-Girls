@@ -155,3 +155,8 @@ export interface SyncResponse {
     messages: { message_id: string; status: "ok" | "duplicate" | "error" }[]
   }
 }
+
+export interface PushSubscriptionJSON {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}

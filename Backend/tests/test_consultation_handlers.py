@@ -212,7 +212,7 @@ def test_post_sync_triage(aws_tables):
             "recommendation": "Go now",
             "facility_type_needed": "emergency",
             "rules_fired": [],
-            "symptom_payload": {},
+            "symptom_payload": {"age_months": 3, "symptoms": ["convulsions"], "vitals": {}},
             "queued_at": int(time.time() * 1000) - 5000,
         }],
         "messages": [],

@@ -1,6 +1,7 @@
 import boto3, json, logging, os, time, uuid
 from botocore.exceptions import ClientError
 from health_track_common.response import ok, err
+from health_track_common.rules.rule_engine import evaluate
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -38,14 +39,16 @@ def handler(event, context):
             try:
                 result_id = tr.get("result_id") or str(uuid.uuid4())
                 queued_at = tr.get("queued_at") or int(time.time() * 1000)
+                symptom_payload = tr.get("symptom_payload", {})
+                urgency, rules_fired, recommendation, facility_type_needed = evaluate(symptom_payload)
                 item = {
                     "result_id":            result_id,
                     "user_id":              user_id,
-                    "urgency":              tr.get("urgency", "GREEN"),
-                    "recommendation":       tr.get("recommendation", ""),
-                    "facility_type_needed": tr.get("facility_type_needed", "general"),
-                    "rules_fired":          tr.get("rules_fired", []),
-                    "symptom_payload":      tr.get("symptom_payload", {}),
+                    "urgency":              urgency,
+                    "recommendation":       recommendation,
+                    "facility_type_needed": facility_type_needed,
+                    "rules_fired":          rules_fired,
+                    "symptom_payload":      symptom_payload,
                     "on_behalf_member_id":  tr.get("on_behalf_member_id"),
                     "synced_from_offline":  True,
                     "created_at":           int(queued_at),
