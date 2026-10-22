@@ -32,6 +32,22 @@ export function getUserManager(): UserManager | null {
   return manager
 }
 
+/**
+ * Redirect to Cognito's signup page while still using oidc-client-ts state
+ * management so the callback can exchange the code after account creation.
+ */
+export async function signUpRedirect(returnTo?: string): Promise<void> {
+  const um = getUserManager()
+  if (!um) return
+  // Create the signin request so state/nonce are stored in sessionStorage
+  const req = await um.createSigninRequest({ state: { returnTo: returnTo ?? "/app" } })
+  const params = new URL(req.url).searchParams
+  // Redirect to the Cognito hosted-UI signup page with the same OAuth2 params
+  const signupUrl = new URL(`${env.cognito.domain}/signup`)
+  params.forEach((v, k) => signupUrl.searchParams.set(k, v))
+  window.location.assign(signupUrl.toString())
+}
+
 export function sessionFromUser(user: User): Session {
   const p = user.profile as Record<string, unknown>
   const groups = Array.isArray(p["cognito:groups"]) ? (p["cognito:groups"] as Role[]) : []

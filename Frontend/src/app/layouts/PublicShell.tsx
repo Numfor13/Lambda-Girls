@@ -54,7 +54,7 @@ function PublicNav() {
         </nav>
         <div className="hidden items-center gap-8 lg:flex">
           {authLink}
-          <ButtonLink to="/app" size="sm" className="h-11 px-5">
+          <ButtonLink to="/sign-in?mode=signup" size="sm" className="h-11 px-5">
             Get started
           </ButtonLink>
         </div>
@@ -83,7 +83,7 @@ function PublicNav() {
             ))}
             <div className="mt-2 flex items-center gap-4 border-t border-line pt-4">
               {authLink}
-              <ButtonLink to="/app" size="sm" className="ml-auto" onClick={() => setOpen(false)}>
+              <ButtonLink to="/sign-in?mode=signup" size="sm" className="ml-auto" onClick={() => setOpen(false)}>
                 Get started
               </ButtonLink>
             </div>
