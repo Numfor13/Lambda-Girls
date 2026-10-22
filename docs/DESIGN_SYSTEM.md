@@ -1,7 +1,7 @@
 # CareBridge Redesign: Design System and Screen Spec (v1)
 
 > **Figma (source of truth):** https://www.figma.com/design/8Wm3ky7nyOCc8lF64w4539
-> Page `CareBridge Redesign v1`. The Foundations board is above the screens, mobile screens are at y=0 and desktop screens at y=2200.
+> Pages: `01 · Foundations` (tokens, type, icons, components), `02 · Mobile (390)` and `03 · Desktop (1440)`. Each screen sits in its own titled Section, ordered left to right by screen number.
 > **Status:** v1 is waiting for the owner's review. The 3 screens (×2 breakpoints) are proposals: approve, modify or refuse before building more.
 
 ---

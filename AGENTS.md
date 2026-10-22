@@ -101,7 +101,7 @@ npm run build
 ### Working in the Figma file (if you have Figma MCP access)
 
 - Build only with the local variables, text/effect styles and components on the **Foundations** board. Bind every fill, radius and gap to a variable.
-- Place new mobile screens on the row at y=0 (x += 490) and desktop screens on the row at y=2200 (x += 1540), each with a label above.
+- File structure: page `01 · Foundations` holds tokens and components only; screens go on `02 · Mobile (390)` or `03 · Desktop (1440)`. Put each screen in its own Section named `NN Screen name` (80px padding on mobile, 120px on desktop), in one row ordered by number (gap 120 on mobile, 200 on desktop). Every screen exists on both pages with the same number and name.
 - **The Figma account is on the Starter plan, so MCP tool calls are rate-limited.** Batch work into few, large, retry-safe calls.
 
 ## 7. Rules of thumb for this codebase
