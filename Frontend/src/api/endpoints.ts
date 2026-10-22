@@ -8,7 +8,9 @@ import type {
   Payment,
   Prescription,
   Profile,
+  PushSubscriptionJSON,
   Referral,
+  SymptomPayload,
   SyncResponse,
   TriageResult,
   Urgency,
@@ -38,6 +40,8 @@ export const facilityApi = {
 export const triageApi = {
   list: () => request<{ results: TriageResult[]; count: number }>("triage", "/triage"),
   get: (id: string) => request<TriageResult>("triage", `/triage/${id}`),
+  submit: (body: SymptomPayload & { on_behalf_member_id?: string | null; queued_at?: number }) =>
+    request<TriageResult>("triage", "/triage", { method: "POST", body }),
 }
 
 export interface NewConsultation {
@@ -133,4 +137,13 @@ export const doctorApi = {
   prescription: (code: string) =>
     request<Prescription>("doctor", `/prescriptions/${code}`, { auth: false }),
   referral: (code: string) => request<Referral>("doctor", `/referrals/${code}`, { auth: false }),
+}
+
+export const pushApi = {
+  vapidPublicKey: () =>
+    request<{ public_key: string }>("push", "/push/vapid-public-key", { auth: false }),
+  subscribe: (body: { subscription: PushSubscriptionJSON }) =>
+    request<{ ok: boolean }>("push", "/push/subscribe", { method: "POST", body }),
+  unsubscribe: () =>
+    request<{ ok: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
 }
