@@ -14,6 +14,7 @@ import { formatDate, formatPhone } from "@/lib/format"
 import { clearClinicalData, db } from "@/offline/db"
 import { refreshFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 import { useOnline } from "@/lib/hooks"
+import { usePushSubscription } from "@/lib/usePushSubscription"
 import { useProfile } from "./useProfile"
 
 function NameForm({ initial }: { initial: string }) {
@@ -56,6 +57,7 @@ export default function Profile() {
   const profile = useProfile()
   const online = useOnline()
   const syncedAt = useFacilitiesSyncedAt()
+  const push = usePushSubscription()
   const queued = useLiveQuery(() => db.outbox.count(), [], 0)
   const [refreshing, setRefreshing] = useState(false)
   const [cleared, setCleared] = useState(false)
@@ -155,7 +157,21 @@ export default function Profile() {
           <li>
             {queued} item{queued === 1 ? "" : "s"} waiting to send
           </li>
+          {push.supported && session && (
+            <li className="flex flex-wrap items-center justify-between gap-2">
+              <span>Doctor reply notifications</span>
+              <button
+                type="button"
+                className="text-sm font-semibold text-brand-700 disabled:opacity-50"
+                disabled={push.loading}
+                onClick={push.subscribed ? push.unsubscribe : push.subscribe}
+              >
+                {push.loading ? "…" : push.subscribed ? "Turn off" : "Turn on"}
+              </button>
+            </li>
+          )}
         </ul>
+        {push.error && <Notice tone="error" className="mt-3 text-sm">{push.error}</Notice>}
         {cleared && (
           <Notice tone="success" className="mt-3">
             Health data on this phone was cleared.
