@@ -1,72 +1,124 @@
-import { Navigate, useSearchParams } from "react-router-dom"
-import { Stethoscope, User } from "lucide-react"
-import { homeFor, useAuth } from "@/auth/AuthProvider"
-import type { Session } from "@/auth/session"
+import { useState } from "react"
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom"
+import { motion } from "motion/react"
+import { ArrowRight, LogIn, Stethoscope, User } from "lucide-react"
+import { useAuth } from "@/auth/AuthProvider"
 import { authConfigured } from "@/config/env"
-import { Button } from "@/design/components/Button"
+import { Button, ButtonLink } from "@/design/components/Button"
+import { Feedback } from "@/design/components/Feedback"
+import { Landscape } from "@/design/components/Landscape"
 import { Logo } from "@/design/components/Logo"
-import { Notice } from "@/design/components/primitives"
-
-function safeReturn(raw: string | null): string | null {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null
-}
-
-function destination(session: Session, returnTo: string | null): string {
-  const isDoctor = session.groups.includes("Doctor")
-  if (returnTo && returnTo.startsWith("/doctor") === isDoctor) return returnTo
-  return homeFor(session)
-}
+import { popIn, staggerOnMount } from "@/design/motion"
+import { authDestination, safeReturn } from "./destination"
 
 export default function SignIn() {
   const [params] = useSearchParams()
   const { session, signIn, signInDemo } = useAuth()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(false)
   const returnTo = safeReturn(params.get("returnTo"))
   const denied = params.get("denied") === "1"
-
-  if (session && !denied) return <Navigate to={destination(session, returnTo)} replace />
-
+  if (session && !denied)
+    return <Navigate to={authDestination(session, returnTo)} replace />
+  const demo = (role: "Patient" | "Doctor") => {
+    signInDemo(role)
+    const target =
+      returnTo &&
+      (returnTo === "/doctor" || returnTo.startsWith("/doctor/")) ===
+        (role === "Doctor")
+        ? returnTo
+        : role === "Doctor"
+          ? "/doctor"
+          : "/app"
+    navigate(target, { replace: true })
+  }
   return (
-    <div className="container-page flex justify-center py-16">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-8 shadow-[var(--shadow-float)]">
-        <Logo size="lg" to="/sign-in" />
-        <h1 className="mt-5 text-headline-l lg:text-display-m">Welcome to CareBridge</h1>
-        <p className="mt-2 text-body-l text-ink-600">
-          Sign in or create an account with your phone number or email to message a doctor and
-          keep your health history.
-        </p>
-
-        {denied && (
-          <Notice tone="warn" className="mt-5">
-            Your account doesn't have access to that area. Sign in with a different account.
-          </Notice>
-        )}
-
-        {authConfigured ? (
-          <Button full size="lg" className="mt-8" onClick={() => void signIn(returnTo ?? "/app")}>
-            Sign in or create account
-          </Button>
-        ) : (
-          <div className="mt-8">
-            <Notice tone="info">
-              Demo mode — secure sign-in isn't connected yet. Choose a role to explore the app.
-            </Notice>
-            <div className="mt-4 grid gap-3">
-              <Button full size="lg" onClick={() => signInDemo("Patient")}>
-                <User className="size-5" aria-hidden />
-                Continue as a patient
-              </Button>
-              <Button full size="lg" variant="secondary" onClick={() => signInDemo("Doctor")}>
-                <Stethoscope className="size-5" aria-hidden />
-                Continue as a doctor
-              </Button>
-            </div>
+    <section className="relative isolate overflow-hidden py-14 lg:py-20">
+      <Landscape className="-z-10" preserve="xMidYMid slice" />
+      <motion.div
+        variants={staggerOnMount()}
+        initial="hidden"
+        animate="show"
+        className="container-page flex justify-center"
+      >
+        <motion.div
+          variants={popIn}
+          className="flex w-full max-w-xl flex-col items-start gap-5 shape-bl p-6 glass-strong sm:p-10"
+        >
+          <Logo size="lg" />
+          <div>
+            <p className="eyebrow">Health within reach</p>
+            <h1 className="mt-3 text-headline-l lg:text-display-m">
+              Welcome to CareBridge
+            </h1>
+            <p className="mt-4 text-body-l text-ink-900">
+              Sign in to message a doctor and keep track of your care, for you
+              or your household.
+            </p>
           </div>
-        )}
-
-        <p className="mt-6 text-label-m leading-5 text-ink-600">
-          Finding facilities and checking symptoms work without an account.
-        </p>
-      </div>
-    </div>
+          {denied && (
+            <Feedback>
+              This account cannot open that area. Choose another account or
+              return to your home.
+            </Feedback>
+          )}
+          {error && (
+            <Feedback error>Could not open sign-in. Please try again.</Feedback>
+          )}
+          {authConfigured ? (
+            <Button
+              full
+              icon={LogIn}
+              size="lg"
+              loading={busy}
+              onClick={async () => {
+                setBusy(true)
+                setError(false)
+                try {
+                  await signIn(returnTo ?? "/app")
+                } catch {
+                  setError(true)
+                  setBusy(false)
+                }
+              }}
+            >
+              Sign in or create account
+            </Button>
+          ) : (
+            <>
+              <Feedback>
+                Demo mode. Choose a role to try the app with demo data.
+              </Feedback>
+              <div className="flex w-full flex-col gap-3">
+                <Button
+                  full
+                  icon={User}
+                  size="lg"
+                  onClick={() => demo("Patient")}
+                >
+                  Continue as a patient
+                </Button>
+                <Button
+                  full
+                  icon={Stethoscope}
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => demo("Doctor")}
+                >
+                  Continue as a doctor
+                </Button>
+              </div>
+            </>
+          )}
+          <p className="text-body-m text-ink-900">
+            Finding facilities and checking symptoms work without an account.
+          </p>
+          <ButtonLink to="/app/facilities" icon={ArrowRight} variant="glass">
+            Browse facilities
+          </ButtonLink>
+        </motion.div>
+      </motion.div>
+    </section>
   )
 }

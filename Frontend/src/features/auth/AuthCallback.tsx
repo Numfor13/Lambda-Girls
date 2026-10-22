@@ -1,45 +1,53 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import { LogIn } from "lucide-react"
 import { getUserManager, sessionFromUser } from "@/auth/session"
-import { homeFor } from "@/auth/AuthProvider"
-import { Notice, PageSpinner } from "@/design/components/primitives"
+import { ButtonLink } from "@/design/components/Button"
+import { Feedback } from "@/design/components/Feedback"
+import { PageSpinner, StatusMark } from "@/design/components/primitives"
+import { authDestination } from "./destination"
 
 export default function AuthCallback() {
   const navigate = useNavigate()
   const [failed, setFailed] = useState(false)
   const started = useRef(false)
-
   useEffect(() => {
     if (started.current) return
     started.current = true
-    const um = getUserManager()
-    if (!um) {
+    const manager = getUserManager()
+    if (!manager) {
       navigate("/sign-in", { replace: true })
       return
     }
-    um.signinRedirectCallback()
+    manager
+      .signinRedirectCallback()
       .then((user) => {
         const state = user.state as { returnTo?: string } | undefined
-        const session = sessionFromUser(user)
-        const home = homeFor(session)
-        const target =
-          state?.returnTo && state.returnTo !== "/" && !state.returnTo.startsWith("/sign-in")
-            ? state.returnTo
-            : home
-        navigate(target, { replace: true })
+        navigate(authDestination(sessionFromUser(user), state?.returnTo), {
+          replace: true,
+        })
       })
       .catch(() => setFailed(true))
   }, [navigate])
-
-  if (failed) {
-    return (
-      <div className="container-page max-w-md py-16">
-        <Notice tone="error">We couldn't finish signing you in. Please try again.</Notice>
-        <Link to="/sign-in" className="mt-4 inline-block font-semibold text-brand-700">
-          Back to sign in
-        </Link>
-      </div>
-    )
-  }
-  return <PageSpinner />
+  return (
+    <div className="container-page flex min-h-svh flex-col items-center justify-center gap-5 py-10">
+      {failed ? (
+        <section className="flex w-full max-w-md flex-col items-center gap-5 rounded-xl bg-white p-6 text-center shadow-[var(--shadow-elev-1)]">
+          <StatusMark state="info" icon={LogIn} />
+          <h1 className="text-headline-m">Sign-in did not finish</h1>
+          <Feedback error>Please return to sign-in and try again.</Feedback>
+          <ButtonLink to="/sign-in" icon={LogIn}>
+            Back to sign in
+          </ButtonLink>
+        </section>
+      ) : (
+        <>
+          <PageSpinner />
+          <p className="text-body-l text-ink-600" role="status">
+            Finishing your sign-in…
+          </p>
+        </>
+      )}
+    </div>
+  )
 }

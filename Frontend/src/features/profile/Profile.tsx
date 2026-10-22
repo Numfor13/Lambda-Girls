@@ -167,7 +167,9 @@ export default function Profile() {
               </p>
             )}
           </div>
-          <div className="w-full sm:w-auto"><SyncStatus /></div>
+          <div className="w-full sm:w-auto">
+            <SyncStatus />
+          </div>
         </div>
       </motion.section>
       {profile.isError && (
