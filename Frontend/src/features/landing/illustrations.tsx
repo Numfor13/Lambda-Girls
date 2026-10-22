@@ -58,7 +58,7 @@ export function HeroPhone() {
       <div className="px-4 pt-10 pb-4 text-ink-900">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1">
-            <LogoMark className="h-5 w-6" />
+            <LogoMark className="h-5" />
             <span className="font-display text-[13px] font-extrabold">
               <span className="text-brand-700">Care</span>
               <span className="text-brand-500">Bridge</span>

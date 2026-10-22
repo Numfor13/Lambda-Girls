@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
+import { motion } from "motion/react"
 import { LocateFixed, MapPin, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
 import { FacilityRow } from "@/design/components/FacilityRow"
 import { Chip, Select } from "@/design/components/Field"
+import { EASE_OUT } from "@/design/motion"
 import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { quarterCentroids, rankFacilities } from "@/lib/geo"
@@ -152,8 +154,15 @@ export default function FacilityList() {
         </div>
       ) : (
         <ul className="mt-3 flex flex-col gap-3">
-          {visible.map((f) => (
-            <FacilityRow key={f.facility_id} facility={f} />
+          {visible.map((f, i) => (
+            <motion.li
+              key={f.facility_id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: EASE_OUT, delay: Math.min(i * 0.04, 0.4) }}
+            >
+              <FacilityRow facility={f} />
+            </motion.li>
           ))}
         </ul>
       )}
