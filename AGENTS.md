@@ -93,6 +93,8 @@ npm run build
 
 **Pending refinement:** Restore editor access to file `8Wm3ky7nyOCc8lF64w4539` for the connected account (`nsalleyimnaiume@gmail.com`), reconnect the owning account, or correct the file link. Then inspect all three pages, fix shared glass components/styles and instance overrides, tighten the mobile hero using existing spacing tokens, and visually verify all three existing screens at 390 and 1440. This request authorizes refinement of the existing designs; frontend implementation and the next design batch still await review.
 
+**Access follow-up:** Browser Google sign-in succeeded, but the file still shows **Ask to edit**. Its Share panel lists **Keukang** as owner and **Anyone can view**. The connected MCP identity remains Salle Bryan. The owner/editor must invite the connected account with **Can edit**, or the user must reconnect the file-owning account. This is a Figma file permission issue, not a request for broader Codex action permissions.
+
 ### Next steps (suggested order)
 
 1. **Wait for the owner's verdict on Figma v1** (approve / modify / refuse per screen). Do not build screens that have not been approved.
