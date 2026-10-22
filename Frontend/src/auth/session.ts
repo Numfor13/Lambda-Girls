@@ -25,7 +25,7 @@ export function getUserManager(): UserManager | null {
     redirect_uri: env.cognito.redirectUri,
     post_logout_redirect_uri: window.location.origin,
     response_type: "code",
-    scope: "openid email phone profile",
+    scope: "openid email",
     automaticSilentRenew: true,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
   })
