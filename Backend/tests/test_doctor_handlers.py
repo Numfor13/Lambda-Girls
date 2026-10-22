@@ -293,3 +293,106 @@ def test_prescription_code_uniqueness(aws_resources):
         ), None)
         codes.add(json.loads(resp["body"])["code"])
     assert len(codes) == 5
+
+
+# -- Phase 10: anonymous consultations are non-identifying to doctors ---------
+
+_ANON_ID = "anon#" + "ab" * 32
+
+
+def _seed_anonymous(triage_result_id=None):
+    ddb = boto3.resource("dynamodb", region_name="us-east-1")
+    now = int(time.time() * 1000)
+    ddb.Table("test-doctor-consultations").put_item(Item={
+        "consultation_id": "c-anon",
+        "patient_id": _ANON_ID,
+        "phone_owner_id": _ANON_ID,
+        "on_behalf_member_id": None,
+        "triage_result_id": triage_result_id,
+        "complaint": "Fever and chills",
+        "status": "paid",
+        "urgency": "RED",
+        "urgency_created": f"RED#{now}",
+        "created_at": Decimal(now),
+        "updated_at": Decimal(now),
+    })
+    ddb.Table("test-doctor-messages").put_item(Item={
+        "consultation_id": "c-anon", "message_id": "m1", "sender_id": _ANON_ID,
+        "sender_role": "patient", "content_type": "text", "text_body": "help",
+        "created_at": Decimal(now),
+    })
+    ddb.Table("test-doctor-messages").put_item(Item={
+        "consultation_id": "c-anon", "message_id": "m2", "sender_id": "doc1",
+        "sender_role": "doctor", "content_type": "text", "text_body": "hello",
+        "created_at": Decimal(now + 1),
+    })
+
+
+def test_get_queue_redacts_anonymous_patient(aws_resources):
+    _seed_anonymous()
+    resp = get_queue(_doctor_event(), None)
+    assert resp["statusCode"] == 200
+    assert "anon#" not in resp["body"]
+    assert "ab" * 32 not in resp["body"]
+    queue = {c["consultation_id"]: c for c in json.loads(resp["body"])["queue"]}
+    anon = queue["c-anon"]
+    assert anon["patient_id"] == "anonymous"
+    assert anon["phone_owner_id"] == "anonymous"
+    assert anon["is_anonymous"] is True
+    assert anon["complaint"] == "Fever and chills"
+    assert anon["urgency"] == "RED"
+    # registered patients are untouched
+    assert queue["c-paid"]["patient_id"] == "p1"
+    assert "is_anonymous" not in queue["c-paid"]
+
+
+def test_get_case_redacts_anonymous_patient_and_messages(aws_resources):
+    _seed_anonymous()
+    resp = get_case(_doctor_event(path_params={"consultation_id": "c-anon"}), None)
+    assert resp["statusCode"] == 200
+    assert "anon#" not in resp["body"]
+    body = json.loads(resp["body"])
+    c = body["consultation"]
+    assert c["patient_id"] == "anonymous"
+    assert c["phone_owner_id"] == "anonymous"
+    assert c["is_anonymous"] is True
+    assert c["complaint"] == "Fever and chills"
+    for k in ("name", "phone", "patient_name", "phone_number"):
+        assert k not in c
+    senders = {m["message_id"]: m["sender_id"] for m in body["messages"]}
+    assert senders == {"m1": "anonymous", "m2": "doc1"}
+
+
+def test_get_case_strips_identity_fields_if_present(aws_resources):
+    _seed_anonymous()
+    ddb = boto3.resource("dynamodb", region_name="us-east-1")
+    ddb.Table("test-doctor-consultations").update_item(
+        Key={"consultation_id": "c-anon"},
+        UpdateExpression="SET #n = :n, phone = :p, on_behalf_member_id = :m",
+        ExpressionAttributeNames={"#n": "name"},
+        ExpressionAttributeValues={":n": "Leaky Name", ":p": "+237600000000", ":m": "member-1"},
+    )
+    resp = get_case(_doctor_event(path_params={"consultation_id": "c-anon"}), None)
+    assert "Leaky Name" not in resp["body"]
+    assert "+237600000000" not in resp["body"]
+    assert "member-1" not in resp["body"]
+
+
+def test_get_case_anonymous_does_not_dereference_foreign_triage(aws_resources):
+    # An anonymous caller can put any triage_result_id on their record; it must not
+    # pull a registered user's triage result into the doctor's view of the anon case.
+    ddb = boto3.resource("dynamodb", region_name="us-east-1")
+    ddb.Table("test-doctor-triage").put_item(Item={
+        "result_id": "tr-1", "user_id": "registered-user", "urgency": "GREEN"})
+    _seed_anonymous(triage_result_id="tr-1")
+    body = json.loads(get_case(_doctor_event(path_params={"consultation_id": "c-anon"}), None)["body"])
+    assert body["triage_result"] is None
+    assert body["consultation"]["urgency"] == "RED"
+    assert "registered-user" not in json.dumps(body)
+
+
+def test_get_case_registered_patient_unchanged(aws_resources):
+    resp = get_case(_doctor_event(path_params={"consultation_id": "c-paid"}), None)
+    c = json.loads(resp["body"])["consultation"]
+    assert c["patient_id"] == "p1"
+    assert "is_anonymous" not in c

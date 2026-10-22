@@ -2,7 +2,7 @@
 
 import decimal
 import json
-from typing import Any
+from typing import Any, Optional
 
 
 def _json_default(obj):
@@ -11,25 +11,29 @@ def _json_default(obj):
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
-def ok(body: Any, status_code: int = 200) -> dict:
-    """Return a successful API Gateway response."""
+def _headers(extra: Optional[dict]) -> dict:
+    headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+    }
+    if extra:
+        headers.update(extra)
+    return headers
+
+
+def ok(body: Any, status_code: int = 200, headers: Optional[dict] = None) -> dict:
+    """Return a successful API Gateway response. `headers` are merged over the defaults."""
     return {
         "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
+        "headers": _headers(headers),
         "body": json.dumps(body, default=_json_default),
     }
 
 
-def err(status: int, message: str) -> dict:
-    """Return an error API Gateway response."""
+def err(status: int, message: str, headers: Optional[dict] = None) -> dict:
+    """Return an error API Gateway response. `headers` are merged over the defaults."""
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
+        "headers": _headers(headers),
         "body": json.dumps({"error": message}),
     }

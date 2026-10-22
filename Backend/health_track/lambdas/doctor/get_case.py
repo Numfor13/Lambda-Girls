@@ -1,6 +1,9 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
 from health_track_common.response import ok, err
+from health_track_common.anonymous import (
+    is_anonymous_id, redact_for_doctor, redact_message_for_doctor,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -44,10 +47,12 @@ def handler(event, context):
             ScanIndexForward=True,
         ).get("Items", [])
 
-        # Fetch triage result if linked
+        # Fetch triage result if linked. Anonymous triage results are not stored under
+        # a user, and an anonymous caller could cite any id, so never dereference it.
         triage_result = None
         triage_result_id = consultation.get("triage_result_id")
-        if triage_result_id:
+        is_anonymous = is_anonymous_id(consultation.get("patient_id"))
+        if triage_result_id and not is_anonymous:
             t_resp = triage_table.query(
                 KeyConditionExpression=Key("result_id").eq(triage_result_id),
                 Limit=1,
@@ -55,6 +60,10 @@ def handler(event, context):
             items = t_resp.get("Items", [])
             if items:
                 triage_result = items[0]
+
+        if is_anonymous:
+            consultation = redact_for_doctor(consultation)
+            messages = [redact_message_for_doctor(m) for m in messages]
 
         return ok({
             "consultation": consultation,

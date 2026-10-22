@@ -162,3 +162,10 @@ def test_post_subscribe_unauthorized():
     event["requestContext"] = {}
     resp = post_subscribe(event, None)
     assert resp["statusCode"] == 401
+
+
+def test_post_send_anonymous_user_no_subscription():
+    """Phase 10: message events for anon#<hash> patients have no subscription -> clean no-op."""
+    resp = post_send({"detail": {"user_id": "anon#" + "cd" * 32, "payload": {"title": "t"}}}, None)
+    assert resp["statusCode"] == 200
+    assert json.loads(resp["body"]) == {"sent": False, "reason": "no_subscription"}
