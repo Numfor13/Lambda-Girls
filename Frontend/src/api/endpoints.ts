@@ -53,9 +53,12 @@ export interface NewConsultation {
 }
 
 export interface SyncBody {
-  triage_results: (Omit<TriageResult, "synced_from_offline" | "created_at"> & {
+  triage_results: {
+    result_id: string
+    symptom_payload: SymptomPayload
+    on_behalf_member_id?: string | null
     queued_at: number
-  })[]
+  }[]
   messages: (Pick<
     Message,
     | "consultation_id"

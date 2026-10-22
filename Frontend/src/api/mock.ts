@@ -10,6 +10,7 @@ import type {
   Prescription,
   Profile,
   Referral,
+  SymptomPayload,
   TriageResult,
   Urgency,
 } from "./types"
@@ -329,15 +330,30 @@ const routes: [string, RegExp, Handler][] = [
         messages: [] as { message_id: string; status: "ok" | "duplicate" }[],
       }
       let hasRed = false
-      for (const tr of (body.triage_results as (TriageResult & { queued_at: number })[]) ?? []) {
+      for (const tr of (body.triage_results as {
+        result_id: string
+        symptom_payload?: SymptomPayload
+        on_behalf_member_id?: string | null
+        queued_at?: number
+      }[]) ?? []) {
+        const payload: SymptomPayload = tr.symptom_payload ?? {
+          age_months: 999,
+          is_pregnant: false,
+          symptoms: [],
+          vitals: {},
+        }
+        const result = evaluate(payload)
         data.triage = data.triage.filter((t) => t.result_id !== tr.result_id)
         data.triage.push({
-          ...tr,
+          result_id: tr.result_id ?? crypto.randomUUID(),
           user_id: sub,
+          ...result,
+          symptom_payload: payload,
+          on_behalf_member_id: tr.on_behalf_member_id ?? null,
           synced_from_offline: true,
-          created_at: tr.queued_at,
+          created_at: tr.queued_at ?? Date.now(),
         })
-        if (tr.urgency === "RED") hasRed = true
+        if (result.urgency === "RED") hasRed = true
         results.triage_results.push({ result_id: tr.result_id, status: "ok" })
       }
       for (const msg of (body.messages as Message[]) ?? []) {
