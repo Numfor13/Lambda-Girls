@@ -9,6 +9,7 @@ from health_track.triage_stack import TriageStack
 from health_track.consultation_stack import ConsultationStack
 from health_track.payment_stack import PaymentStack
 from health_track.doctor_stack import DoctorStack
+from health_track.doctor_application_stack import DoctorApplicationStack
 
 app = cdk.App()
 config = get_config(app.node)
@@ -44,6 +45,11 @@ payment = PaymentStack(app, f"HealthTrack-Payment-{config.env_name}",
     secrets_stack=secrets)
 
 doctor = DoctorStack(app, f"HealthTrack-Doctor-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth)
+
+doctor_application = DoctorApplicationStack(app, f"HealthTrack-DoctorApplication-{config.env_name}",
     env=env, config=config,
     shared_stack=shared,
     auth_stack=auth)

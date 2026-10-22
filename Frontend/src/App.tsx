@@ -33,6 +33,10 @@ const DoctorShell = lazy(() =>
 const DoctorQueue = lazy(() => import("@/features/doctor/DoctorQueue"))
 const DoctorCase = lazy(() => import("@/features/doctor/DoctorCase"))
 
+const DoctorApplicationForm = lazy(() => import("@/features/doctor-application/DoctorApplicationForm"))
+const ApplicationStatus = lazy(() => import("@/features/doctor-application/ApplicationStatus"))
+const AdminApplications = lazy(() => import("@/features/admin/AdminApplications"))
+
 function Root() {
   return (
     <Suspense fallback={<PageSpinner />}>
@@ -58,6 +62,8 @@ const router = createBrowserRouter([
             ? [{ path: "rx/:code", element: <CodeLookup kind="rx" /> }]
             : []),
           ...(flags.referrals ? [{ path: "ref/:code", element: <CodeLookup kind="ref" /> }] : []),
+          { path: "apply/doctor", element: <DoctorApplicationForm /> },
+          { path: "apply/doctor/status", element: <ApplicationStatus /> },
           { path: "*", element: <NotFound /> },
         ],
       },
@@ -83,6 +89,13 @@ const router = createBrowserRouter([
             ],
           },
           { path: "*", element: <NotFound /> },
+        ],
+      },
+      {
+        path: "admin",
+        element: <RequireAuth role="Admin" />,
+        children: [
+          { path: "applications", element: <AdminApplications /> },
         ],
       },
       {
