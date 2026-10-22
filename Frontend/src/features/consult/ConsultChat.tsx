@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronLeft, CreditCard, FileCheck2, MessagesSquare, Pill, SendHorizontal, Stethoscope } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import { ArrowLeft, CreditCard, FileCheck2, MessagesSquare, Pill, SendHorizontal, Stethoscope } from "lucide-react"
 import { consultApi } from "@/api/endpoints"
 import { friendlyError } from "@/api/errors"
 import { flags } from "@/config/flags"
-import { ButtonLink } from "@/design/components/Button"
+import { ButtonLink, IconRouterLink } from "@/design/components/Button"
+import { SPRING } from "@/design/motion"
 import { ChatBubble, type ChatItem } from "@/design/components/ChatBubble"
 import { HoldToRecord } from "@/design/components/HoldToRecord"
 import { EmptyState, Notice, PageSpinner } from "@/design/components/primitives"
@@ -20,21 +22,26 @@ import { extractCodes, findLocalConsultation, sendText, sendVoice, STATUS_LABEL 
 function CodeCard({ kind, code }: { kind: "rx" | "ref"; code: string }) {
   const Icon = kind === "rx" ? Pill : FileCheck2
   return (
-    <div className="flex items-center gap-4 rounded-[16px] border-[1.5px] border-brand-700 bg-mint p-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={SPRING.bouncy}
+      className="flex items-center gap-4 border-[1.5px] border-brand-700 bg-mint p-4 shape-bl"
+    >
       <Icon className="size-8 shrink-0 text-brand-700" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold tracking-wide text-brand-700 uppercase">
+        <p className="text-label-m font-bold tracking-wide text-brand-700 uppercase">
           {kind === "rx" ? "Prescription" : "Referral"}
         </p>
-        <p className="font-mono text-[24px] font-bold tracking-[0.15em]">{code}</p>
-        <p className="text-sm text-ink-600">
+        <p className="font-mono text-headline-m tracking-[0.15em]">{code}</p>
+        <p className="text-body-m text-ink-600">
           {kind === "rx" ? "Show this at the pharmacy." : "Show this at the facility you were referred to."}
         </p>
       </div>
-      <Link to={`/${kind}/${code}`} className="shrink-0 text-sm font-semibold text-brand-700">
+      <Link to={`/${kind}/${code}`} className="shrink-0 text-body-m font-semibold text-brand-700">
         Details
       </Link>
-    </div>
+    </motion.div>
   )
 }
 
@@ -144,26 +151,26 @@ export default function ConsultChat() {
   }
 
   return (
-    <div className="-mx-4 -mt-6 flex min-h-[calc(100svh-8rem)] flex-col sm:mx-0 sm:mt-0">
-      <header className="sticky top-16 z-10 border-b border-line bg-white px-4 py-3 sm:rounded-t-[16px] sm:border">
+    <div className="flex min-h-[calc(100svh-12rem)] flex-col">
+      <header className="glass-strong sticky top-[84px] z-10 rounded-full py-1.5 pr-3 pl-1.5 lg:top-4">
         <div className="flex items-center gap-3">
-          <Link to="/app/consults" aria-label="Back to consultations" className="-ml-2 flex size-11 items-center justify-center">
-            <ChevronLeft className="size-6 text-brand-700" />
-          </Link>
+          <IconRouterLink to="/app/consults" icon={ArrowLeft} label="Back to consultations" variant="plain" />
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-mint">
             <Stethoscope className="size-5 text-brand-700" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">
+            <p className="truncate text-title-m">
               {consultation?.doctor_id ? "Your doctor" : "Doctor consultation"}
             </p>
-            <p className="flex items-center gap-1.5 text-xs text-ink-600">
-              <span
+            <p className="flex items-center gap-1.5 text-label-m text-ink-600">
+              <motion.span
+                animate={status === "open" ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+                transition={{ duration: 1.6, repeat: status === "open" ? Infinity : 0 }}
                 className={cn(
                   "size-2 rounded-full",
                   status === "open" ? "bg-brand-500" : status === "closed" ? "bg-ink-400" : "bg-urgent-amber",
                 )}
-              />
+              ></motion.span>
               {STATUS_LABEL[status]}
               {local?.subject_label && local.subject_label !== "You" && ` · for ${local.subject_label}`}
             </p>
@@ -172,7 +179,7 @@ export default function ConsultChat() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-3 px-4 pt-4">
+      <div className="flex flex-col gap-3 pt-4">
         {local && !local.consultation_id && (
           <Notice tone="warn" className="flex items-center justify-between gap-3">
             <span>Not sent yet — this conversation will reach CareBridge when you're online.</span>
@@ -180,9 +187,9 @@ export default function ConsultChat() {
           </Notice>
         )}
         {status === "pending_payment" && serverId && (
-          <div className="flex flex-col gap-3 rounded-[16px] bg-cream p-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-4 sm:flex-row sm:items-center">
             <CreditCard className="size-6 shrink-0 text-brand-700" aria-hidden />
-            <p className="flex-1 text-[15px]">Pay the consultation fee so a doctor can see your case.</p>
+            <p className="flex-1 text-body-l">Pay the consultation fee so a doctor can see your case.</p>
             <ButtonLink to={`/app/consult/${ref}/pay`} size="sm" trailing="arrow">
               Pay now
             </ButtonLink>
@@ -194,14 +201,14 @@ export default function ConsultChat() {
         {flags.prescriptions && codes.rx.map((c) => <CodeCard key={c} kind="rx" code={c} />)}
         {flags.referrals && codes.ref.map((c) => <CodeCard key={c} kind="ref" code={c} />)}
         {complaint && (
-          <p className="rounded-[12px] border border-line px-4 py-3 text-sm text-ink-600">
+          <p className="rounded-lg bg-white/80 px-4 py-3 text-body-m text-ink-600 shadow-[var(--shadow-elev-1)]">
             <span className="font-semibold text-ink-900">Your request: </span>
             {complaint}
           </p>
         )}
       </div>
 
-      <ol className="flex flex-1 flex-col gap-2 px-4 py-4" aria-label="Messages" aria-live="polite">
+      <ol className="flex flex-1 flex-col gap-2 py-4" aria-label="Messages" aria-live="polite">
         {items.map((item) => (
           <ChatBubble key={item.key} item={item} />
         ))}
@@ -209,12 +216,12 @@ export default function ConsultChat() {
       <div ref={bottom} />
 
       {closed ? (
-        <p className="border-t border-line bg-cream px-4 py-4 text-center text-sm text-ink-600">
+        <p className="glass rounded-full px-4 py-4 text-center text-body-m text-ink-600">
           This consultation is closed.
         </p>
       ) : (
         <form
-          className="sticky bottom-16 flex items-end gap-2 border-t border-line bg-white px-3 py-3 lg:bottom-0"
+          className="glass-strong sticky bottom-[104px] z-10 flex items-end gap-2 rounded-xl p-2 lg:bottom-4"
           onSubmit={(e) => {
             e.preventDefault()
             void submitText()
@@ -235,19 +242,29 @@ export default function ConsultChat() {
               }
             }}
             placeholder="Type a message…"
-            className="max-h-32 min-h-12 flex-1 resize-none rounded-[24px] border border-line bg-cream px-4 py-3 text-[16px] focus:border-brand-500 focus:bg-white focus:outline-none"
+            className="max-h-32 min-h-12 flex-1 resize-none rounded-lg border-[1.5px] border-transparent bg-white/90 px-4 py-3 text-body-l transition-colors focus:border-brand-500 focus:outline-none"
           />
-          {text.trim() ? (
-            <button
-              type="submit"
-              aria-label="Send message"
-              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"
-            >
-              <SendHorizontal className="size-5" aria-hidden />
-            </button>
-          ) : (
-            <HoldToRecord size="md" label="Hold to record a voice note" onRecorded={(r) => void sendVoice(ref, r)} />
-          )}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {text.trim() ? (
+              <motion.button
+                key="send"
+                type="submit"
+                aria-label="Send message"
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 45 }}
+                whileTap={{ scale: 0.85 }}
+                transition={SPRING.bouncy}
+                className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"
+              >
+                <SendHorizontal className="size-5" aria-hidden />
+              </motion.button>
+            ) : (
+              <motion.div key="mic" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={SPRING.bouncy}>
+                <HoldToRecord size="md" label="Hold to record a voice note" onRecorded={(r) => void sendVoice(ref, r)} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </form>
       )}
     </div>

@@ -13,6 +13,7 @@ export const apiUrls = {
   payment: pick(e.VITE_API_URL_PAYMENT),
   doctor: pick(e.VITE_API_URL_DOCTOR),
   push: pick(e.VITE_API_URL_PUSH),
+  extended: pick(e.VITE_API_URL_EXTENDED),
 } as const
 
 export type ApiService = keyof typeof apiUrls

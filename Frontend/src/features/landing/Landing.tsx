@@ -1,282 +1,374 @@
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
+import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import {
-  CloudDownload,
-  FileText,
-  FlaskConical,
+  Activity,
+  ArrowRight,
+  CreditCard,
   HeartHandshake,
   MapPin,
-  MessageCircleMore,
-  MessagesSquare,
-  Stethoscope,
+  Mic,
+  Play,
+  Users,
   WifiOff,
+  type LucideIcon,
 } from "lucide-react"
-import { flags } from "@/config/flags"
+import seed from "@/data/facilities.seed.json"
+import { env } from "@/config/env"
 import { ButtonLink, LinkArrow } from "@/design/components/Button"
-import { ImageCard } from "@/design/components/ImageCard"
-import { motion } from "motion/react"
-import { EASE_OUT, Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
-import { AdvisoryNote, Eyebrow, FeaturePill, InfoCard } from "@/design/components/primitives"
-import { DoctorPortrait, FacilitiesPhone, HeartIllustration, HeroPhone } from "./illustrations"
+import { Landscape } from "@/design/components/Landscape"
+import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { Reveal, SPRING, StaggerContainer, StaggerItem } from "@/design/motion"
+import { Eyebrow } from "@/design/components/primitives"
+import { formatXaf } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
-const consultEntry = flags.doctors_available ? "/app/doctors" : "/app/consult/new"
-const appointmentsEntry = flags.appointments ? "/app/appointments/new" : "/app/facilities"
-const labEntry = flags.lab_tests ? "/app/lab-tests/new" : "/app/facilities?capability=laboratory"
+const MotionLink = motion.create(Link)
+const FACILITY_COUNT = (seed as unknown[]).length
 
-// Shared hero entrance: staggered children with a single parent orchestrator.
-const heroContainer = {
+const hero = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
 }
-const heroFadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE_OUT } },
+const rise = {
+  hidden: { opacity: 0, y: 32 },
+  show: { opacity: 1, y: 0, transition: SPRING.default },
 }
-const heroFadeIn = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.55, ease: EASE_OUT } },
+
+// ---------- Interactive preview card ----------
+
+const TABS = ["Triage", "Consult", "Pay"] as const
+type Tab = (typeof TABS)[number]
+
+const PREVIEW: Record<Tab, { title: string; body: string }> = {
+  Triage: {
+    title: "Know how urgent it is — in under a minute",
+    body: "Danger-sign check that works offline, re-checked by our server when you reconnect.",
+  },
+  Consult: {
+    title: "A doctor replies by text or voice note",
+    body: "For you or someone in your household. Messages wait safely on your phone until you're online.",
+  },
+  Pay: {
+    title: "Pay by mobile money — or for someone else",
+    body: "One clear price per consultation. You get a receipt, and family can pay for you.",
+  },
 }
-const heroSlideUp = {
-  hidden: { opacity: 0, y: 40, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.75, ease: EASE_OUT } },
+
+function TriagePreview() {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-white p-4">
+      <div className="flex items-center justify-between gap-2">
+        <UrgencyBadge urgency="AMBER" />
+        <span className="text-label-m text-ink-600">Example</span>
+      </div>
+      <div className="flex items-center gap-3 rounded-md bg-cream p-3">
+        <span className="flex size-11 items-center justify-center rounded-md bg-mint">
+          <Activity className="size-5 text-brand-700" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-title-m">Nearest clinic for this</span>
+          <span className="block text-body-m text-ink-600">Sorted by distance from you</span>
+        </span>
+      </div>
+    </div>
+  )
 }
-const heroFloatCard = {
-  hidden: { opacity: 0, y: 16, scale: 0.94 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: EASE_OUT, delay: 0.55 } },
+
+function ConsultPreview() {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-white p-4">
+      <motion.p
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ ...SPRING.bouncy, delay: 0.05 }}
+        className="ml-auto max-w-[80%] rounded-lg rounded-br-[6px] bg-brand-700 px-4 py-2 text-body-m text-white"
+      >
+        My daughter has had a fever since yesterday.
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ ...SPRING.bouncy, delay: 0.25 }}
+        className="flex max-w-[85%] items-center gap-3 rounded-lg rounded-bl-[6px] bg-mint px-3 py-2"
+      >
+        <span className="flex size-9 items-center justify-center rounded-full bg-brand-700 text-white">
+          <Play className="size-4 fill-current" aria-hidden />
+        </span>
+        <span className="flex h-6 items-end gap-0.5" aria-hidden>
+          {[8, 14, 20, 12, 18, 24, 10, 16, 22, 12, 8, 14].map((h, i) => (
+            <motion.span
+              key={i}
+              className="w-1 rounded-full bg-brand-700/70"
+              animate={{ height: [h * 0.5, h, h * 0.6] }}
+              transition={{ duration: 1.2, repeat: Infinity, repeatType: "mirror", delay: i * 0.05 }}
+            />
+          ))}
+        </span>
+        <span className="text-label-m text-brand-900">Doctor · 0:42</span>
+      </motion.div>
+    </div>
+  )
 }
+
+function PayPreview() {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-white p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-body-m text-ink-600">Consultation</span>
+        <motion.span
+          className="text-headline-m"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={SPRING.bouncy}
+        >
+          {formatXaf(env.consultationFeeXaf)}
+        </motion.span>
+      </div>
+      <div className="flex gap-2">
+        <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-mint px-3 text-label-m text-brand-900">
+          <CreditCard className="size-4" aria-hidden />
+          Mobile money
+        </span>
+        <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-cream px-3 text-label-m text-ink-900">
+          <Users className="size-4" aria-hidden />
+          Pay for someone
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function PreviewCard({ className }: { className?: string }) {
+  const [tab, setTab] = useState<Tab>("Triage")
+  const [paused, setPaused] = useState(false)
+  useEffect(() => {
+    if (paused) return
+    const id = window.setInterval(() => setTab((t) => TABS[(TABS.indexOf(t) + 1) % TABS.length]), 4500)
+    return () => window.clearInterval(id)
+  }, [paused])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 60, scale: 0.92, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+      transition={{ ...SPRING.bouncy, delay: 0.35 }}
+      onHoverStart={() => setPaused(true)}
+      onHoverEnd={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      className={cn("glass-strong flex flex-col gap-5 p-5 shape-bl sm:p-7", className)}
+    >
+      <LayoutGroup id="preview-tabs">
+        <div className="flex items-center gap-2" role="tablist" aria-label="What CareBridge does">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={cn(
+                "relative h-10 rounded-full px-4 text-label-l transition-colors",
+                tab === t ? "text-white" : "bg-white/70 text-ink-900 ring-1 ring-line ring-inset",
+              )}
+            >
+              {tab === t && (
+                <motion.span layoutId="preview-chip" className="absolute inset-0 rounded-full bg-brand-900" transition={SPRING.bouncy} />
+              )}
+              <span className="relative">{t}</span>
+            </button>
+          ))}
+        </div>
+      </LayoutGroup>
+      <div className="relative min-h-[236px]" role="tabpanel">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(6px)" }}
+            transition={SPRING.default}
+            className="flex flex-col gap-4"
+          >
+            <div>
+              <h2 className="text-headline-s sm:text-headline-m">{PREVIEW[tab].title}</h2>
+              <p className="mt-2 text-body-m text-ink-900">{PREVIEW[tab].body}</p>
+            </div>
+            {tab === "Triage" && <TriagePreview />}
+            {tab === "Consult" && <ConsultPreview />}
+            {tab === "Pay" && <PayPreview />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      <div className="flex gap-1.5" aria-hidden>
+        {TABS.map((t) => (
+          <span key={t} className="relative h-1 flex-1 overflow-hidden rounded-full bg-brand-900/10">
+            {tab === t && (
+              <motion.span
+                key={`${t}-${paused}`}
+                className="absolute inset-y-0 left-0 rounded-full bg-brand-700"
+                initial={{ width: "0%" }}
+                animate={{ width: paused ? "100%" : "100%" }}
+                transition={paused ? { duration: 0.2 } : { duration: 4.5, ease: "linear" }}
+              />
+            )}
+          </span>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+// ---------- Sections ----------
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="container-page grid items-center gap-12 pt-10 pb-14 lg:grid-cols-[1.05fr_1fr] lg:pt-14 lg:pb-20">
-        {/* Left column — staggered text entrance */}
-        <motion.div variants={heroContainer} initial="hidden" animate="show">
-          <motion.div variants={heroFadeUp}>
-            <Eyebrow>Health within reach</Eyebrow>
+    <section className="relative isolate -mt-[76px] overflow-hidden bg-mint-200 lg:-mt-[92px]">
+      <Landscape className="top-[30%] -z-10 sm:top-[22%] lg:top-[26%]" />
+      <div className="container-page grid min-h-[100svh] items-center gap-10 pt-[112px] pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[140px] lg:pb-32">
+        <motion.div variants={hero} initial="hidden" animate="show" className="max-w-[640px]">
+          <motion.div variants={rise}>
+            <Eyebrow>Offline-first care · Buea, Cameroon</Eyebrow>
           </motion.div>
-          <motion.h1
-            variants={heroFadeUp}
-            className="mt-5 text-[44px] leading-[1.02] font-extrabold tracking-[-0.03em] sm:text-[56px] lg:text-[64px]"
-          >
-            Better care.
+          <motion.h1 variants={rise} className="mt-5 text-[52px] leading-[1] font-extrabold tracking-[-0.04em] sm:text-display-l lg:text-display-xl">
+            Care that
             <br />
-            Closer to you.
+            reaches you.
           </motion.h1>
-          <motion.p
-            variants={heroFadeUp}
-            className="mt-6 max-w-[440px] text-[17px] leading-[27px] text-ink-600"
-          >
-            Find nearby facilities, message a doctor, and take your next step with confidence.
+          <motion.p variants={rise} className="mt-5 text-headline-s text-brand-800">
+            Even when the network doesn’t.
           </motion.p>
-          <motion.div variants={heroFadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <ButtonLink to="/app/facilities?locate=1" trailing="arrow" size="lg" className="px-6">
-              Find care near me
+          <motion.p variants={rise} className="mt-4 max-w-[520px] text-body-l text-ink-900">
+            Check danger signs, find the nearest facility and message a doctor by text or voice note — for you or
+            someone in your household, on any phone.
+          </motion.p>
+          <motion.div variants={rise} className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <ButtonLink to="/app/triage" icon={Activity} size="lg">
+              Check symptoms
             </ButtonLink>
-            <ButtonLink
-              to="/app/consult/new"
-              variant="secondary"
-              trailing="external"
-              size="lg"
-              className="px-6"
-            >
-              Message a doctor
+            <ButtonLink to="/app/facilities?locate=1" icon={MapPin} variant="glass" size="lg">
+              Find a facility
             </ButtonLink>
-          </motion.div>
-          <motion.div variants={heroFadeIn} className="mt-10 flex flex-wrap gap-x-7 gap-y-4">
-            <FeaturePill icon={MapPin} label="Nearby facilities" />
-            <FeaturePill icon={MessageCircleMore} label="Text & voice notes" />
-            <FeaturePill icon={WifiOff} label="Offline access" />
           </motion.div>
         </motion.div>
-
-        {/* Right column — phone slides up, float card pops in */}
-        <div className="relative mx-auto flex h-[520px] w-full max-w-[520px] items-center justify-center lg:h-[560px]">
-          <motion.div
-            className="absolute top-1/2 left-1/2 size-[420px] -translate-x-[42%] -translate-y-1/2 rounded-full bg-mint sm:size-[480px]"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.1 }}
-          />
-          <motion.div
-            className="relative rotate-[4deg]"
-            variants={heroSlideUp}
-            initial="hidden"
-            animate="show"
-          >
-            <HeroPhone />
-          </motion.div>
-          <motion.div
-            className="absolute top-[22%] right-0 w-[150px] rounded-[16px] bg-white p-4 shadow-[var(--shadow-float)] sm:right-2 sm:w-[170px]"
-            variants={heroFloatCard}
-            initial="hidden"
-            animate="show"
-          >
-            <MessagesSquare className="size-6 text-brand-700" strokeWidth={1.75} aria-hidden />
-            <p className="mt-2 font-display text-[16px] leading-[20px] font-bold text-ink-900">
-              Care, one conversation away.
-            </p>
-            <span className="mt-3 block h-0.5 w-10 rounded bg-mint-200" />
-          </motion.div>
-        </div>
+        <PreviewCard className="w-full max-w-[540px] justify-self-center lg:justify-self-end" />
       </div>
     </section>
   )
 }
 
-function SymptomSection() {
+function GroundBand() {
   return (
-    <section className="bg-cream">
-      <div className="container-page grid items-center gap-12 section-y lg:grid-cols-[1fr_1.05fr]">
-        <Reveal>
-          <Eyebrow>A clearer next step</Eyebrow>
-          <h2 className="mt-4 text-[32px] leading-[1.1] font-bold tracking-[-0.02em] lg:text-[40px]">
-            Understand your symptoms.
-            <br />
-            Know where to turn.
-          </h2>
-          <p className="mt-5 max-w-[440px] text-[17px] leading-[27px] text-ink-600">
-            Answer a few questions to understand how urgently you should seek care.
+    <section className="bg-ground text-white">
+      <div className="container-page grid gap-6 py-14 lg:grid-cols-[1fr_300px_1.2fr] lg:gap-8 lg:py-20">
+        <Reveal className="flex flex-col gap-4 bg-brand-800 p-7 shape-br">
+          <MapPin className="size-8 text-mint-200" aria-hidden />
+          <h2 className="text-headline-l text-white">{FACILITY_COUNT} verified facilities around Buea</h2>
+          <p className="text-body-m text-white/80">
+            Molyko · Buea Town · Great Soppo · Mile 17. Saved on your phone, sorted by distance, one tap to call.
           </p>
-          <ButtonLink to="/app/triage" trailing="arrow" className="mt-8 px-6">
-            Explore symptom guidance
-          </ButtonLink>
-          <AdvisoryNote className="mt-6" />
         </Reveal>
-
-        <div className="relative grid items-center gap-6 md:grid-cols-[1fr_200px]">
-          <Reveal variant="in" className="relative flex items-center justify-center">
-            <div className="absolute size-[300px] rounded-full bg-mint sm:size-[340px]" />
-            <HeartIllustration className="relative h-[320px] w-auto drop-shadow-[0_24px_30px_rgba(120,20,15,0.25)] sm:h-[360px]" />
-            <svg
-              className="pointer-events-none absolute inset-0 hidden size-full md:block"
-              aria-hidden
-              preserveAspectRatio="none"
-              viewBox="0 0 100 100"
-            >
-              <path d="M70 30 H86 V18 H100" fill="none" stroke="#2e8b5e" strokeDasharray="1.5 1.5" strokeWidth=".4" />
-              <path d="M62 62 H86 V68 H100" fill="none" stroke="#2e8b5e" strokeDasharray="1.5 1.5" strokeWidth=".4" />
-              <circle cx="70" cy="30" r="1.2" fill="#2e8b5e" />
-              <circle cx="62" cy="62" r="1.2" fill="#2e8b5e" />
-            </svg>
-          </Reveal>
-          <StaggerContainer className="flex flex-col gap-6 md:gap-16" stagger={0.15}>
-            <StaggerItem variant="right">
-              <InfoCard icon={FileText} title="Tell us how you feel">
-                Answer a few simple questions about your symptoms.
-              </InfoCard>
-            </StaggerItem>
-            <StaggerItem variant="right">
-              <InfoCard icon={MapPin} title="Find your next step">
-                Get guidance on the right level of care and where to go in Buea.
-              </InfoCard>
-            </StaggerItem>
-          </StaggerContainer>
-        </div>
+        <StaggerContainer className="flex flex-col gap-4" stagger={0.1}>
+          <StaggerItem className="glass-dark rounded-xl p-6">
+            <WifiOff className="size-6 text-mint-200" aria-hidden />
+            <p className="mt-3 text-headline-m text-white">Works offline</p>
+            <p className="text-body-m text-white/80">Facilities and symptom checks need no network</p>
+          </StaggerItem>
+          <StaggerItem className="glass-dark rounded-xl p-6">
+            <p className="text-headline-m text-white">{formatXaf(env.consultationFeeXaf)}</p>
+            <p className="text-body-m text-white/80">per consultation, paid by mobile money</p>
+          </StaggerItem>
+        </StaggerContainer>
+        <Reveal variant="right" className="flex flex-col justify-center gap-6">
+          <p className="text-headline-l text-white lg:text-display-m">CHECK, FIND AND CONSULT — EVEN OFFLINE.</p>
+          <LinkArrow to="/how-it-works" light>
+            How it works
+          </LinkArrow>
+          <p className="text-body-m text-white/70">Advisory, not a diagnosis. In an emergency call 15.</p>
+        </Reveal>
       </div>
     </section>
   )
 }
 
-function EverydayCare() {
+const STEPS: { icon: LucideIcon; title: string; body: string; to: string }[] = [
+  { icon: Activity, title: "Check danger signs", body: "Answer a few questions. Get red, amber or green — and why.", to: "/app/triage" },
+  { icon: MapPin, title: "Find the right place", body: "The nearest facility that can help, with one tap to call.", to: "/app/facilities" },
+  { icon: Mic, title: "Talk to a doctor", body: "Send text or a voice note. Pay by mobile money.", to: "/app/consult/new" },
+]
+
+function Steps() {
   return (
     <section className="container-page section-y">
-      <Reveal>
-        <Eyebrow>Everyday care</Eyebrow>
-        <h2 className="mt-4 text-[32px] leading-[1.1] font-bold tracking-[-0.02em] lg:text-[40px]">
-          Care that fits your everyday.
-        </h2>
-        <p className="mt-3 text-[17px] text-ink-600">For you, your family, and your community.</p>
+      <Reveal className="max-w-[640px]">
+        <Eyebrow>How it works</Eyebrow>
+        <h2 className="mt-4 text-headline-l lg:text-display-m">Three steps to the right care.</h2>
       </Reveal>
-
-      <StaggerContainer className="mt-10 grid gap-5 lg:grid-cols-[1.15fr_0.95fr_1.05fr]" stagger={0.12}>
-        <StaggerItem className="relative flex min-h-[280px] overflow-hidden rounded-[16px] bg-mint">
-          <div className="mt-6 ml-4 self-end sm:ml-6">
-            <FacilitiesPhone />
-          </div>
-          <div className="flex flex-1 flex-col justify-center p-5">
-            <CloudDownload className="size-10 text-brand-700" strokeWidth={1.5} aria-hidden />
-            <p className="mt-4 font-display text-[20px] leading-tight font-bold">
-              Useful, even offline
-            </p>
-            <p className="mt-2 text-[13px] leading-5 text-ink-600">
-              Access saved facility details when your connection drops.
-            </p>
-          </div>
-        </StaggerItem>
-
-        <StaggerItem className="flex min-h-[280px] flex-col rounded-[16px] border border-line bg-white p-6">
-          <div className="flex items-center -space-x-3" aria-hidden>
-            <DoctorPortrait skin="#8a5a3c" className="size-16 rounded-full ring-2 ring-white" />
-            <DoctorPortrait skin="#5e3a24" className="z-10 size-20 rounded-full ring-2 ring-white" />
-            <DoctorPortrait skin="#7a4b30" className="size-16 rounded-full ring-2 ring-white" />
-          </div>
-          <p className="mt-5 font-display text-[20px] leading-tight font-bold">
-            A human when
-            <br />
-            you need one
-          </p>
-          <p className="mt-2 text-[14px] text-ink-600">Consult through text and voice notes.</p>
-          <ButtonLink to={consultEntry} trailing="arrow" size="md" full className="mt-auto">
-            Explore consultations
-          </ButtonLink>
-        </StaggerItem>
-
-        <StaggerItem>
-          <ImageCard
-            to="/app/profile/household"
-            image="/images/care-for-family.jpg"
-            fallbackIcon={HeartHandshake}
-            fallbackTone="from-[#a8743f] via-[#6f4a2a] to-[#2d4a35]"
-            title="Care for someone you love"
-            subtitle="Request care on behalf of family."
-            chip="arrow-bottom"
-            className="min-h-[280px]"
-          />
-        </StaggerItem>
+      <StaggerContainer className="mt-10 grid gap-4 md:grid-cols-3" stagger={0.1}>
+        {STEPS.map((s, i) => (
+          <StaggerItem key={s.title}>
+            <MotionLink
+              to={s.to}
+              whileHover={{ y: -6, borderRadius: "32px" }}
+              transition={SPRING.fast}
+              style={{ borderRadius: ["40px 16px 40px 40px", "40px 40px 40px 16px", "40px 40px 16px 40px"][i] }}
+              className={cn(
+                "group flex h-full flex-col gap-6 p-7",
+                i === 1 ? "bg-brand-700 text-white" : i === 0 ? "bg-mint" : "bg-white shadow-[var(--shadow-elev-1)]",
+              )}
+            >
+              <span className="flex items-center justify-between">
+                <span className={cn("flex size-14 items-center justify-center rounded-full", i === 1 ? "bg-white/15" : "bg-white")}>
+                  <s.icon className={cn("size-6", i === 1 ? "text-white" : "text-brand-700")} aria-hidden />
+                </span>
+                <span className={cn("text-display-m", i === 1 ? "text-white/25" : "text-brand-700/15")}>0{i + 1}</span>
+              </span>
+              <span>
+                <span className={cn("block text-headline-s", i === 1 ? "text-white" : "text-ink-900")}>{s.title}</span>
+                <span className={cn("mt-2 block text-body-l", i === 1 ? "text-white/80" : "text-ink-600")}>{s.body}</span>
+              </span>
+              <ArrowRight
+                className={cn("mt-auto size-6 transition-transform group-hover:translate-x-1", i === 1 ? "text-white" : "text-brand-700")}
+                aria-hidden
+              />
+            </MotionLink>
+          </StaggerItem>
+        ))}
       </StaggerContainer>
     </section>
   )
 }
 
-function Services() {
+function Household() {
   return (
-    <section id="services" className="container-page scroll-mt-24 pb-14 lg:pb-24">
-      <StaggerContainer className="grid gap-6 lg:grid-cols-[0.95fr_1fr_1fr] lg:gap-5" stagger={0.12}>
-        <StaggerItem className="flex flex-col justify-center lg:pr-6">
-          <Eyebrow>Our services</Eyebrow>
-          <h2 className="mt-4 text-[32px] leading-[1.1] font-bold tracking-[-0.02em] lg:text-[36px]">
-            Your next step
-            <br />
-            to better health.
-          </h2>
-          <p className="mt-4 text-[17px] leading-[27px] text-ink-600">
-            Practical support, from your first question to your next appointment.
-          </p>
-          <div className="mt-8 flex flex-col items-start gap-5">
-            <LinkArrow to="/app/facilities">Find a facility</LinkArrow>
-            <LinkArrow to={appointmentsEntry}>Book an appointment</LinkArrow>
+    <section className="container-page pb-14 lg:pb-24">
+      <Reveal className="relative isolate overflow-hidden bg-mint-200 p-8 shape-tl lg:p-14">
+        <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr]">
+          <div>
+            <Eyebrow>Care for someone you love</Eyebrow>
+            <h2 className="mt-4 text-headline-l lg:text-display-m">One phone can care for the whole household.</h2>
+            <p className="mt-4 max-w-[520px] text-body-l text-ink-900">
+              Add family members without phones, run a symptom check for them, and keep each person’s history separate.
+            </p>
+            <ButtonLink to="/app/profile/household" className="mt-8" icon={HeartHandshake} size="lg">
+              Add your household
+            </ButtonLink>
           </div>
-        </StaggerItem>
-        <StaggerItem>
-          <ImageCard
-            to="/app/consult/new"
-            image="/images/message-a-doctor.jpg"
-            fallbackIcon={Stethoscope}
-            title="Message a doctor"
-            subtitle="Get professional advice through text and voice notes."
-            className="h-[300px]"
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <ImageCard
-            to={labEntry}
-            image="/images/request-lab-test.jpg"
-            fallbackIcon={FlaskConical}
-            fallbackTone="from-[#3c5a74] via-[#2b4458] to-[#162b38]"
-            title="Request a lab test"
-            subtitle="Find a lab near you and prepare for your visit."
-            className="h-[300px]"
-          />
-        </StaggerItem>
-      </StaggerContainer>
+          <div className="flex justify-center gap-3" aria-hidden>
+            {["M", "A", "T"].map((l, i) => (
+              <motion.span
+                key={l}
+                className="flex size-24 items-center justify-center bg-white text-display-m text-brand-700 shadow-[var(--shadow-elev-2)] lg:size-32"
+                style={{ borderRadius: i === 1 ? "50%" : i === 0 ? "40px 40px 40px 16px" : "40px 16px 40px 40px" }}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
+              >
+                {l}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      </Reveal>
     </section>
   )
 }
@@ -285,9 +377,9 @@ export default function Landing() {
   return (
     <>
       <Hero />
-      <SymptomSection />
-      <EverydayCare />
-      <Services />
+      <GroundBand />
+      <Steps />
+      <Household />
     </>
   )
 }

@@ -1,72 +1,95 @@
 import { Link } from "react-router-dom"
-import { MapPin, Phone, Zap } from "lucide-react"
+import { motion } from "motion/react"
+import {
+  Activity,
+  Baby,
+  Droplet,
+  FlaskConical,
+  HeartPulse,
+  Hospital,
+  Phone,
+  Pill,
+  ScanLine,
+  Zap,
+  type LucideIcon,
+} from "lucide-react"
+import type { Capability } from "@/api/types"
+import { popIn } from "@/design/motion"
 import { formatDistance, type RankedFacility } from "@/lib/geo"
 import { CAPABILITY_LABELS, telHref } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import { iconButtonClass } from "./Button"
 
+export const CAPABILITY_ICON: Record<Capability, LucideIcon> = {
+  general: Activity,
+  maternity: Baby,
+  emergency: HeartPulse,
+  laboratory: FlaskConical,
+  pharmacy: Pill,
+  blood_bank: Droplet,
+  x_ray: ScanLine,
+  dental: Hospital,
+  eye_clinic: Hospital,
+}
+
+/** Headline capability for the tile: emergency wins, then the first specialist one. */
+export function primaryCapability(caps: Capability[]): Capability {
+  if (caps.includes("emergency")) return "emergency"
+  return caps.find((c) => c !== "general") ?? "general"
+}
+
+/**
+ * Figma: FacilityRow. Capability tile · name · distance pill + one-line meta · tonal call button.
+ * Solid white surface (reading content). Animates in when used inside a stagger parent.
+ */
 export function FacilityRow({
   facility,
   compact = false,
+  focus,
 }: {
   facility: RankedFacility
   compact?: boolean
+  focus?: Capability
 }) {
-  const shown = facility.capabilities.filter((c) => c !== "general").slice(0, compact ? 2 : 3)
+  const cap = focus && facility.capabilities.includes(focus) ? focus : primaryCapability(facility.capabilities)
+  const Icon = CAPABILITY_ICON[cap]
+  const meta = [facility.quarter, CAPABILITY_LABELS[cap]].join(" · ")
   return (
-    <li className="flex items-center gap-3 rounded-[16px] border border-line bg-white p-3 pr-3 sm:p-4">
+    <motion.li
+      variants={popIn}
+      layout
+      className="flex items-center gap-3 rounded-lg bg-white p-3 shadow-[var(--shadow-elev-1)]"
+    >
       <Link
         to={`/app/facilities/${facility.facility_id}`}
-        className="flex min-w-0 flex-1 items-start gap-3 rounded-[10px]"
+        className="group flex min-w-0 flex-1 items-center gap-3 rounded-md"
       >
-        <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-mint">
-          <MapPin className="size-5 text-brand-700" aria-hidden />
+        <span className="flex size-[52px] shrink-0 items-center justify-center rounded-md bg-mint transition-[border-radius] duration-300 ease-[var(--ease-emphasized)] group-hover:rounded-[26px]">
+          <Icon className="size-[22px] text-brand-700" strokeWidth={2} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink-900">
-            {facility.name}
-          </span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-600">
-            {facility.quarter}
+          <span className="block truncate text-title-m text-ink-900">{facility.name}</span>
+          <span className="mt-1 flex min-w-0 items-center gap-2 text-body-m text-ink-600">
             {facility.distanceKm !== null && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="font-medium text-brand-700">
-                  {formatDistance(facility.distanceKm)}
-                </span>
-              </>
+              <span className="shrink-0 rounded-full bg-cream px-2 py-0.5 text-label-m text-brand-800">
+                {formatDistance(facility.distanceKm)}
+              </span>
             )}
-            {facility.has_backup_power && (
-              <Zap
-                className="size-3.5 fill-urgent-amber text-urgent-amber"
-                aria-label="Backup power"
-              />
+            <span className="truncate">{meta}</span>
+            {facility.has_backup_power && !compact && (
+              <Zap className="size-3.5 shrink-0 fill-urgent-amber text-urgent-amber" aria-label="Backup power" />
             )}
           </span>
-          {!compact && shown.length > 0 && (
-            <span className="mt-2 flex flex-wrap gap-1.5">
-              {shown.map((c) => (
-                <span
-                  key={c}
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                    c === "emergency" ? "bg-urgent-red-50 text-urgent-red" : "bg-cream text-ink-600",
-                  )}
-                >
-                  {CAPABILITY_LABELS[c]}
-                </span>
-              ))}
-            </span>
-          )}
         </span>
       </Link>
-      <a
+      <motion.a
         href={telHref(facility.phone)}
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-[10px] bg-brand-700 px-3.5 text-sm font-semibold text-white hover:bg-brand-800"
+        className={iconButtonClass("tonal")}
         aria-label={`Call ${facility.name}`}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.88 }}
       >
-        <Phone className="size-4" aria-hidden />
-        Call
-      </a>
-    </li>
+        <Phone className="size-5" aria-hidden />
+      </motion.a>
+    </motion.li>
   )
 }

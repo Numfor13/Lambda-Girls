@@ -124,7 +124,7 @@ export function VoiceNotePlayer({
           />
         ))}
       </div>
-      <span className={cn("text-xs tabular-nums", light ? "text-white/85" : "text-ink-600")}>
+      <span className={cn("text-label-m tabular-nums", light ? "text-white/85" : "text-ink-600")}>
         {state === "error" ? "Unavailable" : formatDuration(duration)}
       </span>
     </div>

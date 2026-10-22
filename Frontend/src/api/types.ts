@@ -156,6 +156,26 @@ export interface SyncResponse {
   }
 }
 
+export interface AvailableDoctor {
+  doctor_id: string
+  specialty?: string
+  typical_response_minutes: number
+  last_seen: number
+  is_online: boolean
+}
+
+export interface HealthTip {
+  tip_id: string
+  title: string
+  body: string
+  source_name: string
+  source_url: string | null
+  published_date: string
+  locale: Locale
+  tags: string[]
+  is_active: boolean
+}
+
 export interface PushSubscriptionJSON {
   endpoint: string
   keys: { p256dh: string; auth: string }

@@ -78,14 +78,14 @@ export default function DoctorQueue() {
     <div className="mx-auto max-w-4xl">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-extrabold">Queue</h1>
-          <p className="text-[15px] text-ink-600">
+          <h1 className="text-headline-l lg:text-display-m">Queue</h1>
+          <p className="text-body-l text-ink-600">
             {waiting.length} waiting · most urgent first, then oldest
           </p>
         </div>
       </header>
 
-      <div className="mt-6 inline-flex rounded-[12px] bg-white p-1 ring-1 ring-line" role="tablist">
+      <div className="mt-6 inline-flex rounded-md bg-white p-1 ring-1 ring-line" role="tablist">
         {(
           [
             ["waiting", `Waiting (${waiting.length})`],
@@ -99,7 +99,7 @@ export default function DoctorQueue() {
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={cn(
-              "h-10 rounded-[9px] px-4 text-sm font-semibold",
+              "h-10 rounded-[9px] px-4 text-body-m font-semibold",
               tab === key ? "bg-brand-700 text-white" : "text-ink-600 hover:bg-cream",
             )}
           >
@@ -134,7 +134,7 @@ export default function DoctorQueue() {
               <li
                 key={c.consultation_id}
                 className={cn(
-                  "flex flex-col gap-3 rounded-[16px] border bg-white p-4 sm:flex-row sm:items-center",
+                  "flex flex-col gap-3 rounded-xl border bg-white p-4 sm:flex-row sm:items-center",
                   c.urgency === "RED" ? "border-urgent-red/40" : "border-line",
                   fresh && "ring-2 ring-urgent-red",
                 )}
@@ -144,14 +144,14 @@ export default function DoctorQueue() {
                     {c.urgency ? (
                       <UrgencyBadge urgency={c.urgency} size="sm" />
                     ) : (
-                      <span className="rounded-full bg-cream px-2 py-0.5 text-[10px] font-bold text-ink-600 uppercase">
+                      <span className="rounded-full bg-cream px-2 py-0.5 text-label-m font-bold text-ink-600 uppercase">
                         No symptom check
                       </span>
                     )}
-                    <span className="text-sm font-semibold">{patientLabel(c)}</span>
+                    <span className="text-body-m font-semibold">{patientLabel(c)}</span>
                   </div>
-                  <p className="mt-1.5 line-clamp-2 text-[15px]">{c.complaint}</p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-ink-600">
+                  <p className="mt-1.5 line-clamp-2 text-body-l">{c.complaint}</p>
+                  <p className="mt-1 flex items-center gap-1 text-label-m text-ink-600">
                     <Clock className="size-3.5" aria-hidden /> Waiting {timeAgo(c.created_at, now).replace(" ago", "")}
                   </p>
                 </div>
@@ -166,7 +166,7 @@ export default function DoctorQueue() {
                 ) : (
                   <Link
                     to={`/doctor/case/${c.consultation_id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-[10px] border-[1.5px] border-brand-700 px-4 text-sm font-semibold text-brand-900"
+                    className="inline-flex h-10 items-center justify-center rounded-full border-[1.5px] border-brand-700 px-4 text-body-m font-semibold text-brand-900"
                   >
                     Open case
                   </Link>

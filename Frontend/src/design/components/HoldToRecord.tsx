@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { Mic, Square, X } from "lucide-react"
+import { SPRING } from "@/design/motion"
 import { MAX_RECORDING_SECONDS, VoiceRecorder, voiceSupported, type Recording } from "@/offline/voiceRecorder"
 import { formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -96,8 +98,8 @@ export function HoldToRecord({
 
   if (phase === "explain") {
     return (
-      <div className="rounded-[14px] border border-line bg-cream p-4 text-sm text-ink-900">
-        <p className="font-semibold">Record in your own words</p>
+      <div className="rounded-xl bg-white p-4 text-body-m text-ink-900 shadow-[var(--shadow-elev-1)]">
+        <p className="text-title-m">Record in your own words</p>
         <p className="mt-1 text-ink-600">
           CareBridge needs your microphone to record voice notes for the doctor. Recording works
           even when you're offline.
@@ -119,7 +121,25 @@ export function HoldToRecord({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <button
+      <div className="relative flex items-center justify-center">
+      <AnimatePresence>
+        {recording &&
+          !cancelling &&
+          [0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="pointer-events-none absolute inset-0 rounded-full bg-brand-500/30"
+              initial={{ scale: 1, opacity: 0.6 }}
+              animate={{ scale: 2, opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
+            />
+          ))}
+      </AnimatePresence>
+      <motion.button
+        animate={{ scale: recording ? (cancelling ? 0.92 : 1.12) : 1, borderRadius: recording && !cancelling ? "34%" : "50%" }}
+        whileTap={{ scale: 0.9 }}
+        transition={SPRING.bouncy}
         type="button"
         aria-label={recording ? "Release to send voice note" : label}
         aria-pressed={recording}
@@ -153,13 +173,9 @@ export function HoldToRecord({
         }}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "relative flex touch-none items-center justify-center rounded-full text-white transition-all select-none",
+          "relative flex touch-none items-center justify-center text-white transition-colors select-none",
           big ? "size-[72px]" : "size-12",
-          recording
-            ? cancelling
-              ? "scale-95 bg-ink-600"
-              : "scale-110 bg-urgent-red shadow-[0_0_0_10px_rgba(198,40,40,0.15)]"
-            : "bg-brand-700 hover:bg-brand-800",
+          recording ? (cancelling ? "bg-ink-600" : "bg-brand-900") : "bg-brand-700 hover:bg-brand-800",
         )}
       >
         {recording ? (
@@ -171,9 +187,10 @@ export function HoldToRecord({
         ) : (
           <Mic className={big ? "size-8" : "size-5"} aria-hidden />
         )}
-      </button>
+      </motion.button>
+      </div>
       {big && (
-        <p className="text-center text-sm font-medium text-ink-900" aria-live="polite">
+        <p className="text-center text-body-m font-medium text-ink-900" aria-live="polite">
           {recording
             ? cancelling
               ? "Release to cancel"
@@ -182,12 +199,12 @@ export function HoldToRecord({
         </p>
       )}
       {!big && recording && (
-        <span className="text-xs font-semibold text-urgent-red" aria-live="polite">
+        <span className="text-label-m text-brand-900 tabular-nums" aria-live="polite">
           {formatDuration(elapsed)}
         </span>
       )}
       {phase === "error" && (
-        <p className="max-w-xs text-center text-xs text-urgent-red" role="alert">
+        <p className="max-w-xs text-center text-label-m text-urgent-red" role="alert">
           {errorText}
         </p>
       )}

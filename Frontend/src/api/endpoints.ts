@@ -1,5 +1,7 @@
 import { request } from "./client"
 import type {
+  AvailableDoctor,
+  HealthTip,
   CaseDetail,
   Consultation,
   Facility,
@@ -142,11 +144,23 @@ export const doctorApi = {
   referral: (code: string) => request<Referral>("doctor", `/referrals/${code}`, { auth: false }),
 }
 
+// Shapes match Backend/health_track/lambdas/push/*.py (docs/BACKEND_FEATURE_MAP.md §3.7).
 export const pushApi = {
   vapidPublicKey: () =>
-    request<{ public_key: string }>("push", "/push/vapid-public-key", { auth: false }),
-  subscribe: (body: { subscription: PushSubscriptionJSON }) =>
-    request<{ ok: boolean }>("push", "/push/subscribe", { method: "POST", body }),
+    request<{ vapid_public_key: string }>("push", "/push/vapid-public-key", { auth: false }),
+  subscribe: (body: PushSubscriptionJSON) =>
+    request<{ subscribed: boolean }>("push", "/push/subscribe", { method: "POST", body }),
   unsubscribe: () =>
-    request<{ ok: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
+    request<{ unsubscribed: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
+}
+
+// Extended services API (docs/BACKEND_FEATURE_MAP.md §3.9).
+export const extendedApi = {
+  availableDoctors: () =>
+    request<{ doctors: AvailableDoctor[]; count: number }>("extended", "/doctors/available"),
+  healthTips: (query: { locale?: string; tag?: string; limit?: string } = {}) =>
+    request<{ tips: HealthTip[]; count: number; next_token?: string }>("extended", "/health-tips", {
+      auth: false,
+      query,
+    }),
 }

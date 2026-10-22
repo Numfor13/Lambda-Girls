@@ -5,6 +5,7 @@ import { ApiError } from "./errors"
 import type {
   Consultation,
   Facility,
+  HealthTip,
   Message,
   Payment,
   Prescription,
@@ -54,6 +55,36 @@ function load(): MockDb {
 function save(data: MockDb) {
   localStorage.setItem(KEY, JSON.stringify(data))
 }
+
+// Demo-only content for mock mode. Real data comes from the extended API.
+const MOCK_DOCTORS = [
+  { doctor_id: "demo-doctor-1", specialty: "General practice", typical_response_minutes: 15 },
+  { doctor_id: "demo-doctor-2", specialty: "Paediatrics", typical_response_minutes: 25 },
+]
+const MOCK_TIPS: HealthTip[] = [
+  {
+    tip_id: "tip-ors",
+    title: "Oral rehydration at home: how to mix ORS safely",
+    body: "Mix one sachet in one litre of clean water. Give small sips often, and keep breastfeeding.",
+    source_name: "WHO",
+    source_url: null,
+    published_date: "2026-10-12",
+    locale: "en",
+    tags: ["children", "diarrhoea"],
+    is_active: true,
+  },
+  {
+    tip_id: "tip-malaria",
+    title: "Sleep under a treated net every night",
+    body: "Mosquitoes that spread malaria bite at night. Tuck the net under the mattress.",
+    source_name: "WHO",
+    source_url: null,
+    published_date: "2026-09-30",
+    locale: "en",
+    tags: ["malaria"],
+    is_active: true,
+  },
+]
 
 const RANK: Record<Urgency, number> = { RED: 0, AMBER: 1, GREEN: 2 }
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -181,15 +212,35 @@ const routes: [string, RegExp, Handler][] = [
       return item
     },
   ],
-  ["GET", /^\/push\/vapid-public-key$/, () => ({ public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" })],
+  [
+    "GET",
+    /^\/doctors\/available$/,
+    ({ user }) => {
+      requireUser(user)
+      // Demo presence: two doctors heart-beating "now". The real list comes from PUT /doctor/presence.
+      const now = Date.now()
+      const doctors = MOCK_DOCTORS.map((d) => ({ ...d, last_seen: now - 60_000, is_online: true }))
+      return { doctors, count: doctors.length }
+    },
+  ],
+  [
+    "GET",
+    /^\/health-tips$/,
+    ({ query }) => {
+      const locale = query.get("locale")
+      const tips = MOCK_TIPS.filter((t) => !locale || t.locale === locale)
+      return { tips, count: tips.length }
+    },
+  ],
+  ["GET", /^\/push\/vapid-public-key$/, () => ({ vapid_public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" })],
   [
     "POST",
     /^\/push\/subscribe$/,
     ({ user, data, body }) => {
       const sub = requireUser(user).sub
       data.push_subscriptions ??= {}
-      data.push_subscriptions[sub] = body.subscription
-      return { ok: true }
+      data.push_subscriptions[sub] = { endpoint: body.endpoint, keys: body.keys }
+      return { subscribed: true }
     },
   ],
   [
@@ -198,7 +249,7 @@ const routes: [string, RegExp, Handler][] = [
     ({ user, data }) => {
       const sub = requireUser(user).sub
       if (data.push_subscriptions) delete data.push_subscriptions[sub]
-      return { ok: true }
+      return { unsubscribed: true }
     },
   ],
   [

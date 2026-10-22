@@ -72,9 +72,9 @@ export default function Profile() {
       <header className="flex items-center gap-4">
         <Avatar name={displayName || "?"} size="lg" />
         <div>
-          <h1 className="text-[24px] font-extrabold">{displayName}</h1>
+          <h1 className="text-headline-l">{displayName}</h1>
           {(session?.phone || p?.phone) && (
-            <p className="text-[15px] text-ink-600">{formatPhone(session?.phone ?? p?.phone ?? "")}</p>
+            <p className="text-body-l text-ink-600">{formatPhone(session?.phone ?? p?.phone ?? "")}</p>
           )}
         </div>
       </header>
@@ -86,13 +86,13 @@ export default function Profile() {
         <div className="mt-4">
           <NameForm key={displayName} initial={displayName} />
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-4 text-[15px]">
+        <dl className="mt-5 grid grid-cols-2 gap-4 text-body-l">
           <div>
-            <dt className="text-sm text-ink-600">Date of birth</dt>
+            <dt className="text-body-m text-ink-600">Date of birth</dt>
             <dd className="font-medium">{p?.date_of_birth ? formatDate(p.date_of_birth) : "—"}</dd>
           </div>
           <div>
-            <dt className="text-sm text-ink-600">Sex</dt>
+            <dt className="text-body-m text-ink-600">Sex</dt>
             <dd className="font-medium capitalize">{p?.sex ?? "—"}</dd>
           </div>
         </dl>
@@ -113,7 +113,7 @@ export default function Profile() {
         </div>
       </Card>
 
-      <nav aria-label="Profile" className="flex flex-col overflow-hidden rounded-[16px] border border-line">
+      <nav aria-label="Profile" className="flex flex-col overflow-hidden rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
         {[
           { to: "/app/profile/household", label: "Household members", icon: Users },
           { to: "/about#privacy", label: "Privacy & terms", icon: Shield },
@@ -134,7 +134,7 @@ export default function Profile() {
         <h2 className="flex items-center gap-2 text-[17px] font-bold">
           <Database className="size-5 text-brand-700" aria-hidden /> Saved on this phone
         </h2>
-        <ul className="mt-3 space-y-2 text-[15px]">
+        <ul className="mt-3 space-y-2 text-body-l">
           <li className="flex flex-wrap items-center justify-between gap-2">
             <span>
               Facilities {syncedAt ? `updated ${formatDate(syncedAt)}` : "(built-in list)"}
@@ -142,7 +142,7 @@ export default function Profile() {
             {online && (
               <button
                 type="button"
-                className="text-sm font-semibold text-brand-700"
+                className="text-body-m font-semibold text-brand-700"
                 disabled={refreshing}
                 onClick={async () => {
                   setRefreshing(true)
@@ -162,7 +162,7 @@ export default function Profile() {
               <span>Doctor reply notifications</span>
               <button
                 type="button"
-                className="text-sm font-semibold text-brand-700 disabled:opacity-50"
+                className="text-body-m font-semibold text-brand-700 disabled:opacity-50"
                 disabled={push.loading}
                 onClick={push.subscribed ? push.unsubscribe : push.subscribe}
               >
@@ -171,7 +171,7 @@ export default function Profile() {
             </li>
           )}
         </ul>
-        {push.error && <Notice tone="error" className="mt-3 text-sm">{push.error}</Notice>}
+        {push.error && <Notice tone="error" className="mt-3 text-body-m">{push.error}</Notice>}
         {cleared && (
           <Notice tone="success" className="mt-3">
             Health data on this phone was cleared.

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
 import { LocateFixed, MapPin, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
 import { FacilityRow } from "@/design/components/FacilityRow"
 import { Chip, Select } from "@/design/components/Field"
-import { EASE_OUT } from "@/design/motion"
+import { SPRING, staggerOnMount } from "@/design/motion"
 import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { quarterCentroids, rankFacilities } from "@/lib/geo"
@@ -80,24 +80,60 @@ export default function FacilityList() {
 
   return (
     <div>
-      <PageHeader title="Find care near you" subtitle="Health facilities in and around Buea." />
+      <PageHeader eyebrow="Facilities" title="Find care near you" subtitle="Health facilities in and around Buea — saved on your phone." />
 
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search in Buea"
-          aria-label="Search facilities"
-          className="h-12 w-full rounded-[12px] border border-line bg-cream pr-4 pl-12 text-[16px] placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none"
-        />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search in Buea"
+            aria-label="Search facilities"
+            className="h-14 w-full rounded-full border-[1.5px] border-white/80 bg-white/80 pr-4 pl-12 text-body-l shadow-[var(--shadow-elev-1)] backdrop-blur-xl transition-shadow placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
+          />
+        </div>
+        <div className="glass flex flex-wrap items-center gap-3 rounded-full py-1.5 pr-1.5 pl-4 text-label-l text-brand-900">
+          {coords && !quarter ? (
+            <span className="flex items-center gap-2">
+              <LocateFixed className="size-4" aria-hidden /> Nearest first
+            </span>
+          ) : (
+            <>
+              <span className="flex items-center gap-2">
+                <MapPin className="size-4" aria-hidden />
+                {quarter ? `Nearest to ${quarter}` : "Sorted A–Z"}
+              </span>
+              {status !== "denied" && status !== "unavailable" && !quarter && (
+                <button type="button" onClick={locate} className="text-brand-700 underline underline-offset-2">
+                  {status === "locating" ? "Finding you…" : "Use my location"}
+                </button>
+              )}
+            </>
+          )}
+          <label className="ml-auto flex items-center">
+            <span className="sr-only">Choose your quarter</span>
+            <Select
+              value={quarter}
+              onChange={(e) => setQuarter(e.target.value)}
+              className="h-11 w-auto rounded-full bg-white text-label-l"
+            >
+              <option value="">{coords ? "My location" : "Choose your quarter"}</option>
+              {quarters.map((q) => (
+                <option key={q} value={q}>
+                  {q}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
       </div>
 
-      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filters">
+      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0" role="group" aria-label="Filters">
         {FILTERS.map((f) => (
           <Chip key={f.key} selected={filters.has(f.key)} onClick={() => toggle(f.key)}>
             {f.label}
@@ -105,79 +141,48 @@ export default function FacilityList() {
         ))}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[12px] bg-mint px-4 py-3 text-sm text-brand-900">
-        {coords && !quarter ? (
-          <span className="flex items-center gap-2 font-medium">
-            <LocateFixed className="size-4" aria-hidden /> Nearest first, from your location
-          </span>
-        ) : (
-          <>
-            <span className="flex items-center gap-2 font-medium">
-              <MapPin className="size-4" aria-hidden />
-              {quarter ? `Nearest to ${quarter}` : "Sorted A–Z"}
-            </span>
-            {status !== "denied" && status !== "unavailable" && !quarter && (
-              <button
-                type="button"
-                onClick={locate}
-                className="font-semibold text-brand-700 underline underline-offset-2"
-              >
-                {status === "locating" ? "Finding you…" : "Use my location"}
-              </button>
-            )}
-          </>
-        )}
-        <label className="ml-auto flex items-center gap-2">
-          <span className="sr-only">Choose your quarter</span>
-          <Select
-            value={quarter}
-            onChange={(e) => setQuarter(e.target.value)}
-            className="h-10 w-auto bg-white text-sm"
-          >
-            <option value="">{coords ? "My location" : "Choose your quarter"}</option>
-            {quarters.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </div>
-
-      <p className="mt-5 text-sm text-ink-600" aria-live="polite">
-        {visible.length} {visible.length === 1 ? "facility" : "facilities"}
-      </p>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.p
+          key={visible.length}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={SPRING.fast}
+          className="mt-5 text-label-l text-ink-600"
+          aria-live="polite"
+        >
+          {visible.length} {visible.length === 1 ? "facility" : "facilities"}
+        </motion.p>
+      </AnimatePresence>
 
       {visible.length === 0 ? (
         <div className="mt-3">
           <EmptyState icon={SearchX} title="No facilities match your search or filters." />
         </div>
       ) : (
-        <ul className="mt-3 flex flex-col gap-3">
-          {visible.map((f, i) => (
-            <motion.li
-              key={f.facility_id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE_OUT, delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <FacilityRow facility={f} />
-            </motion.li>
+        <motion.ul
+          key={[...filters].join() + quarter}
+          className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-2 lg:grid-cols-2 lg:gap-3"
+          variants={staggerOnMount(0.03)}
+          initial="hidden"
+          animate="show"
+        >
+          {visible.map((f) => (
+            <FacilityRow key={f.facility_id} facility={f} />
           ))}
-        </ul>
+        </motion.ul>
       )}
 
-      <p className="mt-6 flex flex-wrap items-center gap-x-2 text-xs text-ink-600">
-        {syncedAt ? `Last updated ${formatDate(syncedAt)}` : "Built-in directory"} · Available
-        offline
+      <p className="mt-6 flex flex-wrap items-center gap-x-2 text-body-m text-ink-600">
+        {syncedAt ? `Last updated ${formatDate(syncedAt)}` : "Built-in directory"} · Available offline
         {online && (
           <button
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-1 font-semibold text-brand-700"
+            className="inline-flex h-10 items-center gap-1 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
           >
-            <RefreshCw className={refreshing ? "size-3 animate-spin" : "size-3"} aria-hidden />
+            <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
             Refresh
           </button>
         )}

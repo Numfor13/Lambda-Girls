@@ -42,22 +42,22 @@ export default function HowItWorks() {
 
       <StaggerContainer as="ol" className="mt-12 grid gap-5 md:grid-cols-3" stagger={0.12}>
         {STEPS.map((s, i) => (
-          <StaggerItem as="li" key={s.title} className="rounded-[16px] border border-line bg-white p-6">
+          <StaggerItem as="li" key={s.title} className="rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-6">
             <span className="flex size-12 items-center justify-center rounded-full bg-mint">
               <s.icon className="size-6 text-brand-700" aria-hidden />
             </span>
-            <p className="mt-5 text-sm font-semibold text-brand-700">Step {i + 1}</p>
-            <h2 className="mt-1 text-[20px] font-bold">{s.title}</h2>
-            <p className="mt-2 text-[15px] text-ink-600">{s.body}</p>
+            <p className="mt-5 text-body-m font-semibold text-brand-700">Step {i + 1}</p>
+            <h2 className="mt-1 text-headline-s">{s.title}</h2>
+            <p className="mt-2 text-body-l text-ink-600">{s.body}</p>
           </StaggerItem>
         ))}
       </StaggerContainer>
 
-      <Reveal as="section" className="mt-14 grid gap-8 rounded-[16px] bg-mint p-6 sm:p-10 lg:grid-cols-[auto_1fr]">
+      <Reveal as="section" className="mt-14 grid gap-8 rounded-xl bg-mint p-6 sm:p-10 lg:grid-cols-[auto_1fr]">
         <WifiOff className="size-12 text-brand-700" strokeWidth={1.5} aria-hidden />
         <div>
           <h2 className="text-[24px] font-bold">Works when the network doesn't</h2>
-          <p className="mt-2 max-w-2xl text-[15px] text-ink-600">
+          <p className="mt-2 max-w-2xl text-body-l text-ink-600">
             Install CareBridge from your browser — no app store needed. The facility list and the
             symptom check open with no connection. Anything you send while offline waits safely on
             your phone and goes out as soon as you're back online.
@@ -71,7 +71,7 @@ export default function HowItWorks() {
         </Reveal>
         <StaggerContainer as="ul" className="mt-5 grid gap-3 md:grid-cols-2" stagger={0.08}>
           {PROMISES.map((p) => (
-            <StaggerItem as="li" key={p} className="rounded-[12px] border border-line bg-white p-4 text-[15px]">
+            <StaggerItem as="li" key={p} className="rounded-md border border-line bg-white p-4 text-body-l">
               {p}
             </StaggerItem>
           ))}

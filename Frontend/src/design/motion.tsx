@@ -2,6 +2,54 @@ import { motion, type HTMLMotionProps, type Transition, type Variants } from "mo
 
 export const EASE_OUT = [0.22, 1, 0.36, 1] as const
 
+/**
+ * Material 3 Expressive motion physics. Spatial springs move things (position, size, shape);
+ * effects springs change colour/opacity without overshoot. Use these, not ad-hoc durations.
+ */
+export const SPRING = {
+  /** Small components: buttons, chips, toggles, nav indicators. */
+  fast: { type: "spring", stiffness: 800, damping: 40, mass: 1 },
+  /** Cards, sheets, page content. */
+  default: { type: "spring", stiffness: 420, damping: 32, mass: 1 },
+  /** Hero moments: a little overshoot, the "expressive" bounce. */
+  bouncy: { type: "spring", stiffness: 380, damping: 20, mass: 1 },
+  /** Large, slow surfaces: backdrops, landscape. */
+  slow: { type: "spring", stiffness: 140, damping: 26, mass: 1 },
+} satisfies Record<string, Transition>
+
+/** Press feedback: squash + corner morph (M3 Expressive shape morph). */
+export const pressable = {
+  whileTap: { scale: 0.96 },
+  whileHover: { scale: 1.02 },
+  transition: SPRING.fast,
+} as const
+
+/** Entrance for content that pops in (cards, tiles). */
+export const popIn: Variants = {
+  hidden: { opacity: 0, y: 24, scale: 0.96 },
+  show: { opacity: 1, y: 0, scale: 1, transition: SPRING.default },
+}
+
+/** Stagger parent for popIn children, used on mount (not scroll). */
+export const staggerOnMount = (stagger = 0.06, delayChildren = 0.04): Variants => ({
+  hidden: {},
+  show: { transition: { staggerChildren: stagger, delayChildren } },
+})
+
+/** Route-level transition: content rises in on a spring, fades out quickly. */
+export function PageTransition({ children, id }: { children: React.ReactNode; id: string }) {
+  return (
+    <motion.div
+      key={id}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0, transition: SPRING.default }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 const reveal = (from: { x?: number; y?: number }, duration = 0.6): Variants => ({
   hidden: { opacity: 0, ...from },
   show: (delay = 0) => ({

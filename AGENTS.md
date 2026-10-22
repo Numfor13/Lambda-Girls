@@ -10,7 +10,11 @@
 
 We are **redesigning the frontend** (`Frontend/`) on top of the existing backend. **Backend issues are being handled by someone else.** We design and build only against the functionality that exists today.
 
-Read these two documents before doing anything:
+> **🚦 Codex: if the owner says "go", open `docs/REDESIGN_BUILD.md` and build the pages listed under "Codex owns".** We are building the redesign directly in code now (no more Figma mockups), in tandem with Claude, with a strict file-ownership split.
+
+Read these documents before doing anything:
+
+👉 **`docs/REDESIGN_BUILD.md`**: the live build brief, with what's built, who owns which files, code recipes, per-page briefs and the running log.
 
 👉 **`docs/DESIGN_SYSTEM.md`**: the redesign's tokens, components, screens and **consistency rules**. The current editable Figma source of truth is **CareBridge — Redesign v1.1**, in Bryan's Drafts: https://www.figma.com/design/NitvyVWYfvQcGEUYBkqlbF (the original `8Wm3ky7nyOCc8lF64w4539` belongs to Keukang and was view-only for Bryan).
 👉 **`docs/BACKEND_FEATURE_MAP.md`**: what the backend can do (every endpoint, shape, role and gap).
@@ -91,11 +95,18 @@ npm run build
 | 2026-10-22 | Codex | Initially blocked by the original file's permissions. Signed into the browser as Bryan; Share showed Keukang as owner and view-only access. Resolved by duplicating the full file into Bryan's team Drafts. **Continue in `NitvyVWYfvQcGEUYBkqlbF`, CareBridge — Redesign v1.1.** |
 | 2026-10-22 | Codex | **Completed existing-screen glass/spacing refinement in Figma only.** Repaired black fallback fills bound to the white glass token, restored Regular 50% / Strong 62% translucency, consistent native glass/refraction/frost/rims/shadows and instance fills. Removed glass from dense stats, softened ambient backdrops, added desktop hero padding, changed landscape body copy to the primary text token for contrast. Mobile Landing now uses auto-layout with a 24px CTA-to-preview gap (was 170px), a 900px hero (was 1050px) and continuous landscape. Promoted `TabBar/Patient` with Home/Triage variants and reused it on both app screens with content clearance. Verified screenshots for all 3 screens at 390/1440 and the affected component families; typography remains Inter/Jakarta, UI remains editable, only logo assets are raster. Updated `docs/DESIGN_SYSTEM.md`. No frontend/backend implementation or next screen batch started. **Awaiting owner review of v1.1.** |
 
+| 2026-10-22 | Claude Code | **Owner approved v1.1 and moved to building in code.** Implemented the design system in `Frontend/`: tokens, type utilities, Liquid Glass and expressive-shape utilities (`index.css`); M3 spring motion (`design/motion.tsx`); a type-aware `cn`; redesigned Button/IconButton, primitives, Field/Chip, UrgencyBadge, FacilityRow; new AppChrome (glass NavRail, scroll-compacting TabBar, MobileTopBar, SyncStatus) and Landscape/Backdrop; all three shells. Screens done and checked at 375 and 1440: Landing, Patient Home, Triage Wizard, Triage Result, Facility list/detail. Added `extendedApi` + mocks, fixed the push contract, added `npm run dev:mock` (port 5174, mock API + demo sign-in). Navigation resolved: the same 5 destinations (Home · Triage · Consults · Facilities · Profile) on the TabBar and NavRail; Household lives under Profile. typecheck/lint/tests pass. **Tandem split in `docs/REDESIGN_BUILD.md` §3.** |
+
 **Claude continuation:** Use the new editable file above. Pages: Foundations `0:1`, Mobile `7:657`, Desktop `7:658`. The six screen IDs in `docs/DESIGN_SYSTEM.md` §4 survived duplication. New tab-bar set `2004:162`, variants Home `2004:118` / Triage `2004:148`, screen instances Home `2005:347` / RED Result `2005:376`; old standalone bar `2:366` was replaced. Final frame sizes: mobile Landing 390×1562, Home 390×1776, RED 390×1350; desktop Landing 1440×1200, Home 1440×1112, RED 1440×900. Landing auto-layout wrapper `2005:346`. New component properties use existing variables/styles. Glass effects do not support variable bindings in Figma; their containing fill/stroke colours do.
 
 **Review questions inherited from v1:** The spec requests identical navigation names/order but also specifies 7 rail destinations versus 5 tabs; desktop says "Consultations", mobile "Consults". Confirm the canonical navigation before implementation. Existing content parity also needs owner review (desktop RED has a map illustration, desktop Home a separate available-doctors card; mobile has no equivalent standalone cards). Sample names/counts/wait times/fees are design examples, not evidence of live data; do not hard-code claims when implementing. This pass stayed focused on glass, spacing and the reused mobile shell.
 
-### Next steps (suggested order)
+### Next steps: current (supersedes the list below)
+
+- **Codex:** build the pages in `docs/REDESIGN_BUILD.md` §3 "Codex owns" (Profile, Household, Doctor Queue/Case, Sign-in/Callback, Code lookup, How it works, About, NotFound/RouteError). Don't edit Claude-owned or frozen shared files; log requests in that doc's §6.
+- **Claude:** finishing Consult New/Chat/List and Payment, then a final cross-screen consistency QA at 375 and 1440.
+
+### Older next steps (Figma phase, kept for history)
 
 1. **Review Figma v1.1 with the owner** (approve / modify / refuse per screen), including the navigation/content questions above. Do not implement screens or start the next batch before approval.
 2. After approval, **implement the foundations in code first**: add the new tokens (`glass/*`, `landscape/*`) to `src/index.css`, add the text styles as Tailwind utilities, the glass utility (with a `prefers-reduced-transparency` fallback), the expressive-corner utilities, and the components in §3 of the design system. Then rebuild the 3 approved screens to match Figma at both breakpoints.

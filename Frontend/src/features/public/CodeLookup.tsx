@@ -11,8 +11,8 @@ import { useFacility } from "@/offline/facilities"
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-line py-3 last:border-0 sm:flex-row sm:gap-6">
-      <dt className="w-40 shrink-0 text-sm text-ink-600">{label}</dt>
-      <dd className="text-[15px] font-medium text-ink-900">{children}</dd>
+      <dt className="w-40 shrink-0 text-body-m text-ink-600">{label}</dt>
+      <dd className="text-body-l font-medium text-ink-900">{children}</dd>
     </div>
   )
 }
@@ -22,8 +22,8 @@ function StatusPill({ active, label }: { active: boolean; label: string }) {
     <span
       className={
         active
-          ? "rounded-full bg-urgent-green-50 px-3 py-1 text-xs font-bold text-urgent-green"
-          : "rounded-full bg-cream px-3 py-1 text-xs font-bold text-ink-600"
+          ? "rounded-full bg-urgent-green-50 px-3 py-1 text-label-m font-bold text-urgent-green"
+          : "rounded-full bg-cream px-3 py-1 text-label-m font-bold text-ink-600"
       }
     >
       {label}

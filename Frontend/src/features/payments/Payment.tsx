@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { CircleCheck, Clock, Share2, Smartphone, TriangleAlert, WifiOff } from "lucide-react"
+import { Check, Clock, Share2, Smartphone, TriangleAlert, WifiOff } from "lucide-react"
 import { consultApi, paymentApi } from "@/api/endpoints"
 import { friendlyError } from "@/api/errors"
 import { useAuth } from "@/auth/AuthProvider"
@@ -10,7 +10,7 @@ import { env } from "@/config/env"
 import { flags } from "@/config/flags"
 import { Button, ButtonLink } from "@/design/components/Button"
 import { ChoiceCard, Field, Input } from "@/design/components/Field"
-import { Card, Notice, PageHeader, PageSpinner } from "@/design/components/primitives"
+import { Card, Notice, PageHeader, PageSpinner, StatusMark } from "@/design/components/primitives"
 import { formatXaf } from "@/lib/format"
 import { useNow, useOnline } from "@/lib/hooks"
 import { findLocalConsultation } from "@/features/consult/actions"
@@ -48,10 +48,10 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
   if (status === "confirmed") {
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <CircleCheck className="size-16 text-urgent-green" strokeWidth={1.5} aria-hidden />
-        <h1 className="text-[26px] font-extrabold">Payment received</h1>
-        <p className="max-w-sm text-[15px] text-ink-600">You're in the queue. A doctor will reply soon.</p>
-        <p className="text-sm text-ink-600">Reference: {payment.data?.fapshi_ref}</p>
+        <StatusMark state="done" icon={Check} />
+        <h1 className="text-headline-l lg:text-display-m">Payment received</h1>
+        <p className="max-w-sm text-body-l text-ink-600">You're in the queue. A doctor will reply soon.</p>
+        <p className="text-body-m text-ink-600">Reference: {payment.data?.fapshi_ref}</p>
         <ButtonLink to={`/app/consult/${consultRef}`} trailing="arrow" size="lg">
           Go to conversation
         </ButtonLink>
@@ -62,9 +62,9 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
   if (status === "failed") {
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <TriangleAlert className="size-14 text-urgent-red" strokeWidth={1.5} aria-hidden />
-        <h1 className="text-[24px] font-extrabold">The payment didn't go through</h1>
-        <p className="max-w-sm text-[15px] text-ink-600">No money was taken. You can try again.</p>
+        <StatusMark state="error" icon={TriangleAlert} />
+        <h1 className="text-headline-l">The payment didn't go through</h1>
+        <p className="max-w-sm text-body-l text-ink-600">No money was taken. You can try again.</p>
         <Button onClick={onRetry}>Try again</Button>
       </div>
     )
@@ -72,11 +72,11 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
 
   return (
     <div className="flex flex-col items-center gap-4 py-8 text-center">
-      <Clock className="size-14 animate-pulse text-brand-700" strokeWidth={1.5} aria-hidden />
-      <h1 className="text-[24px] font-extrabold">
+      <StatusMark state={timedOut ? "info" : "waiting"} icon={Clock} />
+      <h1 className="text-headline-l">
         {timedOut ? "Still waiting for confirmation" : "Confirming your payment…"}
       </h1>
-      <p className="max-w-sm text-[15px] text-ink-600">
+      <p className="max-w-sm text-body-l text-ink-600">
         {timedOut
           ? "We'll let you know when it arrives. You can leave this page."
           : "Approve the request on the phone that is paying. This page updates by itself."}
@@ -85,6 +85,7 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
       {pending.shareUrl && (
         <Button
           variant="secondary"
+          icon={Share2}
           onClick={async () => {
             if (navigator.share) {
               await navigator.share({ title: "CareBridge consultation", text: "Please help pay for my doctor consultation", url: pending.shareUrl }).catch(() => undefined)
@@ -93,7 +94,7 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
             }
           }}
         >
-          <Share2 className="size-5" aria-hidden /> Share payment link
+          Share payment link
         </Button>
       )}
       <ButtonLink to={`/app/consult/${consultRef}`} variant="ghost">
@@ -169,8 +170,8 @@ export default function Payment() {
   if (c && c.status !== "pending_payment") {
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <CircleCheck className="size-14 text-urgent-green" strokeWidth={1.5} aria-hidden />
-        <h1 className="text-[24px] font-extrabold">This consultation is already paid</h1>
+        <StatusMark state="done" icon={Check} />
+        <h1 className="text-headline-l">This consultation is already paid</h1>
         <ButtonLink to={`/app/consult/${ref}`} trailing="arrow">
           Go to conversation
         </ButtonLink>
@@ -186,26 +187,26 @@ export default function Payment() {
 
       {consult.isError && <Notice tone="error">{friendlyError(consult.error)}</Notice>}
 
-      <Card className="p-5">
-        <dl className="space-y-3 text-[15px]">
+      <Card className="bg-brand-800 p-6 text-white shape-br">
+        <dl className="space-y-3 text-body-l">
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-600">Patient</dt>
+            <dt className="text-white/70">Patient</dt>
             <dd className="font-medium">{local?.subject_label ?? "You"}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-ink-600">Request</dt>
+            <dt className="text-white/70">Request</dt>
             <dd className="line-clamp-2 max-w-[60%] text-right font-medium">{c?.complaint ?? local?.complaint}</dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-line pt-3">
-            <dt className="font-semibold">Amount</dt>
-            <dd className="font-display text-[20px] font-extrabold">{formatXaf(env.consultationFeeXaf)}</dd>
+          <div className="flex items-baseline justify-between gap-4 border-t border-white/20 pt-4">
+            <dt className="text-title-m">Amount</dt>
+            <dd className="text-headline-l text-white">{formatXaf(env.consultationFeeXaf)}</dd>
           </div>
         </dl>
       </Card>
 
       {flags.pay_for_other && (
         <section>
-          <h2 className="mb-3 text-[16px] font-bold">Who is paying?</h2>
+          <h2 className="mb-3 text-headline-s">Who is paying?</h2>
           <div className="flex flex-col gap-3">
             <ChoiceCard title="Me" selected={payer === "me"} onClick={() => setPayer("me")} />
             <ChoiceCard
@@ -239,8 +240,9 @@ export default function Payment() {
         disabled={!online || !phoneValid}
         loading={initiate.isPending}
         onClick={() => initiate.mutate()}
+        icon={Smartphone}
+        className="sticky bottom-[104px] z-20 lg:bottom-4"
       >
-        <Smartphone className="size-5" aria-hidden />
         Pay with Mobile Money (Fapshi)
       </Button>
     </div>

@@ -1,4 +1,6 @@
+import { motion } from "motion/react"
 import type { SyncState } from "@/offline/db"
+import { SPRING } from "@/design/motion"
 import { formatTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { SyncChip } from "./SyncChip"
@@ -17,13 +19,19 @@ export interface ChatItem {
 
 export function ChatBubble({ item }: { item: ChatItem }) {
   return (
-    <li className={cn("flex", item.mine ? "justify-end" : "justify-start")}>
+    <motion.li
+      layout="position"
+      className={cn("flex", item.mine ? "justify-end" : "justify-start")}
+      initial={{ opacity: 0, y: 16, scale: 0.92, originX: item.mine ? 1 : 0, originY: 1 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={SPRING.bouncy}
+    >
       <div
         className={cn(
-          "max-w-[85%] rounded-[18px] px-4 py-2.5 sm:max-w-[70%]",
+          "max-w-[85%] rounded-lg px-4 py-2.5 sm:max-w-[70%]",
           item.mine
             ? "rounded-br-[6px] bg-brand-700 text-white"
-            : "rounded-bl-[6px] bg-cream text-ink-900",
+            : "rounded-bl-[6px] bg-mint text-ink-900",
           item.content_type === "voice_note" && "min-w-[240px]",
         )}
       >
@@ -52,6 +60,6 @@ export function ChatBubble({ item }: { item: ChatItem }) {
           )}
         </div>
       </div>
-    </li>
+    </motion.li>
   )
 }

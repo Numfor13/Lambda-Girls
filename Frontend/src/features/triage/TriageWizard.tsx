@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ulid } from "ulid"
-import { Baby, Check, ChevronLeft, Search, Siren, User, UserPlus, Users } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import { ArrowLeft, Baby, Check, Search, Siren, User, UserPlus, Users } from "lucide-react"
 import type { Sex, SymptomPayload } from "@/api/types"
 import { useAuth } from "@/auth/AuthProvider"
-import { Button } from "@/design/components/Button"
+import { Button, IconButton } from "@/design/components/Button"
+import { SPRING } from "@/design/motion"
 import { ChoiceCard, Field, Input, Select } from "@/design/components/Field"
 import { AdvisoryNote, Notice } from "@/design/components/primitives"
 import { useProfile } from "@/features/profile/useProfile"
@@ -69,6 +71,7 @@ export default function TriageWizard() {
     consent: localStorage.getItem(CONSENT_KEY) === "1",
   })
   const [stepIndex, setStepIndex] = useState(0)
+  const [dir, setDir] = useState(1)
   const [search, setSearch] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -107,8 +110,15 @@ export default function TriageWizard() {
         : `Someone else (${describeAge(ageMonths)}, ${a.sex || "sex not given"})`
 
   const update = (patch: Partial<Answers>) => setA((prev) => ({ ...prev, ...patch }))
-  const next = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1))
-  const back = () => (stepIndex === 0 ? navigate(-1) : setStepIndex((i) => i - 1))
+  const next = () => {
+    setDir(1)
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+  }
+  const back = () => {
+    setDir(-1)
+    if (stepIndex === 0) navigate(-1)
+    else setStepIndex((i) => i - 1)
+  }
 
   const chooseSubject = (subject: Subject, memberId: string | null = null) => {
     const patch: Partial<Answers> = { subject, memberId }
@@ -187,36 +197,46 @@ export default function TriageWizard() {
   return (
     <div className="flex min-h-[70vh] flex-col">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={back}
-          className="flex h-12 items-center gap-1 rounded-[10px] pr-3 text-[16px] font-semibold text-brand-700"
-        >
-          <ChevronLeft className="size-6" aria-hidden /> Back
-        </button>
+        <IconButton icon={ArrowLeft} label="Back" variant="glass" onClick={back} />
         <div
-          className="h-2 flex-1 overflow-hidden rounded-full bg-mint"
+          className="h-3 flex-1 overflow-hidden rounded-full bg-white/70 ring-1 ring-line ring-inset"
           role="progressbar"
           aria-valuemin={1}
           aria-valuemax={steps.length}
           aria-valuenow={stepIndex + 1}
           aria-label={`Step ${stepIndex + 1} of ${steps.length}`}
         >
-          <div
-            className="h-full rounded-full bg-brand-700 transition-all"
-            style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+          <motion.div
+            className="h-full rounded-full bg-brand-700"
+            initial={false}
+            animate={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+            transition={SPRING.bouncy}
           />
         </div>
-        <span className="text-sm text-ink-600 tabular-nums">
+        <span className="glass inline-flex h-9 items-center rounded-full px-3 text-label-m text-brand-900 tabular-nums">
           {stepIndex + 1}/{steps.length}
         </span>
       </div>
 
-      <div className="mt-6 flex-1">
+      <div className="relative mt-6 flex-1">
+        <AnimatePresence mode="wait" initial={false} custom={dir}>
+          <motion.div
+            key={step}
+            custom={dir}
+            variants={{
+              enter: (d: number) => ({ opacity: 0, x: d * 48 }),
+              center: { opacity: 1, x: 0 },
+              exit: (d: number) => ({ opacity: 0, x: d * -48 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={SPRING.default}
+          >
         {step === "who" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">Who is this for?</h1>
-            <p className="mt-1 text-ink-600">We'll ask about the person who feels unwell.</p>
+            <h1 className="text-headline-l lg:text-display-m">Who is this for?</h1>
+            <p className="mt-2 text-body-l text-ink-600">We'll ask about the person who feels unwell.</p>
             <div className="mt-6 flex flex-col gap-3">
               <ChoiceCard
                 title="Me"
@@ -243,7 +263,7 @@ export default function TriageWizard() {
               />
             </div>
             {!session && (
-              <p className="mt-4 text-sm text-ink-600">
+              <p className="mt-4 text-body-m text-ink-600">
                 Sign in to pick a saved household member.
               </p>
             )}
@@ -252,10 +272,10 @@ export default function TriageWizard() {
 
         {step === "about" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">
+            <h1 className="text-headline-l lg:text-display-m">
               {a.subject === "me" ? "About you" : `About ${a.subject === "member" ? memberName : "them"}`}
             </h1>
-            <p className="mt-1 text-ink-600">Age changes which danger signs we check.</p>
+            <p className="mt-2 text-body-l text-ink-600">Age changes which danger signs we check.</p>
             <div className="mt-6 grid grid-cols-2 gap-4">
               <Field label="Years">
                 {(id) => (
@@ -313,8 +333,8 @@ export default function TriageWizard() {
 
         {step === "pregnancy" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">Is she pregnant?</h1>
-            <p className="mt-1 text-ink-600">Pregnancy has its own danger signs.</p>
+            <h1 className="text-headline-l lg:text-display-m">Is she pregnant?</h1>
+            <p className="mt-2 text-body-l text-ink-600">Pregnancy has its own danger signs.</p>
             <div className="mt-6 flex flex-col gap-3">
               <ChoiceCard title="Yes" selected={a.pregnant === true} onClick={() => update({ pregnant: true })} />
               <ChoiceCard title="No" selected={a.pregnant === false} onClick={() => update({ pregnant: false })} />
@@ -333,8 +353,8 @@ export default function TriageWizard() {
 
         {step === "symptoms" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">What signs do you see?</h1>
-            <p className="mt-1 text-ink-600">Choose all that apply. If none fit, continue.</p>
+            <h1 className="text-headline-l lg:text-display-m">What signs do you see?</h1>
+            <p className="mt-2 text-body-l text-ink-600">Choose all that apply. If none fit, continue.</p>
             <div className="relative mt-5">
               <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400" aria-hidden />
               <input
@@ -343,26 +363,34 @@ export default function TriageWizard() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search signs"
                 aria-label="Search signs"
-                className="h-12 w-full rounded-[12px] border border-line bg-cream pr-4 pl-12 text-[16px] focus:border-brand-500 focus:bg-white focus:outline-none"
+                className="h-12 w-full rounded-full border-[1.5px] border-line bg-white pr-4 pl-12 text-body-l transition-shadow focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
               />
             </div>
 
+            <AnimatePresence>
             {dangerSelected && (
-              <div className="mt-4 flex flex-col gap-3 rounded-[14px] bg-urgent-red p-4 text-white sm:flex-row sm:items-center">
+              <motion.div
+                initial={{ opacity: 0, y: -12, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1, x: [0, -6, 6, -3, 0] }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={SPRING.bouncy}
+                className="mt-4 flex flex-col gap-3 bg-urgent-red p-4 text-white shape-bl sm:flex-row sm:items-center"
+              >
                 <Siren className="size-6 shrink-0" aria-hidden />
-                <p className="flex-1 text-[15px] font-semibold">
+                <p className="flex-1 text-title-m">
                   You chose a danger sign. Get guidance now.
                 </p>
                 <Button variant="light" size="sm" onClick={() => setStepIndex(steps.length - 1)}>
                   Get guidance
                 </Button>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             <div className="mt-5 flex flex-col gap-6">
               {grouped.map(({ group, items }) => (
                 <fieldset key={group}>
-                  <legend className="mb-2 text-sm font-bold tracking-wide text-ink-600 uppercase">
+                  <legend className="eyebrow mb-3 text-ink-600">
                     {GROUP_LABELS[group]}
                   </legend>
                   <ul className="flex flex-col gap-2">
@@ -370,33 +398,44 @@ export default function TriageWizard() {
                       const on = selected.has(s.code)
                       return (
                         <li key={s.code}>
-                          <button
+                          <motion.button
                             type="button"
                             aria-pressed={on}
                             onClick={() => toggleSymptom(s.code)}
+                            whileTap={{ scale: 0.98 }}
+                            animate={{ borderRadius: on ? "24px 24px 24px 8px" : "16px 16px 16px 16px" }}
+                            transition={SPRING.fast}
                             className={cn(
-                              "flex min-h-14 w-full items-center gap-3 rounded-[12px] border-[1.5px] px-4 py-2.5 text-left",
-                              on ? "border-brand-700 bg-mint" : "border-line bg-white hover:bg-cream",
+                              "flex min-h-14 w-full items-center gap-3 border-[1.5px] px-4 py-2.5 text-left transition-colors",
+                              on ? "border-brand-700 bg-mint" : "border-line bg-white hover:border-brand-500/50",
                             )}
                           >
-                            <span
+                            <motion.span
+                              animate={{ scale: on ? [1, 1.25, 1] : 1, borderRadius: on ? "50%" : "8px" }}
+                              transition={SPRING.bouncy}
                               className={cn(
-                                "flex size-6 shrink-0 items-center justify-center rounded-md border-2",
+                                "flex size-6 shrink-0 items-center justify-center border-2",
                                 on ? "border-brand-700 bg-brand-700 text-white" : "border-ink-400",
                               )}
                             >
-                              {on && <Check className="size-4" aria-hidden />}
-                            </span>
+                              <AnimatePresence>
+                                {on && (
+                                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={SPRING.bouncy}>
+                                    <Check className="size-4" aria-hidden />
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
+                            </motion.span>
                             <span className="flex-1">
-                              <span className="block text-[15px] font-medium">{s.label}</span>
-                              {s.hint && <span className="block text-xs text-ink-600">{s.hint}</span>}
+                              <span className="block text-title-m font-medium">{s.label}</span>
+                              {s.hint && <span className="block text-body-m text-ink-600">{s.hint}</span>}
                             </span>
                             {s.urgency === "RED" && (
-                              <span className="rounded-full bg-urgent-red-50 px-2 py-0.5 text-[10px] font-bold text-urgent-red uppercase">
+                              <span className="shrink-0 rounded-full bg-urgent-red-50 px-2.5 py-1 text-label-m text-urgent-red">
                                 Danger sign
                               </span>
                             )}
-                          </button>
+                          </motion.button>
                         </li>
                       )
                     })}
@@ -409,8 +448,8 @@ export default function TriageWizard() {
 
         {step === "vitals" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">Count the breathing</h1>
-            <p className="mt-1 text-ink-600">
+            <h1 className="text-headline-l lg:text-display-m">Count the breathing</h1>
+            <p className="mt-2 text-body-l text-ink-600">
               Fast breathing can be a sign of pneumonia in young children.{" "}
               {selected.has("fast_breathing") ? "Please count if you can." : "This step is optional."}
             </p>
@@ -422,8 +461,8 @@ export default function TriageWizard() {
 
         {step === "review" && (
           <section>
-            <h1 className="text-[26px] font-extrabold">Check your answers</h1>
-            <dl className="mt-6 divide-y divide-line rounded-[16px] border border-line">
+            <h1 className="text-headline-l lg:text-display-m">Check your answers</h1>
+            <dl className="mt-6 divide-y divide-line overflow-hidden rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
               {[
                 ["For", subjectLabel],
                 ["Age", describeAge(ageMonths)],
@@ -436,13 +475,13 @@ export default function TriageWizard() {
                 ],
                 ...(isChild && a.respRate ? [["Breathing", `${a.respRate} per minute`]] : []),
               ].map(([k, v]) => (
-                <div key={k} className="flex gap-4 px-4 py-3">
-                  <dt className="w-24 shrink-0 text-sm text-ink-600">{k}</dt>
-                  <dd className="text-[15px] font-medium">{v}</dd>
+                <div key={k} className="flex gap-4 px-5 py-4">
+                  <dt className="w-24 shrink-0 text-body-m text-ink-600">{k}</dt>
+                  <dd className="text-title-m">{v}</dd>
                 </div>
               ))}
             </dl>
-            <label className="mt-5 flex items-start gap-3 rounded-[12px] bg-cream p-4 text-sm">
+            <label className="mt-5 flex items-start gap-3 rounded-md bg-white p-4 text-body-m shadow-[var(--shadow-elev-1)]">
               <input
                 type="checkbox"
                 checked={a.consent}
@@ -457,10 +496,12 @@ export default function TriageWizard() {
             <AdvisoryNote className="mt-4" />
           </section>
         )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {step !== "who" && (
-        <div className="sticky bottom-20 mt-8 bg-white/95 py-3 lg:bottom-0">
+        <div className="glass-strong sticky bottom-[104px] z-20 mt-8 rounded-full p-2 lg:bottom-4">
           {step === "review" ? (
             <Button full size="lg" onClick={finish} disabled={!a.consent} loading={saving} trailing="arrow">
               Get guidance

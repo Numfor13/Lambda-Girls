@@ -1,48 +1,40 @@
-import { NavLink, Outlet } from "react-router-dom"
+import { useLocation, useOutlet } from "react-router-dom"
+import { AnimatePresence } from "motion/react"
 import { ClipboardList, LogOut } from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
-import { Logo } from "@/design/components/Logo"
+import { Backdrop } from "@/design/components/Landscape"
+import { MobileTopBar, NavRail, SyncStatus, type NavDest } from "@/design/components/AppChrome"
+import { IconButton } from "@/design/components/Button"
 import { Avatar } from "@/design/components/primitives"
-import { cn } from "@/lib/utils"
+import { PageTransition } from "@/design/motion"
 
+const DOCTOR_DESTS: NavDest[] = [
+  { to: "/doctor", label: "Queue", icon: ClipboardList, match: (p) => p.startsWith("/doctor") },
+]
+
+/** Same chrome as the patient app: glass NavRail on desktop, glass top bar on mobile. */
 export function DoctorShell() {
   const { session, signOut } = useAuth()
+  const { pathname } = useLocation()
+  const outlet = useOutlet()
+  const account = (
+    <div className="flex items-center gap-3">
+      {session && <Avatar name={session.name} size="sm" />}
+      <span className="hidden min-w-0 flex-1 truncate text-label-l lg:block">{session?.name}</span>
+      <IconButton icon={LogOut} label="Log out" variant="plain" onClick={() => void signOut()} />
+    </div>
+  )
   return (
-    <div className="flex min-h-svh flex-col bg-cream lg:flex-row">
-      <aside className="flex shrink-0 items-center justify-between border-b border-line bg-white px-4 py-3 lg:sticky lg:top-0 lg:h-svh lg:w-60 lg:flex-col lg:items-stretch lg:justify-start lg:border-r lg:border-b-0 lg:px-5 lg:py-6">
-        <Logo to="/doctor" />
-        <nav aria-label="Doctor" className="hidden flex-col gap-1 lg:mt-10 lg:flex">
-          <NavLink
-            to="/doctor"
-            end
-            className={({ isActive }) =>
-              cn(
-                "flex h-12 items-center gap-3 rounded-[10px] px-3 text-[15px] font-medium",
-                isActive ? "bg-mint text-brand-900" : "text-ink-600 hover:bg-cream",
-              )
-            }
-          >
-            <ClipboardList className="size-5" aria-hidden />
-            Queue
-          </NavLink>
-        </nav>
-        <div className="flex items-center gap-3 lg:mt-auto lg:border-t lg:border-line lg:pt-4">
-          {session && <Avatar name={session.name} size="sm" />}
-          <span className="hidden min-w-0 flex-1 truncate text-sm font-semibold lg:block">
-            {session?.name}
-          </span>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="flex size-10 items-center justify-center rounded-[10px] text-ink-600 hover:bg-cream"
-            aria-label="Log out"
-          >
-            <LogOut className="size-5" aria-hidden />
-          </button>
-        </div>
-      </aside>
-      <main id="main" className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-        <Outlet />
+    <div className="relative min-h-svh">
+      <Backdrop />
+      <NavRail dests={DOCTOR_DESTS} home="/doctor" footer={<><SyncStatus className="self-start" />{account}</>} />
+      <MobileTopBar home="/doctor" right={account} />
+      <main id="main" className="min-w-0 px-4 pt-5 pb-16 sm:px-6 lg:pt-8 lg:pr-10 lg:pl-[296px]">
+        <AnimatePresence mode="wait" initial={false}>
+          <PageTransition key={pathname} id={pathname}>
+            {outlet}
+          </PageTransition>
+        </AnimatePresence>
       </main>
     </div>
   )

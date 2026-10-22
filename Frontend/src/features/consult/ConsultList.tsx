@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom"
+import { motion } from "motion/react"
+import { popIn, staggerOnMount } from "@/design/motion"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronRight, MessagesSquare } from "lucide-react"
+import { ChevronRight, MessagesSquare, Plus } from "lucide-react"
 import { consultApi } from "@/api/endpoints"
 import type { ConsultationStatus, Urgency } from "@/api/types"
 import { ButtonLink } from "@/design/components/Button"
@@ -63,7 +65,7 @@ export default function ConsultList() {
       <PageHeader
         title="My consultations"
         action={
-          <ButtonLink to="/app/consult/new" size="sm">
+          <ButtonLink to="/app/consult/new" size="sm" icon={Plus}>
             New
           </ButtonLink>
         }
@@ -79,19 +81,19 @@ export default function ConsultList() {
           }
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <motion.ul className="flex flex-col gap-3" variants={staggerOnMount(0.05)} initial="hidden" animate="show">
           {rows.map((r) => (
-            <li key={r.key}>
-              <Link to={r.href} className="flex items-center gap-3 rounded-[16px] border border-line p-4 hover:bg-cream">
+            <motion.li key={r.key} variants={popIn} layout>
+              <Link to={r.href} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] transition-shadow hover:shadow-[var(--shadow-elev-2)]">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{r.complaint}</p>
-                  <p className="mt-0.5 text-sm text-ink-600">
+                  <p className="truncate text-title-m">{r.complaint}</p>
+                  <p className="mt-0.5 text-body-m text-ink-600">
                     {r.subject} · {formatDateTime(r.created_at)}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span
                       className={cn(
-                        "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        "rounded-full px-2.5 py-0.5 text-label-m font-semibold",
                         r.status === "closed" ? "bg-cream text-ink-600" : "bg-mint text-brand-900",
                       )}
                     >
@@ -103,9 +105,9 @@ export default function ConsultList() {
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-ink-400" aria-hidden />
               </Link>
-            </li>
+            </motion.li>
           ))}
-        </ul>
+        </motion.ul>
       )}
     </div>
   )

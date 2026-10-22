@@ -27,10 +27,10 @@ export default function SignIn() {
 
   return (
     <div className="container-page flex justify-center py-16">
-      <div className="w-full max-w-md rounded-[20px] border border-line bg-white p-8 shadow-[var(--shadow-float)]">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-8 shadow-[var(--shadow-float)]">
         <Logo size="lg" to="/sign-in" />
-        <h1 className="mt-5 text-[28px] font-extrabold">Welcome to CareBridge</h1>
-        <p className="mt-2 text-[15px] text-ink-600">
+        <h1 className="mt-5 text-headline-l lg:text-display-m">Welcome to CareBridge</h1>
+        <p className="mt-2 text-body-l text-ink-600">
           Sign in or create an account with your phone number or email to message a doctor and
           keep your health history.
         </p>
@@ -63,7 +63,7 @@ export default function SignIn() {
           </div>
         )}
 
-        <p className="mt-6 text-xs leading-5 text-ink-600">
+        <p className="mt-6 text-label-m leading-5 text-ink-600">
           Finding facilities and checking symptoms work without an account.
         </p>
       </div>

@@ -30,38 +30,38 @@ function PatientPanel({ data }: { data: CaseDetail }) {
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-4">
-        <p className="text-xs font-bold tracking-wide text-ink-600 uppercase">Patient</p>
+        <p className="text-label-m font-bold tracking-wide text-ink-600 uppercase">Patient</p>
         <p className="mt-1 font-semibold">{patientLabel(c)}</p>
         {p && (
-          <p className="text-sm text-ink-600">
+          <p className="text-body-m text-ink-600">
             {describeAge(p.age_months)}
             {p.sex ? ` · ${p.sex}` : ""}
             {p.is_pregnant ? " · pregnant" : ""}
           </p>
         )}
-        <p className="mt-3 text-xs font-bold tracking-wide text-ink-600 uppercase">Complaint</p>
-        <p className="mt-1 text-[15px]">{c.complaint}</p>
+        <p className="mt-3 text-label-m font-bold tracking-wide text-ink-600 uppercase">Complaint</p>
+        <p className="mt-1 text-body-l">{c.complaint}</p>
       </Card>
 
       {t ? (
         <>
-          <div className={cn("rounded-[16px] p-4", URGENCY_META[t.urgency].hero)}>
-            <p className="text-sm font-bold uppercase">
+          <div className={cn("rounded-xl p-4", URGENCY_META[t.urgency].hero)}>
+            <p className="text-body-m font-bold uppercase">
               {t.urgency} · {URGENCY_META[t.urgency].label}
             </p>
-            <p className="mt-1 text-sm opacity-95">{t.recommendation}</p>
-            <p className="mt-2 text-xs opacity-80">
+            <p className="mt-1 text-body-m opacity-95">{t.recommendation}</p>
+            <p className="mt-2 text-label-m opacity-80">
               Checked {formatDateTime(t.created_at)}
               {t.synced_from_offline && " · synced from offline"}
             </p>
           </div>
           <Card className="overflow-hidden">
-            <p className="border-b border-line px-4 py-3 text-sm font-bold">Rules fired</p>
+            <p className="border-b border-line px-4 py-3 text-body-m font-bold">Rules fired</p>
             {t.rules_fired.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-ink-600">No danger signs found.</p>
+              <p className="px-4 py-3 text-body-m text-ink-600">No danger signs found.</p>
             ) : (
-              <table className="w-full text-left text-sm">
-                <thead className="bg-cream text-xs text-ink-600">
+              <table className="w-full text-left text-body-m">
+                <thead className="bg-cream text-label-m text-ink-600">
                   <tr>
                     <th className="px-4 py-2 font-semibold">Rule</th>
                     <th className="px-4 py-2 font-semibold">Value</th>
@@ -73,9 +73,9 @@ function PatientPanel({ data }: { data: CaseDetail }) {
                       <td className="px-4 py-2">
                         <UrgencyBadge urgency={r.urgency} size="sm" />
                         <p className="mt-1">{r.description}</p>
-                        <p className="font-mono text-[11px] text-ink-400">{r.rule_id}</p>
+                        <p className="font-mono text-label-m text-ink-400">{r.rule_id}</p>
                       </td>
-                      <td className="px-4 py-2 font-mono text-xs">{String(r.value_that_triggered)}</td>
+                      <td className="px-4 py-2 font-mono text-label-m">{String(r.value_that_triggered)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -83,7 +83,7 @@ function PatientPanel({ data }: { data: CaseDetail }) {
             )}
           </Card>
           {p && (
-            <Card className="p-4 text-sm">
+            <Card className="p-4 text-body-m">
               <p className="font-bold">Reported signs</p>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 {p.symptoms.length ? p.symptoms.map((s) => <li key={s}>{SYMPTOM_LABEL.get(s) ?? s}</li>) : <li>None</li>}
@@ -103,7 +103,7 @@ function CodeIssued({ kind, code }: { kind: "rx" | "ref"; code: string }) {
   return (
     <Notice tone="success">
       {kind === "rx" ? "Prescription" : "Referral"} code{" "}
-      <Link to={`/${kind}/${code}`} className="font-mono text-[16px] font-bold tracking-wider underline">
+      <Link to={`/${kind}/${code}`} className="font-mono text-title-l tracking-wider underline">
         {code}
       </Link>{" "}
       — also sent to the patient's chat.
@@ -236,7 +236,7 @@ function ActionsPanel({ data, onMessage }: { data: CaseDetail; onMessage: (text:
 
       <Card className="p-4">
         <h3 className="font-bold">Close case</h3>
-        <p className="mt-1 text-sm text-ink-600">The patient can no longer send messages after this.</p>
+        <p className="mt-1 text-body-m text-ink-600">The patient can no longer send messages after this.</p>
         {close.isError && (
           <Notice tone="error" className="mt-3">
             {friendlyError(close.error)}
@@ -346,9 +346,9 @@ export default function DoctorCase() {
         <Link to="/doctor" className="flex h-11 items-center gap-1 font-semibold text-brand-700">
           <ChevronLeft className="size-5" aria-hidden /> Queue
         </Link>
-        <h1 className="text-[22px] font-extrabold">Case</h1>
+        <h1 className="text-headline-m">Case</h1>
         {c.urgency && <UrgencyBadge urgency={c.urgency} />}
-        <span className="text-sm text-ink-600">Opened {formatDateTime(c.created_at)}</span>
+        <span className="text-body-m text-ink-600">Opened {formatDateTime(c.created_at)}</span>
         {c.status === "paid" && (
           <Button size="sm" className="ml-auto" loading={claim.isPending} onClick={() => claim.mutate()}>
             Claim case
@@ -356,7 +356,7 @@ export default function DoctorCase() {
         )}
       </header>
 
-      <div className="mb-4 grid grid-cols-3 rounded-[12px] bg-white p-1 ring-1 ring-line lg:hidden" role="tablist">
+      <div className="mb-4 grid grid-cols-3 rounded-md bg-white p-1 ring-1 ring-line lg:hidden" role="tablist">
         {(["patient", "chat", "actions"] as const).map((t) => (
           <button
             key={t}
@@ -364,7 +364,7 @@ export default function DoctorCase() {
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={cn("h-10 rounded-[9px] text-sm font-semibold capitalize", tab === t ? "bg-brand-700 text-white" : "text-ink-600")}
+            className={cn("h-10 rounded-[9px] text-body-m font-semibold capitalize", tab === t ? "bg-brand-700 text-white" : "text-ink-600")}
           >
             {t}
           </button>
@@ -377,11 +377,11 @@ export default function DoctorCase() {
         </section>
 
         <section
-          className={cn("flex min-h-[60vh] flex-col rounded-[16px] border border-line bg-white", tab !== "chat" && "hidden lg:flex")}
+          className={cn("flex min-h-[60vh] flex-col rounded-xl bg-white shadow-[var(--shadow-elev-1)]", tab !== "chat" && "hidden lg:flex")}
           aria-label="Conversation"
         >
           <ol className="flex flex-1 flex-col gap-2 overflow-y-auto p-4" aria-live="polite">
-            {items.length === 0 && <li className="m-auto text-sm text-ink-600">No messages yet.</li>}
+            {items.length === 0 && <li className="m-auto text-body-m text-ink-600">No messages yet.</li>}
             {items.map((item) => (
               <ChatBubble key={item.key} item={item} />
             ))}
@@ -389,7 +389,7 @@ export default function DoctorCase() {
           </ol>
           {sendError && <Notice tone="error" className="mx-3 mb-2">{sendError}</Notice>}
           {closed ? (
-            <p className="border-t border-line px-4 py-3 text-center text-sm text-ink-600">This case is closed.</p>
+            <p className="border-t border-line px-4 py-3 text-center text-body-m text-ink-600">This case is closed.</p>
           ) : (
             <form
               className="flex items-end gap-2 border-t border-line p-3"
@@ -413,7 +413,7 @@ export default function DoctorCase() {
                   }
                 }}
                 placeholder="Type a reply…"
-                className="max-h-32 min-h-12 flex-1 resize-none rounded-[24px] border border-line bg-cream px-4 py-3 text-[16px] focus:border-brand-500 focus:bg-white focus:outline-none"
+                className="max-h-32 min-h-12 flex-1 resize-none rounded-[24px] border border-line bg-cream px-4 py-3 text-body-l focus:border-brand-500 focus:bg-white focus:outline-none"
               />
               {text.trim() ? (
                 <button type="submit" aria-label="Send reply" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white">

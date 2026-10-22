@@ -88,7 +88,7 @@ function AddMemberForm({ onDone }: { onDone: () => void }) {
           </Select>
         )}
       </Field>
-      <label className="flex items-start gap-3 rounded-[12px] bg-cream p-4 text-sm">
+      <label className="flex items-start gap-3 rounded-md bg-cream p-4 text-body-m">
         <input
           type="checkbox"
           checked={attest}
@@ -133,11 +133,11 @@ export default function Household() {
         }
       />
 
-      <div className="flex items-start gap-4 rounded-[16px] bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
+      <div className="flex items-start gap-4 rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white">
         <HeartHandshake className="size-8 shrink-0" strokeWidth={1.5} aria-hidden />
         <div>
-          <p className="font-display text-[18px] font-bold">Care for someone you love</p>
-          <p className="mt-1 text-sm text-white/85">
+          <p className="font-display text-headline-s">Care for someone you love</p>
+          <p className="mt-1 text-body-m text-white/85">
             Check symptoms and ask a doctor for a child, parent or neighbour without a phone.
             Their records are kept separate from yours.
           </p>
@@ -161,18 +161,18 @@ export default function Household() {
         ) : (
           <ul className="flex flex-col gap-3">
             {members.map((m) => (
-              <li key={m.member_id} className="flex items-center gap-3 rounded-[16px] border border-line p-4">
+              <li key={m.member_id} className="flex items-center gap-3 rounded-xl bg-white shadow-[var(--shadow-elev-1)] p-4">
                 <Avatar name={m.name} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{m.name}</p>
-                  <p className="text-sm text-ink-600">
+                  <p className="text-body-m text-ink-600">
                     {m.relationship} · {describeAge(ageInMonths(m.dob, now))}
                   </p>
                 </div>
                 <button
                   type="button"
                   aria-label={`Remove ${m.name}`}
-                  className="flex size-11 items-center justify-center rounded-[10px] text-ink-600 hover:bg-urgent-red-50 hover:text-urgent-red"
+                  className="flex size-11 items-center justify-center rounded-full text-ink-600 hover:bg-urgent-red-50 hover:text-urgent-red"
                   onClick={() => {
                     if (window.confirm(`Remove ${m.name} from your household?`)) remove.mutate(m)
                   }}
