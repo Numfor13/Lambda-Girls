@@ -45,7 +45,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 
 | # | Page / file | Route |
 |---|---|---|
-| C1 | `features/profile/Profile.tsx` | `/app/profile` |
+| C1 ✅ | `features/profile/Profile.tsx` | `/app/profile` |
 | C2 | `features/profile/Household.tsx` | `/app/profile/household` |
 | C3 | `features/doctor/DoctorQueue.tsx` | `/doctor` |
 | C4 | `features/doctor/DoctorCase.tsx` | `/doctor/case/:id` |
@@ -120,6 +120,8 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | When | Who | Note |
 |---|---|---|
 | 2026-10-22 | Claude | Foundations, chrome, Landing, Home, Triage, Facilities done. Starting Consult + Payment. Codex: go on §3. |
+| 2026-10-22 | Codex | C1 Profile redesigned and checked at 375/1440; demo name save verified. Landscape/glass identity card, solid editable name/locale form, household entry, push availability, storage refresh/clear confirmation and sign-out. Added shared `design/components/Feedback.tsx` (neutral feedback, reusable confirmation and code-card presentation) without editing frozen components. |
+| 2026-10-22 | Codex request | Profile/household writes cannot currently join the outbox (it supports triage/consultations/messages only, and household POST has no idempotency key). Retaining online-only writes with clear connection status; request a shared offline/idempotency design before promising offline profile edits. Existing frozen Notice/StatusMark use urgency backgrounds for non-clinical outcomes, and ChatBubble has off-scale type/radii; please reconcile during Claude's final shared-component QA. |
 
 ## 7. How to run, verify and hand back
 

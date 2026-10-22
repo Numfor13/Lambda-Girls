@@ -1,52 +1,124 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useLiveQuery } from "dexie-react-hooks"
-import { ChevronRight, Database, LogOut, Shield, Users } from "lucide-react"
+import { motion } from "motion/react"
+import {
+  Bell,
+  Check,
+  Database,
+  Globe,
+  LogOut,
+  RefreshCw,
+  Save,
+  Shield,
+  Trash2,
+  Users,
+} from "lucide-react"
 import { profileApi } from "@/api/endpoints"
 import { friendlyError } from "@/api/errors"
+import type { Locale } from "@/api/types"
 import { useAuth } from "@/auth/AuthProvider"
-import { Button } from "@/design/components/Button"
-import { Field, Input, Select } from "@/design/components/Field"
-import { Avatar, Card, Notice, PageSpinner } from "@/design/components/primitives"
 import { flags } from "@/config/flags"
+import { Button, ButtonLink } from "@/design/components/Button"
+import { SyncStatus } from "@/design/components/AppChrome"
+import { Field, Input, Select } from "@/design/components/Field"
+import { ConfirmAction, Feedback } from "@/design/components/Feedback"
+import { Landscape } from "@/design/components/Landscape"
+import {
+  Avatar,
+  Card,
+  PageHeader,
+  PageSpinner,
+} from "@/design/components/primitives"
+import { popIn, staggerOnMount } from "@/design/motion"
 import { formatDate, formatPhone } from "@/lib/format"
-import { clearClinicalData, db } from "@/offline/db"
-import { refreshFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 import { useOnline } from "@/lib/hooks"
 import { usePushSubscription } from "@/lib/usePushSubscription"
+import { clearClinicalData, db } from "@/offline/db"
+import { refreshFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 import { useProfile } from "./useProfile"
 
-function NameForm({ initial }: { initial: string }) {
+function DetailsForm({
+  initialName,
+  initialLocale,
+}: {
+  initialName: string
+  initialLocale: Locale
+}) {
   const queryClient = useQueryClient()
-  const [name, setName] = useState(initial)
+  const online = useOnline()
+  const [name, setName] = useState(initialName)
+  const [locale, setLocale] = useState(initialLocale)
   const save = useMutation({
-    mutationFn: () => profileApi.update({ display_name: name.trim() }),
+    mutationFn: () => profileApi.update({ display_name: name.trim(), locale }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
   })
   return (
     <form
-      className="flex flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        save.mutate()
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (online && name.trim()) save.mutate()
       }}
     >
       <Field label="Display name">
         {(id) => (
-          <Input id={id} value={name} maxLength={100} onChange={(e) => setName(e.target.value)} />
+          <Input
+            id={id}
+            autoComplete="name"
+            value={name}
+            maxLength={100}
+            required
+            onChange={(e) => setName(e.target.value)}
+          />
         )}
       </Field>
-      {save.isError && <Notice tone="error">{friendlyError(save.error)}</Notice>}
-      {save.isSuccess && <Notice tone="success">Saved.</Notice>}
+      <Field
+        label="Language"
+        hint="French and Pidgin interface translations are not enabled yet."
+      >
+        {(id) => (
+          <Select
+            id={id}
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            <option value="en">English</option>
+            <option
+              value="fr"
+              disabled={!flags.i18n_fr && initialLocale !== "fr"}
+            >
+              Français
+            </option>
+            <option
+              value="pid"
+              disabled={!flags.i18n_pid && initialLocale !== "pid"}
+            >
+              Pidgin
+            </option>
+          </Select>
+        )}
+      </Field>
+      {!online && (
+        <Feedback>
+          Your saved profile is available. Connect to save changes to your
+          details.
+        </Feedback>
+      )}
+      {save.isError && <Feedback error>{friendlyError(save.error)}</Feedback>}
+      {save.isSuccess && <Feedback success>Profile saved.</Feedback>}
       <Button
+        icon={Save}
         type="submit"
-        size="sm"
         className="self-start"
         loading={save.isPending}
-        disabled={!name.trim() || name.trim() === initial}
+        disabled={
+          !online ||
+          !name.trim() ||
+          (name.trim() === initialName && locale === initialLocale)
+        }
       >
-        Save
+        Save details
       </Button>
     </form>
   )
@@ -60,145 +132,207 @@ export default function Profile() {
   const push = usePushSubscription()
   const queued = useLiveQuery(() => db.outbox.count(), [], 0)
   const [refreshing, setRefreshing] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
   const [cleared, setCleared] = useState(false)
-
+  const [storageError, setStorageError] = useState<string | null>(null)
   if (profile.isPending) return <PageSpinner />
-
   const p = profile.data
-  const displayName = p?.display_name ?? session?.name ?? ""
-
+  const name = p?.display_name || session?.name || "Your profile"
+  const members = p?.on_behalf_profiles?.length ?? 0
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-center gap-4">
-        <Avatar name={displayName || "?"} size="lg" />
-        <div>
-          <h1 className="text-headline-l">{displayName}</h1>
-          {(session?.phone || p?.phone) && (
-            <p className="text-body-l text-ink-600">{formatPhone(session?.phone ?? p?.phone ?? "")}</p>
-          )}
-        </div>
-      </header>
-
-      {profile.isError && <Notice tone="error">{friendlyError(profile.error)}</Notice>}
-
-      <Card className="p-5">
-        <h2 className="text-[17px] font-bold">Your details</h2>
-        <div className="mt-4">
-          <NameForm key={displayName} initial={displayName} />
-        </div>
-        <dl className="mt-5 grid grid-cols-2 gap-4 text-body-l">
-          <div>
-            <dt className="text-body-m text-ink-600">Date of birth</dt>
-            <dd className="font-medium">{p?.date_of_birth ? formatDate(p.date_of_birth) : "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-body-m text-ink-600">Sex</dt>
-            <dd className="font-medium capitalize">{p?.sex ?? "—"}</dd>
-          </div>
-        </dl>
-        <div className="mt-5">
-          <Field label="Language" hint="Français and Pidgin are coming soon.">
-            {(id) => (
-              <Select id={id} value="en" onChange={() => undefined}>
-                <option value="en">English</option>
-                <option value="fr" disabled={!flags.i18n_fr}>
-                  Français
-                </option>
-                <option value="pid" disabled={!flags.i18n_pid}>
-                  Pidgin
-                </option>
-              </Select>
+    <motion.div
+      variants={staggerOnMount()}
+      initial="hidden"
+      animate="show"
+      className="flex min-w-0 flex-col gap-5"
+    >
+      <PageHeader
+        eyebrow="Your account"
+        title="Profile"
+        subtitle="Your details, your household and this phone."
+      />
+      <motion.section
+        variants={popIn}
+        className="relative isolate overflow-hidden rounded-xl p-4 lg:rounded-2xl lg:p-6"
+        aria-label="Your account"
+      >
+        <Landscape className="-z-10" preserve="xMidYMid slice" />
+        <div className="flex flex-wrap items-center gap-4 shape-bl p-5 glass-strong">
+          <Avatar name={name} size="lg" />
+          <div className="min-w-0 flex-1">
+            <p className="text-headline-m break-words">{name}</p>
+            {(session?.phone || p?.phone) && (
+              <p className="mt-1 text-body-m text-ink-600">
+                {formatPhone(session?.phone ?? p?.phone ?? "")}
+              </p>
             )}
-          </Field>
+          </div>
+          <div className="w-full sm:w-auto"><SyncStatus /></div>
         </div>
-      </Card>
-
-      <nav aria-label="Profile" className="flex flex-col overflow-hidden rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
-        {[
-          { to: "/app/profile/household", label: "Household members", icon: Users },
-          { to: "/about#privacy", label: "Privacy & terms", icon: Shield },
-        ].map((l) => (
-          <Link
-            key={l.to}
-            to={l.to}
-            className="flex h-14 items-center gap-3 border-b border-line px-4 font-medium last:border-0 hover:bg-cream"
-          >
-            <l.icon className="size-5 text-brand-700" aria-hidden />
-            <span className="flex-1">{l.label}</span>
-            <ChevronRight className="size-5 text-ink-400" aria-hidden />
-          </Link>
-        ))}
-      </nav>
-
-      <Card className="p-5">
-        <h2 className="flex items-center gap-2 text-[17px] font-bold">
-          <Database className="size-5 text-brand-700" aria-hidden /> Saved on this phone
+      </motion.section>
+      {profile.isError && (
+        <Feedback error>{friendlyError(profile.error)}</Feedback>
+      )}
+      <motion.section
+        variants={popIn}
+        className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+      >
+        <h2 className="mb-4 flex items-center gap-3 text-title-l">
+          <Globe className="size-5 text-brand-700" aria-hidden />
+          Your details
         </h2>
-        <ul className="mt-3 space-y-2 text-body-l">
-          <li className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Facilities {syncedAt ? `updated ${formatDate(syncedAt)}` : "(built-in list)"}
-            </span>
-            {online && (
-              <button
-                type="button"
-                className="text-body-m font-semibold text-brand-700"
-                disabled={refreshing}
-                onClick={async () => {
-                  setRefreshing(true)
-                  await refreshFacilities().catch(() => undefined)
-                  setRefreshing(false)
-                }}
-              >
-                {refreshing ? "Refreshing…" : "Refresh now"}
-              </button>
-            )}
-          </li>
-          <li>
-            {queued} item{queued === 1 ? "" : "s"} waiting to send
-          </li>
-          {push.supported && session && (
-            <li className="flex flex-wrap items-center justify-between gap-2">
-              <span>Doctor reply notifications</span>
-              <button
-                type="button"
-                className="text-body-m font-semibold text-brand-700 disabled:opacity-50"
-                disabled={push.loading}
-                onClick={push.subscribed ? push.unsubscribe : push.subscribe}
-              >
-                {push.loading ? "…" : push.subscribed ? "Turn off" : "Turn on"}
-              </button>
-            </li>
-          )}
-        </ul>
-        {push.error && <Notice tone="error" className="mt-3 text-body-m">{push.error}</Notice>}
-        {cleared && (
-          <Notice tone="success" className="mt-3">
-            Health data on this phone was cleared.
-          </Notice>
+        {p && (
+          <DetailsForm
+            key={`${p.display_name}-${p.locale}`}
+            initialName={p.display_name ?? ""}
+            initialLocale={p.locale ?? "en"}
+          />
         )}
+        {(p?.date_of_birth || p?.sex) && (
+          <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-5 text-body-m">
+            <div>
+              <dt className="text-ink-600">Date of birth · read only</dt>
+              <dd>
+                {p.date_of_birth ? formatDate(p.date_of_birth) : "Not recorded"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-600">Sex · read only</dt>
+              <dd className="capitalize">{p.sex ?? "Not recorded"}</dd>
+            </div>
+          </dl>
+        )}
+      </motion.section>
+      <motion.section variants={popIn}>
+        <Card className="flex flex-col items-start gap-4 shape-br bg-mint p-5">
+          <Users className="size-7 text-brand-700" aria-hidden />
+          <div>
+            <h2 className="text-headline-s">Care for your household</h2>
+            <p className="mt-2 text-body-m text-ink-600">
+              {members} of 10 members. Ask for care on behalf of someone without
+              a phone.
+            </p>
+          </div>
+          <ButtonLink
+            to="/app/profile/household"
+            icon={Users}
+            variant="secondary"
+            trailing="arrow"
+          >
+            Household members
+          </ButtonLink>
+        </Card>
+      </motion.section>
+      <motion.section
+        variants={popIn}
+        className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+      >
+        <h2 className="flex items-center gap-3 text-title-l">
+          <Bell className="size-5 text-brand-700" aria-hidden />
+          Notifications
+        </h2>
+        <p className="text-body-m text-ink-600">
+          Check Consults for doctor replies. Push delivery is not active yet.
+        </p>
         <Button
-          variant="secondary"
-          size="sm"
-          className="mt-4"
+          variant="tonal"
+          icon={push.subscribed ? Check : Bell}
+          role="switch"
+          aria-checked={push.subscribed}
+          className="self-start"
+          disabled={!flags.push || !push.supported || !online || !session}
+          loading={push.loading}
+          onClick={() =>
+            void (push.subscribed ? push.unsubscribe() : push.subscribe())
+          }
+        >
+          {push.subscribed ? "Notifications on" : "Notifications off"}
+        </Button>
+        {push.error && <Feedback error>{push.error}</Feedback>}
+      </motion.section>
+      <motion.section
+        variants={popIn}
+        className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+      >
+        <h2 className="flex items-center gap-3 text-title-l">
+          <Database className="size-5 text-brand-700" aria-hidden />
+          Saved on this phone
+        </h2>
+        <p className="text-body-m text-ink-600">
+          Facilities:{" "}
+          {syncedAt
+            ? `updated ${formatDate(syncedAt)}`
+            : "built-in list available"}
+          . {queued} item{queued === 1 ? "" : "s"} waiting to send.
+        </p>
+        <Button
+          variant="tonal"
+          icon={RefreshCw}
+          className="self-start"
+          disabled={!online}
+          loading={refreshing}
           onClick={async () => {
-            const warn =
-              queued > 0
-                ? `${queued} item(s) haven't been sent yet and will be lost. Clear anyway?`
-                : "Remove symptom checks, messages and voice notes saved on this phone?"
-            if (!window.confirm(warn)) return
-            await clearClinicalData()
-            setCleared(true)
+            setRefreshing(true)
+            setStorageError(null)
+            try {
+              await refreshFacilities()
+            } catch (error) {
+              setStorageError(friendlyError(error))
+            } finally {
+              setRefreshing(false)
+            }
           }}
         >
-          Clear local data
+          Refresh facilities
         </Button>
-      </Card>
-
-      <Button variant="ghost" className="self-start" onClick={() => void signOut()}>
-        <LogOut className="size-5" aria-hidden />
-        Log out
-      </Button>
-    </div>
+        {storageError && <Feedback error>{storageError}</Feedback>}
+        {cleared && (
+          <Feedback success>
+            Health data saved on this phone was cleared.
+          </Feedback>
+        )}
+        {confirmClear ? (
+          <ConfirmAction
+            title="Clear health data on this phone?"
+            confirmLabel="Clear local data"
+            onCancel={() => setConfirmClear(false)}
+            onConfirm={async () => {
+              try {
+                await clearClinicalData()
+                setCleared(true)
+                setConfirmClear(false)
+              } catch {
+                setStorageError("Could not clear local data. Please try again.")
+              }
+            }}
+          >
+            {queued > 0 ? `${queued} unsent item(s) will be lost. ` : ""}This
+            removes locally saved symptom checks, consultations, messages and
+            voice notes.
+          </ConfirmAction>
+        ) : (
+          <Button
+            variant="secondary"
+            icon={Trash2}
+            className="self-start"
+            onClick={() => setConfirmClear(true)}
+          >
+            Clear local data
+          </Button>
+        )}
+      </motion.section>
+      <motion.div variants={popIn} className="flex flex-wrap gap-3">
+        <ButtonLink to="/about#privacy" icon={Shield} variant="ghost">
+          Privacy & terms
+        </ButtonLink>
+        <Button
+          variant="secondary"
+          icon={LogOut}
+          onClick={() => void signOut()}
+        >
+          Sign out
+        </Button>
+      </motion.div>
+    </motion.div>
   )
 }
