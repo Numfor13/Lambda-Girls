@@ -1,8 +1,8 @@
-# CareBridge Redesign: Design System and Screen Spec (v1)
+# CareBridge Redesign: Design System and Screen Spec (v1.1)
 
-> **Figma (source of truth):** https://www.figma.com/design/8Wm3ky7nyOCc8lF64w4539
+> **Figma (editable source of truth):** https://www.figma.com/design/NitvyVWYfvQcGEUYBkqlbF — **CareBridge — Redesign v1.1**, in Bryan's team Drafts. Duplicated from the original view-only file `8Wm3ky7nyOCc8lF64w4539` on 2026-10-22; use the new file for all further work.
 > Pages: `01 · Foundations` (tokens, type, icons, components), `02 · Mobile (390)` and `03 · Desktop (1440)`. Each screen sits in its own titled Section, ordered left to right by screen number.
-> **Status:** v1 is waiting for the owner's review. The 3 screens (×2 breakpoints) are proposals: approve, modify or refuse before building more.
+> **Status:** v1.1 finishes the existing glass/spacing pass and is waiting for the owner's review. The 3 screens (×2 breakpoints) remain proposals: approve, modify or refuse before implementation or the next batch. Frontend code has not yet been redesigned.
 
 ---
 
@@ -75,7 +75,8 @@ All Figma fills, radii and gaps are **bound to variables**. In code these map 1:
 ### Effects
 
 - `Glass/Regular`: native GLASS (light 0.55, refraction 0.3, depth 14, dispersion 0.15, frost 10) + shadow 0/10/30 at 10%.
-- `Glass/Strong`: GLASS (light 0.7, refraction 0.45, depth 20, frost 18) + shadow 0/14/40 at 14%.
+- `Glass/Strong`: GLASS (light 0.7, refraction 0.45, depth 20, dispersion 0.15, frost 18) + shadow 0/14/40 at 14%.
+- Both glass styles: light angle −45°, subtle white inner rim (0/1/1 at 60%), white inside stroke at 80%, 1px. Regular fill = `glass/tint` at 50%; Strong = 62%. Bind the colour **and** set its fallback to white: the unfinished v1 used black fallback colours on several white-token-bound fills. Audit instance overrides too. Native GLASS parameters cannot be variable-bound through the Figma API.
 - `Elevation/1` (0/2/8 at 6%) and `Elevation/2` (0/12/32 at 10%).
 - **Glass recipe in code:** `bg-white/50` (or `/60` strong) + `backdrop-blur-xl` + `border border-white/80` + the matching shadow. Respect `prefers-reduced-transparency`: fall back to `bg-white/95`.
 
@@ -92,7 +93,7 @@ All Figma fills, radii and gaps are **bound to variables**. In code these map 1:
 | **FacilityRow** | Name, Meta, Distance, Icon | Capability tile, name, a distance pill plus a one-line meta, and a tonal call button (`tel:`) |
 | **NavItem** | State = Active · Default; Label, Icon | Active = mint pill indicator |
 | **NavRail/Patient** | – | Desktop (≥1024) patient shell: logo, extended FAB "New consultation", 7 destinations, sync chip and language at the bottom. Liquid Glass Strong. |
-| **TabBar (liquid glass)** | *(built in screen; promote to a component when it is next touched)* | Mobile patient shell: floating pill, 5 tabs, 16px from the edges and 30px from the bottom |
+| **TabBar/Patient** | Active = Home · Triage (current screens); set `2004:162`, variants `2004:118` / `2004:148` | Shared Strong glass mobile shell: 358×72 at 390 width, 5 tabs, 16px from the sides and 32px from the bottom. Both current app screens use instances; reserve content space above the bar. |
 | **StatusBar/iOS**, **Logo/CareBridge**, **Icon/*** (34 lucide icons) | – | Icons are the same lucide set the app already uses |
 
 ---
@@ -125,3 +126,15 @@ Shell rules shown in these screens:
 8. **Offline is a first-class state.** Every screen that writes shows the sync chip ("Synced · 2 min ago" / "Saved on this phone · syncs when online").
 9. **Copy voice:** short, plain, second person. Assume the reader is anxious and on a slow phone. Always leave room for French (about 30% longer) and Pidgin.
 10. **Accessibility:** contrast ≥ 4.5:1 for body text (white on `urgent/red`, `brand/700` and `landscape/ground` all pass), targets ≥ 48px, honour `prefers-reduced-motion` and `prefers-reduced-transparency`.
+
+---
+
+## 6. v1.1 refinement and continuation notes (2026-10-22)
+
+- Refined the existing six frames and shared glass styles/components; no new screen batch or frontend/backend code changes.
+- Mobile Landing: hero `2:48` is 900px high instead of 1050px. New vertical auto-layout wrapper `2005:346` keeps the existing top bar, copy/actions and preview together, with token-based 24px gaps. The CTA-to-preview gap was 170px. The landscape now covers the complete hero continuously. Body copy uses `text/primary` at both breakpoints because secondary text over the far ridge measured about 4.01:1, below the body-text target.
+- Corrected glass fills and inside strokes on the Button/Glass, IconButton/Glass and NavRail masters, floating hero/navigation/chip surfaces, and affected instances. Dense stats now use solid `brand/800`; consultation/facility/rule/health-tip cards retain solid backgrounds.
+- Softened existing ambient backdrop ellipses (Brand 12%, Red 8%) and allowed blurred edges to extend, avoiding saturated fields and hard seams behind the reading content. Desktop Home's glass hero now has 24px top/bottom padding and enough header height.
+- Shared mobile navigation instances: Home `2005:347`, RED Result `2005:376`. The RED page retains Call 15 → directions → nearest facility, advisory text and doctor action; navigation sits after clear content space.
+- Final screenshot review covered all six frames plus Button, NavRail and both TabBar variants. Structural inspection confirmed editable text/vector/component UI with Inter and Plus Jakarta Sans; only the existing logo is image-filled. No whole-screen raster replacements. New screen heights are recorded in `AGENTS.md` §6.
+- Before frontend implementation, resolve the inherited navigation mismatch (7 desktop destinations versus 5 tabs; "Consultations" versus "Consults") and content differences (desktop-only map/provider cards). Preserve current patterns while awaiting owner direction; do not invent new ones. Existing example names, counts, prices and response times must be backed by actual app data/configuration during implementation.
