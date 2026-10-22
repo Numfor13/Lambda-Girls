@@ -1,0 +1,773 @@
+[
+ {
+  "name": "Buea Regional Hospital",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Hospital Road, Buea Town",
+  "phone": "+237233322611",
+  "latitude": 4.1527,
+  "longitude": 9.2462,
+  "capabilities": [
+   "blood_bank",
+   "emergency",
+   "general",
+   "laboratory",
+   "maternity",
+   "x_ray"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "99561dad-0626-5c28-8162-3c895b0dfd89"
+ },
+ {
+  "name": "CAPHER Clinic",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "Molyko University Quarter, Buea",
+  "phone": "+237677001122",
+  "latitude": 4.161,
+  "longitude": 9.278,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:30-18:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "53af2ea3-a4d7-56df-9853-08d01e0b7d3c"
+ },
+ {
+  "name": "St. Veronica's Catholic Hospital",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Catholic Mission Road, Buea Town",
+  "phone": "+237233322500",
+  "latitude": 4.1545,
+  "longitude": 9.249,
+  "capabilities": [
+   "emergency",
+   "general",
+   "laboratory",
+   "maternity"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "ebf41287-9a3f-521e-a0b9-17dc043f2083"
+ },
+ {
+  "name": "Molyko Health Centre",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "Molyko Main Road, Buea",
+  "phone": "+237677112233",
+  "latitude": 4.1622,
+  "longitude": 9.279,
+  "capabilities": [
+   "general",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Fri 7:30-17:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "023aed7b-c879-5666-a68b-c1ac642e7680"
+ },
+ {
+  "name": "Bonduma District Hospital",
+  "region": "Southwest",
+  "quarter": "Bonduma",
+  "address": "Bonduma Road, Buea",
+  "phone": "+237233322700",
+  "latitude": 4.168,
+  "longitude": 9.265,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "maternity",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:00-19:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "5c42d6d3-7fef-591a-9694-0a1c2854acbb"
+ },
+ {
+  "name": "Great Soppo Health Centre",
+  "region": "Southwest",
+  "quarter": "Great Soppo",
+  "address": "Great Soppo Road, Buea",
+  "phone": "+237677223344",
+  "latitude": 4.17,
+  "longitude": 9.283,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Fri 7:30-17:30",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "2f8cf395-508c-5948-9aa0-0ca0dffa6ec6"
+ },
+ {
+  "name": "Small Soppo Medical Clinic",
+  "region": "Southwest",
+  "quarter": "Small Soppo",
+  "address": "Small Soppo Junction, Buea",
+  "phone": "+237677334455",
+  "latitude": 4.1555,
+  "longitude": 9.26,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 8:00-18:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "59b6e223-208b-5f75-af3c-09bbc4aa500d"
+ },
+ {
+  "name": "Mile 16 Health Post",
+  "region": "Southwest",
+  "quarter": "Mile 16",
+  "address": "Mile 16 CDC Camp, Buea",
+  "phone": "+237677445566",
+  "latitude": 4.175,
+  "longitude": 9.24,
+  "capabilities": [
+   "general"
+  ],
+  "opening_hours": "Mon-Fri 8:00-16:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "c34e62bb-016e-5e86-af73-1d1108dd7c09"
+ },
+ {
+  "name": "Mile 17 Motor Park Clinic",
+  "region": "Southwest",
+  "quarter": "Mile 17",
+  "address": "Mile 17 Main Road, Buea",
+  "phone": "+237677556677",
+  "latitude": 4.18,
+  "longitude": 9.235,
+  "capabilities": [
+   "emergency",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:00-20:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "92e563be-dc22-5394-a1f7-b514d340f34b"
+ },
+ {
+  "name": "Lysoka Integrated Health Centre",
+  "region": "Southwest",
+  "quarter": "Lysoka",
+  "address": "Lysoka Main Road, Buea",
+  "phone": "+237677667788",
+  "latitude": 4.185,
+  "longitude": 9.228,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Sat 7:30-18:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "358f9058-91d1-515f-9801-f6de349a0746"
+ },
+ {
+  "name": "Muea Health Centre",
+  "region": "Southwest",
+  "quarter": "Muea",
+  "address": "Muea Road, Buea Subdivision",
+  "phone": "+237677778899",
+  "latitude": 4.19,
+  "longitude": 9.245,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Fri 7:30-17:00",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "4f9f4141-5bb6-5cd9-9f29-fdef28ce1e24"
+ },
+ {
+  "name": "Bokwaongo Community Clinic",
+  "region": "Southwest",
+  "quarter": "Bokwaongo",
+  "address": "Bokwaongo Village, Buea",
+  "phone": "+237677889900",
+  "latitude": 4.195,
+  "longitude": 9.25,
+  "capabilities": [
+   "general"
+  ],
+  "opening_hours": "Mon-Fri 8:00-16:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "5493ee63-e0e5-5ea9-9ec1-2ce43d3a1209"
+ },
+ {
+  "name": "Tole Tea Estate Hospital",
+  "region": "Southwest",
+  "quarter": "Tole",
+  "address": "Tole Tea Estate, Buea",
+  "phone": "+237677990011",
+  "latitude": 4.145,
+  "longitude": 9.22,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "maternity",
+   "pharmacy"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "b510cd4f-1d36-5672-81c5-873d82148ed1"
+ },
+ {
+  "name": "Woteke Health Post",
+  "region": "Southwest",
+  "quarter": "Woteke",
+  "address": "Woteke Road, Buea",
+  "phone": "+237678001122",
+  "latitude": 4.158,
+  "longitude": 9.271,
+  "capabilities": [
+   "general"
+  ],
+  "opening_hours": "Mon-Fri 8:00-16:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "35adf939-8e72-560e-a798-456e01f65659"
+ },
+ {
+  "name": "Clerks Quarter Medical Centre",
+  "region": "Southwest",
+  "quarter": "Clerks Quarter",
+  "address": "Clerks Quarter Road, Buea",
+  "phone": "+237678112233",
+  "latitude": 4.153,
+  "longitude": 9.248,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 8:00-18:00",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "56edf59d-6070-5428-a4c1-b0af153b79f4"
+ },
+ {
+  "name": "Congo Quarter Health Centre",
+  "region": "Southwest",
+  "quarter": "Congo",
+  "address": "Congo Road, Buea",
+  "phone": "+237678223344",
+  "latitude": 4.16,
+  "longitude": 9.255,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Fri 7:30-17:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "04b26065-9805-5c5d-a245-fbe3d4a1830b"
+ },
+ {
+  "name": "Federal Quarter Polyclinic",
+  "region": "Southwest",
+  "quarter": "Federal Quarter",
+  "address": "Federal Quarter Road, Buea",
+  "phone": "+237678334455",
+  "latitude": 4.156,
+  "longitude": 9.252,
+  "capabilities": [
+   "dental",
+   "eye_clinic",
+   "general",
+   "laboratory"
+  ],
+  "opening_hours": "Mon-Sat 7:30-19:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 5000,
+  "is_active": true,
+  "facility_id": "54244817-2650-5c2b-b622-d1bc94197724"
+ },
+ {
+  "name": "Buea Road Clinic",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Buea-Limbe Road Junction, Buea",
+  "phone": "+237678445566",
+  "latitude": 4.151,
+  "longitude": 9.244,
+  "capabilities": [
+   "emergency",
+   "general",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:00-21:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "20c85468-da51-5d10-afce-deca44a9fc9a"
+ },
+ {
+  "name": "UB Health Centre",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "University of Buea Campus, Molyko",
+  "phone": "+237233322800",
+  "latitude": 4.1638,
+  "longitude": 9.2808,
+  "capabilities": [
+   "general",
+   "laboratory",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Fri 8:00-17:00",
+  "has_backup_power": true,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "b394bf3b-fc69-577a-bcb6-854c3d8cf8f9"
+ },
+ {
+  "name": "SDF Quarter Medical Centre",
+  "region": "Southwest",
+  "quarter": "Bonduma",
+  "address": "SDF Quarters Road, Bonduma",
+  "phone": "+237678556677",
+  "latitude": 4.1695,
+  "longitude": 9.266,
+  "capabilities": [
+   "general",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 8:00-18:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "fd1821a4-2e9f-55e4-a115-1e40bfda0b39"
+ },
+ {
+  "name": "MoMo Diagnostic Centre",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "Checkpoint Molyko, Buea",
+  "phone": "+237678667788",
+  "latitude": 4.1615,
+  "longitude": 9.277,
+  "capabilities": [
+   "laboratory",
+   "x_ray"
+  ],
+  "opening_hours": "Mon-Sat 7:30-18:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 5000,
+  "is_active": true,
+  "facility_id": "0b197d9e-bf5c-5d25-99d3-50dc4105f1e4"
+ },
+ {
+  "name": "Soppo Blood Bank & Transfusion Centre",
+  "region": "Southwest",
+  "quarter": "Great Soppo",
+  "address": "Soppo Road, Great Soppo, Buea",
+  "phone": "+237678778899",
+  "latitude": 4.1718,
+  "longitude": 9.284,
+  "capabilities": [
+   "blood_bank",
+   "laboratory"
+  ],
+  "opening_hours": "Mon-Sat 8:00-17:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "499b487b-30e2-55a5-8e34-4fb61c632820"
+ },
+ {
+  "name": "BrightSight Eye Clinic",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Commercial Avenue, Buea Town",
+  "phone": "+237678889900",
+  "latitude": 4.1522,
+  "longitude": 9.2458,
+  "capabilities": [
+   "eye_clinic"
+  ],
+  "opening_hours": "Mon-Fri 8:00-17:00",
+  "has_backup_power": true,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 5000,
+  "is_active": true,
+  "facility_id": "ef138c46-30ec-5d1e-b370-9ee17101609f"
+ },
+ {
+  "name": "SmileCare Dental Clinic",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "UB Junction, Molyko, Buea",
+  "phone": "+237678990011",
+  "latitude": 4.162,
+  "longitude": 9.2785,
+  "capabilities": [
+   "dental"
+  ],
+  "opening_hours": "Mon-Sat 8:00-18:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 10000,
+  "is_active": true,
+  "facility_id": "8fb593e5-64d7-5905-a028-8f9fcbfc5ce8"
+ },
+ {
+  "name": "PharmaCare Pharmacy",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "Molyko Main Street, Buea",
+  "phone": "+237679001122",
+  "latitude": 4.1608,
+  "longitude": 9.2775,
+  "capabilities": [
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:30-21:00, Sun 9:00-18:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "7cb9ea98-1e3e-50cb-8369-62de1620a27c"
+ },
+ {
+  "name": "Solidarity Clinic Buea",
+  "region": "Southwest",
+  "quarter": "Bonduma",
+  "address": "Bonduma Junction, Buea",
+  "phone": "+237679112233",
+  "latitude": 4.1672,
+  "longitude": 9.264,
+  "capabilities": [
+   "general",
+   "maternity",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 7:00-20:00",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "2f31dc47-5a30-578f-9e00-90fd62f72dbb"
+ },
+ {
+  "name": "Muea Maternity Clinic",
+  "region": "Southwest",
+  "quarter": "Muea",
+  "address": "Muea Market Road, Buea",
+  "phone": "+237679223344",
+  "latitude": 4.1912,
+  "longitude": 9.246,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "6df19d67-32f7-55fb-a164-0fbd72dc537f"
+ },
+ {
+  "name": "Buea Emergency Response Centre",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Fire Service Road, Buea Town",
+  "phone": "+237679334455",
+  "latitude": 4.1535,
+  "longitude": 9.247,
+  "capabilities": [
+   "emergency",
+   "general"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "2d78f9a0-f687-5eab-bd7b-72975ffbf5a8"
+ },
+ {
+  "name": "Mile 17 Clinic and Pharmacy",
+  "region": "Southwest",
+  "quarter": "Mile 17",
+  "address": "Mile 17 Road, Buea",
+  "phone": "+237679445566",
+  "latitude": 4.1815,
+  "longitude": 9.236,
+  "capabilities": [
+   "general",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sat 8:00-20:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 3000,
+  "is_active": true,
+  "facility_id": "6c1ccb88-065d-5c9a-b763-f89976a70439"
+ },
+ {
+  "name": "Tole Maternity Unit",
+  "region": "Southwest",
+  "quarter": "Tole",
+  "address": "Tole Estate, Buea",
+  "phone": "+237679556677",
+  "latitude": 4.1445,
+  "longitude": 9.2195,
+  "capabilities": [
+   "maternity"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "8c8f79a6-184e-5a3c-887b-94581ced1a04"
+ },
+ {
+  "name": "Clerks Quarter Pharmacy Plus",
+  "region": "Southwest",
+  "quarter": "Clerks Quarter",
+  "address": "Clerks Quarter Street, Buea",
+  "phone": "+237679667788",
+  "latitude": 4.154,
+  "longitude": 9.249,
+  "capabilities": [
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sun 7:00-22:00",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "5ca3e647-2f33-52fb-88b4-1adf94764508"
+ },
+ {
+  "name": "SoppoX Radiology Centre",
+  "region": "Southwest",
+  "quarter": "Small Soppo",
+  "address": "Soppo Road, Small Soppo",
+  "phone": "+237679778899",
+  "latitude": 4.1562,
+  "longitude": 9.261,
+  "capabilities": [
+   "laboratory",
+   "x_ray"
+  ],
+  "opening_hours": "Mon-Sat 8:00-17:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 10000,
+  "is_active": true,
+  "facility_id": "8538f1ab-be58-5eab-960c-b7d7750b9468"
+ },
+ {
+  "name": "Federal Quarter Dental Office",
+  "region": "Southwest",
+  "quarter": "Federal Quarter",
+  "address": "Federal Quarters, Buea Town",
+  "phone": "+237679889900",
+  "latitude": 4.1558,
+  "longitude": 9.2525,
+  "capabilities": [
+   "dental",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Fri 8:00-17:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 10000,
+  "is_active": true,
+  "facility_id": "bf28fb80-9869-51d7-aeb2-521be05e5391"
+ },
+ {
+  "name": "Bokwaongo Rural Health Centre",
+  "region": "Southwest",
+  "quarter": "Bokwaongo",
+  "address": "Bokwaongo Village Square, Buea",
+  "phone": "+237679990011",
+  "latitude": 4.196,
+  "longitude": 9.251,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Fri 8:00-16:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "cb40812a-db70-5d73-b7ed-80ab6b4a4bc0"
+ },
+ {
+  "name": "Lysoka CDC Medical Post",
+  "region": "Southwest",
+  "quarter": "Lysoka",
+  "address": "CDC Lysoka Estate, Buea",
+  "phone": "+237680001122",
+  "latitude": 4.1855,
+  "longitude": 9.2275,
+  "capabilities": [
+   "general",
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Fri 7:30-16:30",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "477b585e-cd5f-5517-aa4b-cd1e54722771"
+ },
+ {
+  "name": "Congo Quarter Maternity Home",
+  "region": "Southwest",
+  "quarter": "Congo",
+  "address": "Congo Road, Buea",
+  "phone": "+237680112233",
+  "latitude": 4.1605,
+  "longitude": 9.2558,
+  "capabilities": [
+   "maternity"
+  ],
+  "opening_hours": "24/7",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "01ef42eb-91c9-5dd2-939c-b709fef7c117"
+ },
+ {
+  "name": "GoldCross Pharmacy Molyko",
+  "region": "Southwest",
+  "quarter": "Molyko",
+  "address": "Molyko Roundabout, Buea",
+  "phone": "+237680223344",
+  "latitude": 4.1625,
+  "longitude": 9.2795,
+  "capabilities": [
+   "pharmacy"
+  ],
+  "opening_hours": "Mon-Sun 7:00-21:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "7202d47c-d299-5744-b2e2-1d151648908f"
+ },
+ {
+  "name": "Woteke Rural Dispensary",
+  "region": "Southwest",
+  "quarter": "Woteke",
+  "address": "Woteke Village, Buea",
+  "phone": "+237680334455",
+  "latitude": 4.1585,
+  "longitude": 9.272,
+  "capabilities": [
+   "general"
+  ],
+  "opening_hours": "Mon-Fri 8:00-15:00",
+  "has_backup_power": false,
+  "accepts_csu_card": false,
+  "consultation_fee_xaf": 0,
+  "is_active": true,
+  "facility_id": "56eb5ebd-0d86-5d73-82e0-0af05cf2e498"
+ },
+ {
+  "name": "Mile 16 Maternity & Child Health",
+  "region": "Southwest",
+  "quarter": "Mile 16",
+  "address": "Mile 16 Junction, Buea",
+  "phone": "+237680445566",
+  "latitude": 4.1755,
+  "longitude": 9.2395,
+  "capabilities": [
+   "general",
+   "maternity"
+  ],
+  "opening_hours": "Mon-Sat 7:30-18:00",
+  "has_backup_power": false,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 2000,
+  "is_active": true,
+  "facility_id": "49bf97e4-ec48-5b6d-8f4d-1121ef0aeaee"
+ },
+ {
+  "name": "BuCare Private Specialist Clinic",
+  "region": "Southwest",
+  "quarter": "Buea Town",
+  "address": "Commercial Street, Buea Town",
+  "phone": "+237680556677",
+  "latitude": 4.1518,
+  "longitude": 9.2452,
+  "capabilities": [
+   "dental",
+   "eye_clinic",
+   "general",
+   "laboratory",
+   "x_ray"
+  ],
+  "opening_hours": "Mon-Sat 7:30-19:00",
+  "has_backup_power": true,
+  "accepts_csu_card": true,
+  "consultation_fee_xaf": 5000,
+  "is_active": true,
+  "facility_id": "4c9f1b16-6491-5780-a30e-478121b770e9"
+ }
+]
