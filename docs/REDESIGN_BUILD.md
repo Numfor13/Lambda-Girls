@@ -51,7 +51,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | C4 ✅ | `features/doctor/DoctorCase.tsx` | `/doctor/case/:id` |
 | C5 ✅ | `features/auth/SignIn.tsx` + `features/auth/AuthCallback.tsx` | `/sign-in`, `/auth/callback` |
 | C6 ✅ | `features/public/CodeLookup.tsx` | `/rx/:code`, `/ref/:code` |
-| C7 | `features/public/HowItWorks.tsx` | `/how-it-works` |
+| C7 ✅ | `features/public/HowItWorks.tsx` | `/how-it-works` |
 | C8 | `features/public/About.tsx` | `/about` |
 | C9 | `features/public/NotFound.tsx` + `app/RouteError.tsx` | `*` and error boundary |
 
@@ -126,6 +126,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | 2026-10-22 | Codex | C3 Doctor Queue redesigned: actual urgency counts in glass chips, RED-first/oldest sorting, waiting/my-cases filters, spring layout updates, connected claim state and visible-only 20 s polling with last update. Verified populated mock case at 375/1440 and claim flow. Queue endpoint has no age/triage payload: show linked-triage context and read age in the case, avoiding invented ages or one request per row. |
 | 2026-10-22 | Codex | C4 Doctor Case: responsive two-column conversation/triage-actions workspace (stacked in the same order on mobile), solid audit/forms, glass composer, claim/ownership/connection gating, visible-only polling and cached-data retention on poll errors. Text retry keeps its idempotency key; issued Rx/referral codes show neutral CodeCard and retry sharing with the same key, distinguishing code issuance from chat delivery. Mock claim, text reply, Rx/referral issue + chat sharing and close confirmation exercised; both widths checked. Voice components preserved; microphone/live S3 upload and actual clinical triage review were not exercised. |
 | 2026-10-22 | Codex | C6 prescription/referral lookup: large code chip over landscape, neutral status, solid minimum-data detail card, code validation/retry and named referral destination with a truthful fallback. Checked successful demo Rx/referral lookups at 375/1440; no patient identifiers rendered. |
+| 2026-10-22 | Codex | C7 How it works: public landscape/glass hero, expressive numbered steps, dark ground statement, practical offline/payment/account/household help and long advisory. Preserved `#help`; fee comes from existing configuration. Checked 375/1440 with no horizontal overflow. |
 | 2026-10-22 | Codex request | Profile/household writes cannot currently join the outbox (it supports triage/consultations/messages only, and household POST has no idempotency key). Retaining online-only writes with clear connection status; request a shared offline/idempotency design before promising offline profile edits. Existing frozen Notice/StatusMark use urgency backgrounds for non-clinical outcomes, and ChatBubble has off-scale type/radii; please reconcile during Claude's final shared-component QA. |
 
 ## 7. How to run, verify and hand back
