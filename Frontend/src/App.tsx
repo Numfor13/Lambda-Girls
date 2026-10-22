@@ -17,6 +17,7 @@ const CodeLookup = lazy(() => import("@/features/public/CodeLookup"))
 
 const PatientHome = lazy(() => import("@/features/home/PatientHome"))
 const FacilityList = lazy(() => import("@/features/facilities/FacilityList"))
+const FacilityMap = lazy(() => import("@/features/facilities/FacilityMap"))
 const FacilityDetail = lazy(() => import("@/features/facilities/FacilityDetail"))
 const TriageWizard = lazy(() => import("@/features/triage/TriageWizard"))
 const TriageResultPage = lazy(() => import("@/features/triage/TriageResult"))
@@ -26,6 +27,10 @@ const ConsultNew = lazy(() => import("@/features/consult/ConsultNew"))
 const ConsultChat = lazy(() => import("@/features/consult/ConsultChat"))
 const ConsultList = lazy(() => import("@/features/consult/ConsultList"))
 const Payment = lazy(() => import("@/features/payments/Payment"))
+const DoctorProfiles = lazy(() => import("@/features/doctors/DoctorProfiles"))
+const DirectCall = lazy(() => import("@/features/calls/DirectCall"))
+const RequestRide = lazy(() => import("@/features/rides/RequestRide"))
+const DriverApply = lazy(() => import("@/features/rides/DriverApply"))
 
 const DoctorShell = lazy(() =>
   import("@/app/layouts/DoctorShell").then((m) => ({ default: m.DoctorShell })),
@@ -64,6 +69,9 @@ const router = createBrowserRouter([
           ...(flags.referrals ? [{ path: "ref/:code", element: <CodeLookup kind="ref" /> }] : []),
           { path: "apply/doctor", element: <DoctorApplicationForm /> },
           { path: "apply/doctor/status", element: <ApplicationStatus /> },
+          { path: "apply/driver", element: <DriverApply /> },
+          { path: "doctors", element: <DoctorProfiles /> },
+          { path: "call", element: <DirectCall /> },
           { path: "*", element: <NotFound /> },
         ],
       },
@@ -73,10 +81,12 @@ const router = createBrowserRouter([
         element: <PatientShell />,
         children: [
           { index: true, element: <PatientHome /> },
-          { path: "facilities", element: <FacilityList /> },
+          { path: "facilities", element: <FacilityMap /> },
+          { path: "facilities/list", element: <FacilityList /> },
           { path: "facilities/:id", element: <FacilityDetail /> },
           { path: "triage", element: <TriageWizard /> },
           { path: "triage/:resultId", element: <TriageResultPage /> },
+          { path: "ride", element: <RequestRide /> },
           {
             element: <RequireAuth />,
             children: [

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { AnimatePresence, motion } from "motion/react"
 import { ulid } from "ulid"
 import { Baby, Check, ChevronLeft, Search, Siren, User, UserPlus, Users } from "lucide-react"
 import type { Sex, SymptomPayload } from "@/api/types"
@@ -7,6 +8,7 @@ import { useAuth } from "@/auth/AuthProvider"
 import { Button } from "@/design/components/Button"
 import { ChoiceCard, Field, Input, Select } from "@/design/components/Field"
 import { AdvisoryNote, Notice } from "@/design/components/primitives"
+import { EASE_OUT } from "@/design/motion"
 import { useProfile } from "@/features/profile/useProfile"
 import { ageInMonths, describeAge } from "@/lib/format"
 import { useNow } from "@/lib/hooks"
@@ -194,7 +196,15 @@ export default function TriageWizard() {
         </span>
       </div>
 
-      <div className="mt-6 flex-1">
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={step}
+        className="mt-6 flex-1"
+        initial={{ opacity: 0, x: 18 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -18 }}
+        transition={{ duration: 0.22, ease: EASE_OUT }}
+      >
         {step === "who" && (
           <section>
             <h1 className="text-[26px] font-extrabold">Who is this for?</h1>
@@ -439,7 +449,8 @@ export default function TriageWizard() {
             <AdvisoryNote className="mt-4" />
           </section>
         )}
-      </div>
+      </motion.div>
+      </AnimatePresence>
 
       {step !== "who" && (
         <div className="sticky bottom-20 mt-8 bg-white/95 py-3 lg:bottom-0">

@@ -8,6 +8,7 @@ import { ButtonLink } from "@/design/components/Button"
 import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
 import { SyncChip } from "@/design/components/SyncChip"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { StaggerContainer, StaggerItem } from "@/design/motion"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { db, type SyncState } from "@/offline/db"
@@ -79,9 +80,9 @@ export default function ConsultList() {
           }
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <StaggerContainer as="ul" className="flex flex-col gap-3" stagger={0.06}>
           {rows.map((r) => (
-            <li key={r.key}>
+            <StaggerItem as="li" key={r.key} variant="up">
               <Link to={r.href} className="flex items-center gap-3 rounded-[16px] border border-line p-4 hover:bg-cream">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{r.complaint}</p>
@@ -103,9 +104,9 @@ export default function ConsultList() {
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-ink-400" aria-hidden />
               </Link>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerContainer>
       )}
     </div>
   )

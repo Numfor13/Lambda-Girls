@@ -237,17 +237,15 @@ export default function ConsultChat() {
             placeholder="Type a message…"
             className="max-h-32 min-h-12 flex-1 resize-none rounded-[24px] border border-line bg-cream px-4 py-3 text-[16px] focus:border-brand-500 focus:bg-white focus:outline-none"
           />
-          {text.trim() ? (
-            <button
-              type="submit"
-              aria-label="Send message"
-              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"
-            >
-              <SendHorizontal className="size-5" aria-hidden />
-            </button>
-          ) : (
-            <HoldToRecord size="md" label="Hold to record a voice note" onRecorded={(r) => void sendVoice(ref, r)} />
-          )}
+          <HoldToRecord size="md" label="Hold to record a voice note" onRecorded={(r) => void sendVoice(ref, r)} />
+          <button
+            type="submit"
+            aria-label="Send message"
+            disabled={!text.trim()}
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white disabled:opacity-40"
+          >
+            <SendHorizontal className="size-5" aria-hidden />
+          </button>
         </form>
       )}
     </div>

@@ -4,22 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ClipboardList, Clock } from "lucide-react"
 import { doctorApi } from "@/api/endpoints"
 import { friendlyError } from "@/api/errors"
-import type { Consultation } from "@/api/types"
 import { useAuth } from "@/auth/AuthProvider"
 import { Button } from "@/design/components/Button"
 import { EmptyState, Notice, PageSpinner } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { StaggerContainer, StaggerItem } from "@/design/motion"
 import { useNow } from "@/lib/hooks"
 import { timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { patientLabel, sortQueue } from "./doctorUtils"
 
-const RANK = { RED: 0, AMBER: 1, GREEN: 2 } as const
 const NEW_WINDOW_MS = 2 * 60_000
-
-export function patientLabel(c: Consultation) {
-  if (c.patient_id.startsWith("anon#")) return "Anonymous"
-  return c.on_behalf_member_id ? "Household member (on behalf)" : "Patient"
-}
 
 function chime() {
   try {
@@ -35,12 +30,6 @@ function chime() {
   } catch {
     /* audio blocked until the doctor interacts with the page */
   }
-}
-
-export function sortQueue(items: Consultation[]) {
-  return [...items].sort(
-    (a, b) => RANK[a.urgency ?? "GREEN"] - RANK[b.urgency ?? "GREEN"] || a.created_at - b.created_at,
-  )
 }
 
 export default function DoctorQueue() {
@@ -127,12 +116,14 @@ export default function DoctorQueue() {
           />
         </div>
       ) : (
-        <ul className="mt-6 flex flex-col gap-3">
+        <StaggerContainer as="ul" className="mt-6 flex flex-col gap-3" stagger={0.07}>
           {rows.map((c) => {
             const fresh = c.urgency === "RED" && now - c.updated_at < NEW_WINDOW_MS && c.status === "paid"
             return (
-              <li
+              <StaggerItem
+                as="li"
                 key={c.consultation_id}
+                variant="up"
                 className={cn(
                   "flex flex-col gap-3 rounded-[16px] border bg-white p-4 sm:flex-row sm:items-center",
                   c.urgency === "RED" ? "border-urgent-red/40" : "border-line",
@@ -171,10 +162,10 @@ export default function DoctorQueue() {
                     Open case
                   </Link>
                 )}
-              </li>
+              </StaggerItem>
             )
           })}
-        </ul>
+        </StaggerContainer>
       )}
     </div>
   )

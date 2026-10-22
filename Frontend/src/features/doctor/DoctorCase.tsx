@@ -20,7 +20,7 @@ import { useFacilities } from "@/offline/facilities"
 import { uploadVoiceBlob } from "@/offline/sync"
 import type { Recording } from "@/offline/voiceRecorder"
 import { SYMPTOMS } from "@/triage-engine/symptoms"
-import { patientLabel } from "./DoctorQueue"
+import { patientLabel } from "./doctorUtils"
 
 const SYMPTOM_LABEL = new Map(SYMPTOMS.map((s) => [s.code, s.label]))
 

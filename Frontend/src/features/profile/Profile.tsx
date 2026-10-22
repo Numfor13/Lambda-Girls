@@ -9,11 +9,13 @@ import { useAuth } from "@/auth/AuthProvider"
 import { Button } from "@/design/components/Button"
 import { Field, Input, Select } from "@/design/components/Field"
 import { Avatar, Card, Notice, PageSpinner } from "@/design/components/primitives"
+import { Reveal } from "@/design/motion"
 import { flags } from "@/config/flags"
 import { formatDate, formatPhone } from "@/lib/format"
 import { clearClinicalData, db } from "@/offline/db"
 import { refreshFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 import { useOnline } from "@/lib/hooks"
+import { usePushSubscription } from "@/lib/usePushSubscription"
 import { useProfile } from "./useProfile"
 
 function NameForm({ initial }: { initial: string }) {
@@ -56,6 +58,7 @@ export default function Profile() {
   const profile = useProfile()
   const online = useOnline()
   const syncedAt = useFacilitiesSyncedAt()
+  const push = usePushSubscription()
   const queued = useLiveQuery(() => db.outbox.count(), [], 0)
   const [refreshing, setRefreshing] = useState(false)
   const [cleared, setCleared] = useState(false)
@@ -67,7 +70,7 @@ export default function Profile() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-center gap-4">
+      <Reveal as="header" className="flex items-center gap-4" variant="up">
         <Avatar name={displayName || "?"} size="lg" />
         <div>
           <h1 className="text-[24px] font-extrabold">{displayName}</h1>
@@ -75,10 +78,11 @@ export default function Profile() {
             <p className="text-[15px] text-ink-600">{formatPhone(session?.phone ?? p?.phone ?? "")}</p>
           )}
         </div>
-      </header>
+      </Reveal>
 
       {profile.isError && <Notice tone="error">{friendlyError(profile.error)}</Notice>}
 
+      <Reveal delay={0.08}>
       <Card className="p-5">
         <h2 className="text-[17px] font-bold">Your details</h2>
         <div className="mt-4">
@@ -110,7 +114,9 @@ export default function Profile() {
           </Field>
         </div>
       </Card>
+      </Reveal>
 
+      <Reveal delay={0.14}>
       <nav aria-label="Profile" className="flex flex-col overflow-hidden rounded-[16px] border border-line">
         {[
           { to: "/app/profile/household", label: "Household members", icon: Users },
@@ -127,7 +133,9 @@ export default function Profile() {
           </Link>
         ))}
       </nav>
+      </Reveal>
 
+      <Reveal delay={0.2}>
       <Card className="p-5">
         <h2 className="flex items-center gap-2 text-[17px] font-bold">
           <Database className="size-5 text-brand-700" aria-hidden /> Saved on this phone
@@ -155,7 +163,21 @@ export default function Profile() {
           <li>
             {queued} item{queued === 1 ? "" : "s"} waiting to send
           </li>
+          {push.supported && session && (
+            <li className="flex flex-wrap items-center justify-between gap-2">
+              <span>Doctor reply notifications</span>
+              <button
+                type="button"
+                className="text-sm font-semibold text-brand-700 disabled:opacity-50"
+                disabled={push.loading}
+                onClick={push.subscribed ? push.unsubscribe : push.subscribe}
+              >
+                {push.loading ? "…" : push.subscribed ? "Turn off" : "Turn on"}
+              </button>
+            </li>
+          )}
         </ul>
+        {push.error && <Notice tone="error" className="mt-3 text-sm">{push.error}</Notice>}
         {cleared && (
           <Notice tone="success" className="mt-3">
             Health data on this phone was cleared.
@@ -178,6 +200,7 @@ export default function Profile() {
           Clear local data
         </Button>
       </Card>
+      </Reveal>
 
       <Button variant="ghost" className="self-start" onClick={() => void signOut()}>
         <LogOut className="size-5" aria-hidden />

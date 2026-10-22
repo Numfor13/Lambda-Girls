@@ -8,10 +8,13 @@ export interface LocalTriage extends TriageResult {
   subject_label: string
 }
 
+export type ConsultType = "general" | "specialist" | "lab"
+
 export interface LocalConsultation {
   local_id: string
   consultation_id?: string
   complaint: string
+  consult_type: ConsultType
   status: ConsultationStatus
   urgency: Urgency | null
   on_behalf_member_id: string | null

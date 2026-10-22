@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { motion } from "motion/react"
-import { ChevronRight, Download, MapPin, MessagesSquare, Plus, Stethoscope, Siren } from "lucide-react"
+import { Car, ChevronRight, Download, FlaskConical, MapPin, MessagesSquare, Phone, Plus, Stethoscope, Siren, UserCog } from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
 import { ButtonLink } from "@/design/components/Button"
@@ -54,10 +54,17 @@ const TILES = [
   { to: "/app/triage", label: "Check symptoms", icon: Stethoscope, tone: "bg-mint text-brand-900" },
   { to: "/app/facilities?locate=1", label: "Find care near me", icon: MapPin, tone: "bg-cream text-brand-900" },
   { to: "/app/consult/new", label: "Message a doctor", icon: MessagesSquare, tone: "bg-cream text-brand-900" },
-  flags.emergency
-    ? { to: "/app/emergency", label: "Emergency", icon: Siren, tone: "bg-urgent-red text-white" }
+  flags.rides
+    ? { to: "/app/ride", label: "Emergency ride", icon: Siren, tone: "bg-urgent-red text-white" }
     : { to: "/app/consults", label: "My consultations", icon: MessagesSquare, tone: "bg-mint text-brand-900" },
 ]
+
+const QUICK_LINKS = [
+  { to: "/doctors", label: "Our doctors", icon: UserCog },
+  { to: "/call", label: "Call a doctor", icon: Phone },
+  { to: "/app/consult/new", label: "Lab test", icon: FlaskConical },
+  flags.rides ? { to: "/apply/driver", label: "Drive for us", icon: Car } : null,
+].filter(Boolean) as { to: string; label: string; icon: React.ElementType }[]
 
 export default function PatientHome() {
   const { session } = useAuth()
@@ -101,6 +108,19 @@ export default function PatientHome() {
             <t.icon className="size-8" strokeWidth={1.75} aria-hidden />
             <span className="font-display text-[17px] leading-tight font-bold">{t.label}</span>
           </MotionLink>
+        ))}
+      </nav>
+
+      <nav aria-label="Services" className="grid grid-cols-4 gap-2">
+        {QUICK_LINKS.map((l) => (
+          <Link
+            key={l.to}
+            to={l.to}
+            className="flex flex-col items-center gap-1.5 rounded-[14px] border border-line bg-white py-3 px-1 text-center transition-colors hover:bg-cream"
+          >
+            <l.icon className="size-5 text-brand-700" aria-hidden />
+            <span className="text-[11px] font-semibold leading-tight text-ink-800">{l.label}</span>
+          </Link>
         ))}
       </nav>
 
