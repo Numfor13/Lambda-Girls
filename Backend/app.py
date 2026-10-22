@@ -10,6 +10,11 @@ from health_track.consultation_stack import ConsultationStack
 from health_track.payment_stack import PaymentStack
 from health_track.doctor_stack import DoctorStack
 from health_track.doctor_application_stack import DoctorApplicationStack
+from health_track.push_stack import PushStack
+from health_track.channel_stack import ChannelStack
+from health_track.extended_stack import ExtendedStack
+from health_track.anonymous_stack import AnonymousStack
+from health_track.i18n_stack import I18nStack
 
 app = cdk.App()
 config = get_config(app.node)
@@ -53,5 +58,30 @@ doctor_application = DoctorApplicationStack(app, f"HealthTrack-DoctorApplication
     env=env, config=config,
     shared_stack=shared,
     auth_stack=auth)
+
+push = PushStack(app, f"HealthTrack-Push-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth,
+    secrets_stack=secrets)
+
+channel = ChannelStack(app, f"HealthTrack-Channel-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth)
+
+extended = ExtendedStack(app, f"HealthTrack-Extended-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    auth_stack=auth)
+
+anonymous = AnonymousStack(app, f"HealthTrack-Anonymous-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared,
+    secrets_stack=secrets)
+
+i18n = I18nStack(app, f"HealthTrack-I18n-{config.env_name}",
+    env=env, config=config,
+    shared_stack=shared)
 
 app.synth()

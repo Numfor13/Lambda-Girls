@@ -45,19 +45,13 @@
     "@aws-cdk/aws-ec2:restrictDefaultSecurityGroup": true,
     "@aws-cdk/aws-elasticloadbalancingv2:albControllerVersion": true,
     "dev": {
-      "account": "111111111111",
-      "region": "af-south-1",
-      "env_name": "dev"
+      "region": "us-east-1"
     },
     "staging": {
-      "account": "222222222222",
-      "region": "af-south-1",
-      "env_name": "staging"
+      "region": "us-east-1"
     },
     "prod": {
-      "account": "333333333333",
-      "region": "af-south-1",
-      "env_name": "prod"
+      "region": "us-east-1"
     }
   }
 }

@@ -1,18 +1,10 @@
 import boto3, hashlib, hmac, json, logging, os, time, uuid
-import urllib.request
 from botocore.exceptions import ClientError
 from health_track_common.response import ok, err
+from health_track_common.fapshi import fapshi_initiate
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-FAPSHI_BASE = "https://live.fapshi.com"
-
-
-def _get_secret(secret_arn: str) -> str:
-    sm = boto3.client("secretsmanager")
-    resp = sm.get_secret_value(SecretId=secret_arn)
-    return resp.get("SecretString", "")
 
 
 def handler(event, context):
@@ -61,24 +53,14 @@ def handler(event, context):
             fapshi_ref = f"sandbox-{payment_id[:8]}"
             payment_url = f"https://fapshi.com/pay/sandbox/{fapshi_ref}"
         else:
-            api_key = _get_secret(os.environ["FAPSHI_API_KEY_SECRET_ARN"])
-            payload = json.dumps({
-                "amount": amount_xaf,
-                "phone": phone,
-                "externalId": payment_id,
-                "redirectUrl": body.get("redirect_url", ""),
-                "message": f"Health Track consultation {consultation_id[:8]}",
-            }).encode()
-            req = urllib.request.Request(
-                f"{FAPSHI_BASE}/initiate-pay",
-                data=payload,
-                headers={"Content-Type": "application/json", "apiuser": api_key.split(":")[0], "apikey": api_key.split(":")[-1]},
-                method="POST",
+            fapshi_ref, payment_url = fapshi_initiate(
+                api_key_secret_arn=os.environ["FAPSHI_API_KEY_SECRET_ARN"],
+                amount=amount_xaf,
+                phone=phone,
+                external_id=payment_id,
+                redirect_url=body.get("redirect_url", ""),
+                message=f"Health Track consultation {consultation_id[:8]}",
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                fapshi_resp = json.loads(resp.read())
-            fapshi_ref = fapshi_resp.get("transId", "")
-            payment_url = fapshi_resp.get("link", "")
 
         item = {
             "payment_id":      payment_id,

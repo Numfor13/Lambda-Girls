@@ -1,6 +1,7 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
 from health_track_common.response import ok, err
+from health_track_common.anonymous import redact_for_doctor
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -50,7 +51,8 @@ def handler(event, context):
         def sort_key(c):
             return (URGENCY_RANK.get(c.get("urgency"), 3), c.get("urgency_created", ""))
 
-        items = sorted(paid + open_c, key=sort_key)
+        # Anonymous consultations are shown without any identifying info
+        items = [redact_for_doctor(c) for c in sorted(paid + open_c, key=sort_key)]
 
         return ok({"queue": items, "count": len(items)})
 
