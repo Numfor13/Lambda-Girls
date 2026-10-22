@@ -189,3 +189,21 @@ def test_outputs(anon_template):
     exports = {o["Export"]["Name"] for o in outputs.values() if "Export" in o}
     assert "HealthTrack-AnonymousSessionTableName-dev" in exports
     assert "HealthTrack-AnonymousApiUrl-dev" in exports
+
+
+def test_secret_referenced_by_name_without_cross_stack_cycle(anon_template):
+    """grant_read on SecretsStack's Secret object would add a resource policy on the secret
+    pointing back at this stack's role (Secrets -> Anonymous -> Secrets cycle). The secret is
+    imported by name instead: identity-policy grant only, no Fn::ImportValue."""
+    import json as _json
+    imports = [v for v in _json.dumps(anon_template.to_json()).split('"Fn::ImportValue": ')[1:]]
+    assert imports  # the shared layer import is expected
+    assert not any(v.startswith('"Secrets:') for v in imports)
+    by_handler = _statements_by_handler(anon_template)
+    secret_resources = [
+        s["Resource"] for s in by_handler["post_payment_initiate.handler"]
+        if any(str(a).startswith("secretsmanager:") for a in
+               (s["Action"] if isinstance(s["Action"], list) else [s["Action"]]))
+    ]
+    assert secret_resources
+    assert "/health-track/dev/fapshi/api-key" in _json.dumps(secret_resources)

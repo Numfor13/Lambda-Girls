@@ -1,0 +1,148 @@
+{
+  "triage": {
+    "title": "Check ya sickness",
+    "disclaimer": "Dis check no be doctor. If na emergency, call 15 or go for hospital wey dey near.",
+    "urgency": {
+      "RED": "Emergency",
+      "AMBER": "Go see doctor today",
+      "GREEN": "E no too serious"
+    },
+    "recommendation": {
+      "RED": "Go emergency now now. Go for hospital wey dey near and get emergency unit.",
+      "AMBER": "Go see doctor today. Go for clinic or hospital wey dey near you.",
+      "GREEN": "E no too serious. Rest and watch am. If e worse or pass 3 days, go for clinic."
+    },
+    "facility_needed": {
+      "emergency": "Emergency unit",
+      "general": "Clinic or hospital",
+      "pharmacy": "Pharmacy (medicine shop)"
+    },
+    "questions": {
+      "age": "How old the sick person be?",
+      "age_months": "How many months (for pikin wey never reach 5 years)",
+      "is_pregnant": "The woman get belle?",
+      "symptoms": "Wetin the sick person dey feel?",
+      "resp_rate": "How many times e dey breathe for one minute (if you count am)"
+    },
+    "symptoms": {
+      "chest_pain": "Chest dey pain or dey press",
+      "stroke_symptoms": "Face, hand or talk change sudden (stroke)",
+      "difficulty_breathing": "E hard well well for breathe",
+      "coughing_blood": "Cough dey bring blood",
+      "vomiting_blood": "Vomit dey bring blood",
+      "loss_consciousness": "E don faint",
+      "severe_bleeding": "Blood dey comot plenty and e no wan stop",
+      "seizure": "E dey shake (seizure) now",
+      "high_fever_adult": "Strong fever (38.5°C or pass)",
+      "persistent_vomiting": "E don vomit pass 2 days",
+      "severe_abdominal_pain": "Belle dey pain strong",
+      "dehydration": "Body don dry (no water for body)",
+      "altered_mental_state": "Head no dey correct (confusion)",
+      "weakness_one_side": "One side of body weak or no get feeling",
+      "jaundice": "Eye or skin don yellow",
+      "unable_walk": "E no fit waka or stand up alone",
+      "cough_mild": "Small cough (never reach 2 weeks)",
+      "cold_flu": "Catarrh or small flu",
+      "headache_mild": "Small headache",
+      "skin_rash_mild": "Small rash for skin",
+      "back_pain_mild": "Small back pain",
+      "convulsions": "Convulsion (body dey shake)",
+      "unconscious": "E no dey wake or answer",
+      "unable_feed": "Pikin no fit suck or drink",
+      "severe_wasting": "Pikin don lean too much",
+      "chest_indraw": "Chest dey enter inside when e breathe",
+      "fast_breathing": "E dey breathe fast fast",
+      "fever_child": "Fever (pikin wey never reach 5 years)",
+      "ear_discharge": "Water dey comot for ear pass 2 weeks",
+      "palmar_pallor": "Hand palm don white (no blood for body)",
+      "ob_haemorrhage": "Blood dey comot for woman side",
+      "ob_convulsion": "Convulsion when woman get belle",
+      "ob_prolonged_labour": "Labour don too long or e don block",
+      "ob_no_fetal_movement": "Pikin for belle never move pass 12 hours",
+      "ob_fever_pregnancy": "Fever when woman get belle",
+      "ob_severe_headache": "Strong headache and eye no dey see well",
+      "ob_swollen_face_hands": "Face or hand don swell",
+      "ob_difficulty_breathing": "E hard for breathe when woman get belle",
+      "fever": "Fever",
+      "severe_headache": "Strong headache",
+      "other": "Other thing"
+    }
+  },
+  "ussd": {
+    "menu": {
+      "welcome": "Welcome for HealthTrack.",
+      "find_hospital": "1. Find hospital wey dey near",
+      "first_aid": "2. First-aid tips",
+      "symptom_check": "3. Check ya sickness",
+      "nurse_callback": "4. Make nurse call you"
+    },
+    "first_aid": {
+      "title": "First-aid:",
+      "burns": "- Fire burn: pour cold water 10 min",
+      "choking": "- Choke: knock back 5 times",
+      "bleeding": "- Blood: press am strong",
+      "return": "Reply MENU for go back."
+    },
+    "triage_q1": "Check ya sickness:\nQ1: How many years the sick person get? (put number)",
+    "triage_q2": {
+      "prompt": "Q2: Wetin be the main sickness? Reply:",
+      "options": {
+        "fever": "1. Fever",
+        "difficulty_breathing": "2. E hard for breathe",
+        "chest_pain": "3. Chest pain",
+        "severe_headache": "4. Strong headache",
+        "other": "5. Other thing"
+      }
+    },
+    "triage_done": {
+      "RED": "URGENT: Go emergency for hospital wey dey near now now or call 15.",
+      "AMBER": "Go see doctor today. Type MENU for find clinic wey dey near.",
+      "GREEN": "Ya sickness no look serious. Rest, drink water. Type MENU for more."
+    },
+    "facility_prompt": "Send the name of ya quarter (e.g. Molyko) for find hospital wey dey near.",
+    "facility_searching": "We dey find hospital near {area}. Reply MENU for continue.",
+    "callback_confirm": "Type YES make nurse call you back.",
+    "callback_done": "Nurse go call you soon. Take care.",
+    "invalid_choice": "Dat choice no correct.",
+    "enter_number": "Abeg put number."
+  },
+  "common": {
+    "app_name": "HealthTrack",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "back": "Go back",
+    "next": "Next",
+    "loading": "E dey load...",
+    "offline": "Network no dey. We go send am when network come back.",
+    "error_generic": "Something no work. Abeg try again.",
+    "language": {
+      "en": "English",
+      "fr": "Français",
+      "pid": "Pidgin"
+    }
+  },
+  "consultation": {
+    "new": "Talk with doctor",
+    "complaint_label": "Tell we wetin dey worry you",
+    "anonymous_notice": "You dey talk with doctor without ya name. Doctor no go see ya name or ya phone number.",
+    "send": "Send",
+    "message_placeholder": "Write message",
+    "status": {
+      "pending_payment": "E dey wait for payment",
+      "paid": "E dey wait for doctor",
+      "open": "Doctor dey look am",
+      "closed": "E don close"
+    }
+  },
+  "payment": {
+    "pay_now": "Pay now",
+    "amount": "Money: {amount} XAF",
+    "phone_label": "Mobile Money number",
+    "status": {
+      "initiated": "Payment don start",
+      "confirmed": "Payment don enter",
+      "failed": "Payment no work"
+    }
+  }
+}
