@@ -1,21 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { motion } from "motion/react"
 import { ulid } from "ulid"
-import { ChevronLeft, FileCheck2, Pill, SendHorizontal } from "lucide-react"
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  FileCheck2,
+  MessageCircle,
+  Pill,
+  SendHorizontal,
+} from "lucide-react"
 import { consultApi, doctorApi } from "@/api/endpoints"
 import { friendlyError } from "@/api/errors"
 import type { CaseDetail } from "@/api/types"
+import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
-import { Button } from "@/design/components/Button"
+import { Button, IconButton, IconRouterLink } from "@/design/components/Button"
 import { ChatBubble, type ChatItem } from "@/design/components/ChatBubble"
+import { CodeCard, ConfirmAction, Feedback } from "@/design/components/Feedback"
 import { Field, Input, Select, Textarea } from "@/design/components/Field"
 import { HoldToRecord } from "@/design/components/HoldToRecord"
-import { Card, Notice, PageSpinner } from "@/design/components/primitives"
-import { URGENCY_META, UrgencyBadge } from "@/design/components/UrgencyBadge"
-import { describeAge, formatDateTime } from "@/lib/format"
-import { useVisible } from "@/lib/hooks"
-import { cn } from "@/lib/utils"
+import {
+  AdvisoryNote,
+  Card,
+  PageHeader,
+  PageSpinner,
+} from "@/design/components/primitives"
+import { UrgencyBadge, UrgencyDot } from "@/design/components/UrgencyBadge"
+import { popIn, staggerOnMount } from "@/design/motion"
+import { describeAge, formatDateTime, timeAgo } from "@/lib/format"
+import { useNow, useOnline, useVisible } from "@/lib/hooks"
 import { useFacilities } from "@/offline/facilities"
 import { uploadVoiceBlob } from "@/offline/sync"
 import type { Recording } from "@/offline/voiceRecorder"
@@ -26,117 +41,198 @@ const SYMPTOM_LABEL = new Map(SYMPTOMS.map((s) => [s.code, s.label]))
 
 function PatientPanel({ data }: { data: CaseDetail }) {
   const { consultation: c, triage_result: t } = data
-  const p = t?.symptom_payload
+  const payload = t?.symptom_payload
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="p-4">
-        <p className="text-label-m font-bold tracking-wide text-ink-600 uppercase">Patient</p>
-        <p className="mt-1 font-semibold">{patientLabel(c)}</p>
-        {p && (
-          <p className="text-body-m text-ink-600">
-            {describeAge(p.age_months)}
-            {p.sex ? ` · ${p.sex}` : ""}
-            {p.is_pregnant ? " · pregnant" : ""}
+    <div className="flex min-w-0 flex-col gap-4">
+      <Card className="rounded-xl p-5">
+        <p className="eyebrow">Patient context</p>
+        <h2 className="mt-3 text-title-l">{patientLabel(c)}</h2>
+        {payload && (
+          <p className="mt-2 text-body-m text-ink-600">
+            {describeAge(payload.age_months)}
+            {payload.sex ? ` · ${payload.sex}` : ""}
+            {payload.is_pregnant ? " · pregnant" : ""}
           </p>
         )}
-        <p className="mt-3 text-label-m font-bold tracking-wide text-ink-600 uppercase">Complaint</p>
-        <p className="mt-1 text-body-l">{c.complaint}</p>
+        <p className="mt-4 text-label-l text-ink-600">Complaint</p>
+        <p className="mt-2 text-body-l break-words">{c.complaint}</p>
       </Card>
-
       {t ? (
         <>
-          <div className={cn("rounded-xl p-4", URGENCY_META[t.urgency].hero)}>
-            <p className="text-body-m font-bold uppercase">
-              {t.urgency} · {URGENCY_META[t.urgency].label}
-            </p>
-            <p className="mt-1 text-body-m opacity-95">{t.recommendation}</p>
-            <p className="mt-2 text-label-m opacity-80">
+          <Card className="flex flex-col gap-4 rounded-xl p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-title-l">Triage audit</h2>
+              <UrgencyBadge urgency={t.urgency} size="sm" />
+            </div>
+            <p className="text-body-l">{t.recommendation}</p>
+            <p className="text-label-m text-ink-600">
               Checked {formatDateTime(t.created_at)}
-              {t.synced_from_offline && " · synced from offline"}
+              {t.synced_from_offline ? " · synced from offline" : ""}
             </p>
-          </div>
-          <Card className="overflow-hidden">
-            <p className="border-b border-line px-4 py-3 text-body-m font-bold">Rules fired</p>
-            {t.rules_fired.length === 0 ? (
-              <p className="px-4 py-3 text-body-m text-ink-600">No danger signs found.</p>
-            ) : (
-              <table className="w-full text-left text-body-m">
-                <thead className="bg-cream text-label-m text-ink-600">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold">Rule</th>
-                    <th className="px-4 py-2 font-semibold">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {t.rules_fired.map((r) => (
-                    <tr key={r.rule_id + String(r.value_that_triggered)} className="border-t border-line align-top">
-                      <td className="px-4 py-2">
-                        <UrgencyBadge urgency={r.urgency} size="sm" />
-                        <p className="mt-1">{r.description}</p>
-                        <p className="font-mono text-label-m text-ink-400">{r.rule_id}</p>
-                      </td>
-                      <td className="px-4 py-2 font-mono text-label-m">{String(r.value_that_triggered)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </Card>
-          {p && (
-            <Card className="p-4 text-body-m">
-              <p className="font-bold">Reported signs</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {p.symptoms.length ? p.symptoms.map((s) => <li key={s}>{SYMPTOM_LABEL.get(s) ?? s}</li>) : <li>None</li>}
+            <h3 className="text-title-m">Why this result</h3>
+            {t.rules_fired.length ? (
+              <ul className="flex flex-col gap-4">
+                {t.rules_fired.map((r) => (
+                  <li
+                    key={r.rule_id + String(r.value_that_triggered)}
+                    className="flex min-w-0 items-start gap-3"
+                  >
+                    <UrgencyDot urgency={r.urgency} className="mt-2" />
+                    <div className="min-w-0 text-body-m">
+                      <p>{r.description}</p>
+                      <p className="mt-1 text-label-m break-all text-ink-600">
+                        Rule {r.rule_id}
+                      </p>
+                      <p className="mt-1 text-label-m text-ink-600">
+                        Recorded value: {String(r.value_that_triggered)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
               </ul>
-              {p.vitals?.resp_rate && <p className="mt-2">Breathing rate: {p.vitals.resp_rate}/min</p>}
+            ) : (
+              <p className="text-body-m text-ink-600">
+                None of the checked danger signs were found.
+              </p>
+            )}
+            <AdvisoryNote long />
+          </Card>
+          {payload && (
+            <Card className="rounded-xl p-5">
+              <h3 className="text-title-l">Reported signs</h3>
+              <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-body-m">
+                {payload.symptoms.length ? (
+                  payload.symptoms.map((s) => (
+                    <li key={s}>{SYMPTOM_LABEL.get(s) ?? s}</li>
+                  ))
+                ) : (
+                  <li>None recorded</li>
+                )}
+              </ul>
+              {payload.vitals?.resp_rate != null && (
+                <p className="mt-3 text-body-m">
+                  Breathing rate: {payload.vitals.resp_rate}/min
+                </p>
+              )}
             </Card>
           )}
         </>
       ) : (
-        <Notice tone="info">No symptom check was linked to this consultation.</Notice>
+        <Feedback>No symptom check was linked to this consultation.</Feedback>
       )}
     </div>
   )
 }
 
-function CodeIssued({ kind, code }: { kind: "rx" | "ref"; code: string }) {
+type Issued = { code: string; text: string; clientId: string; shared: boolean }
+type ShareMessage = (text: string, clientId?: string) => Promise<void>
+function IssuedCode({
+  kind,
+  issued,
+  share,
+}: {
+  kind: "rx" | "ref"
+  issued: Issued
+  share: () => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(false)
   return (
-    <Notice tone="success">
-      {kind === "rx" ? "Prescription" : "Referral"} code{" "}
-      <Link to={`/${kind}/${code}`} className="font-mono text-title-l tracking-wider underline">
-        {code}
-      </Link>{" "}
-      — also sent to the patient's chat.
-    </Notice>
+    <CodeCard kind={kind} code={issued.code}>
+      <p>
+        {issued.shared
+          ? "Sent to the patient's chat."
+          : "Code issued. The chat message has not been confirmed; keep this code."}
+      </p>
+      {!issued.shared && (
+        <Button
+          variant="tonal"
+          size="sm"
+          className="mt-3"
+          loading={busy}
+          onClick={async () => {
+            setBusy(true)
+            setError(false)
+            try {
+              await share()
+            } catch {
+              setError(true)
+            } finally {
+              setBusy(false)
+            }
+          }}
+        >
+          Retry sharing code
+        </Button>
+      )}
+      {error && (
+        <p className="mt-3">
+          Could not share yet. Reconnect and retry; the issued code is still
+          valid.
+        </p>
+      )}
+    </CodeCard>
   )
 }
 
-function ActionsPanel({ data, onMessage }: { data: CaseDetail; onMessage: (text: string) => Promise<void> }) {
+function ActionsPanel({
+  data,
+  onMessage,
+  canWrite,
+}: {
+  data: CaseDetail
+  onMessage: ShareMessage
+  canWrite: boolean
+}) {
   const id = data.consultation.consultation_id
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const navigate = useNavigate(),
+    queryClient = useQueryClient()
   const facilities = useFacilities()
   const [rx, setRx] = useState({ medication_details: "", instructions: "" })
   const [refer, setRefer] = useState({ target_facility_id: "", reason: "" })
-  const [rxCode, setRxCode] = useState<string | null>(null)
-  const [refCode, setRefCode] = useState<string | null>(null)
-  const closed = data.consultation.status === "closed"
-
+  const [rxIssued, setRxIssued] = useState<Issued | null>(null)
+  const [refIssued, setRefIssued] = useState<Issued | null>(null)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const share = async (issued: Issued, kind: "rx" | "ref") => {
+    await onMessage(issued.text, issued.clientId)
+    const update = kind === "rx" ? setRxIssued : setRefIssued
+    update((current) =>
+      current?.code === issued.code ? { ...current, shared: true } : current
+    )
+  }
   const prescribe = useMutation({
-    mutationFn: () => doctorApi.prescribe(id, rx),
+    mutationFn: () =>
+      doctorApi.prescribe(id, {
+        medication_details: rx.medication_details.trim(),
+        instructions: rx.instructions.trim(),
+      }),
     onSuccess: async ({ code }) => {
-      setRxCode(code)
-      await onMessage(`Prescription code: ${code} — ${rx.medication_details}. Show this code at the pharmacy.`)
+      const issued = {
+        code,
+        text: `Prescription code: ${code} — ${rx.medication_details}. Show this code at the pharmacy.`,
+        clientId: ulid(),
+        shared: false,
+      }
+      setRxIssued(issued)
       setRx({ medication_details: "", instructions: "" })
+      await share(issued, "rx").catch(() => undefined)
     },
   })
   const referral = useMutation({
     mutationFn: () => doctorApi.refer(id, refer),
     onSuccess: async ({ code }) => {
-      setRefCode(code)
-      const name = facilities?.find((f) => f.facility_id === refer.target_facility_id)?.name ?? "the facility"
-      await onMessage(`Referral code: ${code} — please go to ${name}. Show this code when you arrive.`)
+      const name =
+        facilities?.find((f) => f.facility_id === refer.target_facility_id)
+          ?.name ?? "the facility"
+      const issued = {
+        code,
+        text: `Referral code: ${code} — please go to ${name}. Show this code when you arrive.`,
+        clientId: ulid(),
+        shared: false,
+      }
+      setRefIssued(issued)
       setRefer({ target_facility_id: "", reason: "" })
+      await share(issued, "ref").catch(() => undefined)
     },
   })
   const close = useMutation({
@@ -146,68 +242,95 @@ function ActionsPanel({ data, onMessage }: { data: CaseDetail; onMessage: (text:
       navigate("/doctor")
     },
   })
-
   const sortedFacilities = useMemo(
     () => [...(facilities ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [facilities],
+    [facilities]
   )
-
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       {flags.prescriptions && (
-        <Card className="p-4">
-          <h3 className="flex items-center gap-2 font-bold">
-            <Pill className="size-5 text-brand-700" aria-hidden /> Issue prescription
-          </h3>
+        <Card className="rounded-xl p-5">
+          <h2 className="flex items-center gap-3 text-title-l">
+            <Pill className="size-5 text-brand-700" aria-hidden />
+            Issue prescription
+          </h2>
           <form
-            className="mt-3 flex flex-col gap-3"
+            className="mt-4 flex flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault()
-              prescribe.mutate()
+              if (canWrite && rx.medication_details.trim()) prescribe.mutate()
             }}
           >
             <Field label="Medication and dose">
               {(fid) => (
                 <Textarea
                   id={fid}
-                  className="min-h-20"
+                  required
+                  disabled={!canWrite}
                   value={rx.medication_details}
-                  onChange={(e) => setRx({ ...rx, medication_details: e.target.value })}
+                  onChange={(e) =>
+                    setRx({ ...rx, medication_details: e.target.value })
+                  }
                 />
               )}
             </Field>
             <Field label="Instructions">
               {(fid) => (
-                <Input id={fid} value={rx.instructions} onChange={(e) => setRx({ ...rx, instructions: e.target.value })} />
+                <Input
+                  id={fid}
+                  disabled={!canWrite}
+                  value={rx.instructions}
+                  onChange={(e) =>
+                    setRx({ ...rx, instructions: e.target.value })
+                  }
+                />
               )}
             </Field>
-            {prescribe.isError && <Notice tone="error">{friendlyError(prescribe.error)}</Notice>}
-            {rxCode && <CodeIssued kind="rx" code={rxCode} />}
-            <Button type="submit" size="sm" disabled={closed || !rx.medication_details.trim()} loading={prescribe.isPending}>
+            {prescribe.isError && (
+              <Feedback error>{friendlyError(prescribe.error)}</Feedback>
+            )}
+            {rxIssued && (
+              <IssuedCode
+                kind="rx"
+                issued={rxIssued}
+                share={() => share(rxIssued, "rx")}
+              />
+            )}
+            <Button
+              type="submit"
+              variant="tonal"
+              icon={Pill}
+              disabled={!canWrite || !rx.medication_details.trim()}
+              loading={prescribe.isPending}
+            >
               Issue prescription
             </Button>
           </form>
         </Card>
       )}
-
       {flags.referrals && (
-        <Card className="p-4">
-          <h3 className="flex items-center gap-2 font-bold">
-            <FileCheck2 className="size-5 text-brand-700" aria-hidden /> Refer
-          </h3>
+        <Card className="rounded-xl p-5">
+          <h2 className="flex items-center gap-3 text-title-l">
+            <FileCheck2 className="size-5 text-brand-700" aria-hidden />
+            Refer to a facility
+          </h2>
           <form
-            className="mt-3 flex flex-col gap-3"
+            className="mt-4 flex flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault()
-              referral.mutate()
+              if (canWrite && refer.target_facility_id) referral.mutate()
             }}
           >
             <Field label="Facility">
               {(fid) => (
                 <Select
                   id={fid}
+                  disabled={!canWrite}
+                  required
                   value={refer.target_facility_id}
-                  onChange={(e) => setRefer({ ...refer, target_facility_id: e.target.value })}
+                  onChange={(e) =>
+                    setRefer({ ...refer, target_facility_id: e.target.value })
+                  }
                 >
                   <option value="" disabled>
                     Choose a facility…
@@ -222,38 +345,72 @@ function ActionsPanel({ data, onMessage }: { data: CaseDetail; onMessage: (text:
             </Field>
             <Field label="Reason">
               {(fid) => (
-                <Input id={fid} value={refer.reason} onChange={(e) => setRefer({ ...refer, reason: e.target.value })} />
+                <Input
+                  id={fid}
+                  disabled={!canWrite}
+                  value={refer.reason}
+                  onChange={(e) =>
+                    setRefer({ ...refer, reason: e.target.value })
+                  }
+                />
               )}
             </Field>
-            {referral.isError && <Notice tone="error">{friendlyError(referral.error)}</Notice>}
-            {refCode && <CodeIssued kind="ref" code={refCode} />}
-            <Button type="submit" size="sm" disabled={closed || !refer.target_facility_id} loading={referral.isPending}>
+            {referral.isError && (
+              <Feedback error>{friendlyError(referral.error)}</Feedback>
+            )}
+            {refIssued && (
+              <IssuedCode
+                kind="ref"
+                issued={refIssued}
+                share={() => share(refIssued, "ref")}
+              />
+            )}
+            <Button
+              type="submit"
+              variant="tonal"
+              icon={FileCheck2}
+              disabled={!canWrite || !refer.target_facility_id}
+              loading={referral.isPending}
+            >
               Issue referral
             </Button>
           </form>
         </Card>
       )}
-
-      <Card className="p-4">
-        <h3 className="font-bold">Close case</h3>
-        <p className="mt-1 text-body-m text-ink-600">The patient can no longer send messages after this.</p>
+      <Card className="flex flex-col gap-4 rounded-xl p-5">
+        <h2 className="text-title-l">Finish this consultation</h2>
+        <p className="text-body-m text-ink-600">
+          Closing the case ends this conversation. Share any prescription or
+          referral code first.
+        </p>
         {close.isError && (
-          <Notice tone="error" className="mt-3">
-            {friendlyError(close.error)}
-          </Notice>
+          <Feedback error>{friendlyError(close.error)}</Feedback>
         )}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-3"
-          disabled={closed}
-          loading={close.isPending}
-          onClick={() => {
-            if (window.confirm("Close this consultation?")) close.mutate()
-          }}
-        >
-          {closed ? "Closed" : "Close case"}
-        </Button>
+        {confirmClose ? (
+          <ConfirmAction
+            title="Close this case?"
+            confirmLabel="Close case"
+            onCancel={() => setConfirmClose(false)}
+            onConfirm={() => {
+              if (canWrite) close.mutate()
+            }}
+            loading={close.isPending}
+          >
+            The patient will no longer be able to send messages in this
+            consultation.
+          </ConfirmAction>
+        ) : (
+          <Button
+            variant="secondary"
+            icon={ClipboardCheck}
+            disabled={!canWrite}
+            onClick={() => setConfirmClose(true)}
+          >
+            {data.consultation.status === "closed"
+              ? "Case closed"
+              : "Close case"}
+          </Button>
+        )}
       </Card>
     </div>
   )
@@ -261,27 +418,33 @@ function ActionsPanel({ data, onMessage }: { data: CaseDetail; onMessage: (text:
 
 export default function DoctorCase() {
   const { id = "" } = useParams()
-  const visible = useVisible()
+  const { session } = useAuth()
+  const visible = useVisible(),
+    online = useOnline(),
+    now = useNow(30_000)
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<"patient" | "chat" | "actions">("chat")
   const [text, setText] = useState("")
+  const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const bottom = useRef<HTMLDivElement>(null)
-
+  const busy = useRef(false),
+    bottom = useRef<HTMLLIElement>(null)
+  const draftId = useRef<{ body: string; id: string } | null>(null)
   const query = useQuery({
     queryKey: ["case", id],
     queryFn: () => doctorApi.getCase(id),
-    refetchInterval: visible ? 15_000 : false,
+    refetchInterval: visible && online ? 15_000 : false,
   })
   const claim = useMutation({
     mutationFn: () => doctorApi.claim(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["case", id] }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["case", id] })
+      await queryClient.invalidateQueries({ queryKey: ["doctor-queue"] })
+    },
   })
-
   const items: ChatItem[] = useMemo(
     () =>
       (query.data?.messages ?? []).map((m) => ({
-        key: m.client_message_id,
+        key: m.client_message_id || m.message_id,
         mine: m.sender_role === "doctor",
         content_type: m.content_type,
         text_body: m.text_body,
@@ -289,147 +452,230 @@ export default function DoctorCase() {
         created_at: m.created_at,
         voice:
           m.content_type === "voice_note"
-            ? { kind: "remote" as const, consultationId: m.consultation_id, messageId: m.message_id }
+            ? {
+                kind: "remote" as const,
+                consultationId: m.consultation_id,
+                messageId: m.message_id,
+              }
             : undefined,
       })),
-    [query.data],
+    [query.data]
   )
-
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" })
+    if (items.length) bottom.current?.scrollIntoView({ block: "nearest" })
   }, [items.length])
-
   if (query.isPending) return <PageSpinner />
-  if (query.isError) return <Notice tone="error">{friendlyError(query.error)}</Notice>
-
-  const data = query.data
-  const c = data.consultation
-  const closed = c.status === "closed"
-
-  const postText = async (body: string) => {
+  if (!query.data)
+    return <Feedback error>{friendlyError(query.error)}</Feedback>
+  const data = query.data,
+    c = data.consultation
+  const canWrite = online && c.status === "open" && c.doctor_id === session?.sub
+  const postText: ShareMessage = async (body, clientId = ulid()) => {
+    if (!canWrite)
+      throw new Error("Claim this case and connect before replying.")
+    await consultApi.postMessage(id, {
+      client_message_id: clientId,
+      content_type: "text",
+      text_body: body,
+    })
+    await queryClient.invalidateQueries({ queryKey: ["case", id] })
+  }
+  const submit = async () => {
+    const body = text.trim()
+    if (!body || busy.current || !canWrite) return
+    busy.current = true
+    setSending(true)
     setSendError(null)
+    if (draftId.current?.body !== body) draftId.current = { body, id: ulid() }
     try {
-      await consultApi.postMessage(id, { client_message_id: ulid(), content_type: "text", text_body: body })
-      await queryClient.invalidateQueries({ queryKey: ["case", id] })
-    } catch (e) {
-      setSendError(friendlyError(e))
-      throw e
+      await postText(body, draftId.current.id)
+      draftId.current = null
+      setText((current) => (current.trim() === body ? "" : current))
+    } catch (error) {
+      setSendError(friendlyError(error))
+    } finally {
+      busy.current = false
+      setSending(false)
     }
   }
-
-  const postVoice = async (r: Recording) => {
+  const postVoice = async (recording: Recording) => {
+    if (busy.current || !canWrite) return
+    busy.current = true
+    setSending(true)
     setSendError(null)
     try {
-      const key = await uploadVoiceBlob(id, r.blob)
+      const key = await uploadVoiceBlob(id, recording.blob)
       await consultApi.postMessage(id, {
         client_message_id: ulid(),
         content_type: "voice_note",
         voice_note_key: key,
-        duration_seconds: r.duration_seconds,
+        duration_seconds: recording.duration_seconds,
       })
       await queryClient.invalidateQueries({ queryKey: ["case", id] })
-    } catch (e) {
-      setSendError(friendlyError(e))
+    } catch (error) {
+      setSendError(friendlyError(error))
+    } finally {
+      busy.current = false
+      setSending(false)
     }
   }
-
-  const submit = async () => {
-    const body = text.trim()
-    if (!body) return
-    setText("")
-    await postText(body).catch(() => setText(body))
-  }
-
   return (
-    <div>
-      <header className="mb-4 flex flex-wrap items-center gap-3">
-        <Link to="/doctor" className="flex h-11 items-center gap-1 font-semibold text-brand-700">
-          <ChevronLeft className="size-5" aria-hidden /> Queue
-        </Link>
-        <h1 className="text-headline-m">Case</h1>
-        {c.urgency && <UrgencyBadge urgency={c.urgency} />}
-        <span className="text-body-m text-ink-600">Opened {formatDateTime(c.created_at)}</span>
-        {c.status === "paid" && (
-          <Button size="sm" className="ml-auto" loading={claim.isPending} onClick={() => claim.mutate()}>
+    <motion.div
+      variants={staggerOnMount()}
+      initial="hidden"
+      animate="show"
+      className="mx-auto flex max-w-6xl min-w-0 flex-col gap-5"
+    >
+      <PageHeader
+        eyebrow="Doctor workspace"
+        title="Consultation"
+        subtitle={`Created ${formatDateTime(c.created_at)}`}
+        back={
+          <IconRouterLink
+            to="/doctor"
+            icon={ArrowLeft}
+            label="Back to queue"
+            variant="glass"
+            className="mb-4"
+          />
+        }
+        action={
+          c.urgency ? <UrgencyBadge urgency={c.urgency} size="sm" /> : undefined
+        }
+      />
+      <p className="text-body-m text-ink-600">
+        Updated {timeAgo(query.dataUpdatedAt, now)} ·{" "}
+        {online ? "Checks for replies every 15 seconds" : "Offline"}
+      </p>
+      {query.isError && (
+        <Feedback error>
+          {friendlyError(query.error)} The last loaded case remains visible.
+        </Feedback>
+      )}
+      {c.status === "paid" && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-mint p-5">
+          <p className="text-body-m">
+            Claim this case before replying or issuing a code.
+          </p>
+          <Button
+            disabled={!online}
+            loading={claim.isPending}
+            onClick={() => claim.mutate()}
+          >
             Claim case
           </Button>
-        )}
-      </header>
-
-      <div className="mb-4 grid grid-cols-3 rounded-md bg-white p-1 ring-1 ring-line lg:hidden" role="tablist">
-        {(["patient", "chat", "actions"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={cn("h-10 rounded-[9px] text-body-m font-semibold capitalize", tab === t ? "bg-brand-700 text-white" : "text-ink-600")}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[300px_1fr_300px]">
-        <section className={cn(tab !== "patient" && "hidden lg:block")} aria-label="Patient and triage">
-          <PatientPanel data={data} />
-        </section>
-
-        <section
-          className={cn("flex min-h-[60vh] flex-col rounded-xl bg-white shadow-[var(--shadow-elev-1)]", tab !== "chat" && "hidden lg:flex")}
+        </div>
+      )}
+      {claim.isError && <Feedback error>{friendlyError(claim.error)}</Feedback>}
+      {!online && (
+        <Feedback>Connect to reply, issue a code or close the case.</Feedback>
+      )}
+      {c.status === "open" && c.doctor_id !== session?.sub && (
+        <Feedback>
+          This case is assigned to another doctor. You can review the details.
+        </Feedback>
+      )}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <motion.section
+          variants={popIn}
+          className="flex min-w-0 flex-col gap-4"
           aria-label="Conversation"
         >
-          <ol className="flex flex-1 flex-col gap-2 overflow-y-auto p-4" aria-live="polite">
-            {items.length === 0 && <li className="m-auto text-body-m text-ink-600">No messages yet.</li>}
-            {items.map((item) => (
-              <ChatBubble key={item.key} item={item} />
-            ))}
-            <div ref={bottom} />
-          </ol>
-          {sendError && <Notice tone="error" className="mx-3 mb-2">{sendError}</Notice>}
-          {closed ? (
-            <p className="border-t border-line px-4 py-3 text-center text-body-m text-ink-600">This case is closed.</p>
+          <Card className="overflow-hidden rounded-xl">
+            <h2 className="flex items-center gap-3 border-b border-line p-5 text-title-l">
+              <MessageCircle className="size-5 text-brand-700" aria-hidden />
+              Conversation
+            </h2>
+            <ol
+              className="flex max-h-96 min-h-64 flex-col gap-3 overflow-y-auto p-4"
+              aria-live="polite"
+              aria-label="Messages"
+            >
+              {!items.length && (
+                <li className="m-auto text-body-m text-ink-600">
+                  No messages yet.
+                </li>
+              )}
+              {items.map((item) => (
+                <ChatBubble key={item.key} item={item} />
+              ))}
+              <li ref={bottom} aria-hidden />
+            </ol>
+          </Card>
+          {sendError && <Feedback error>{sendError}</Feedback>}
+          {c.status === "closed" ? (
+            <Feedback>This case is closed.</Feedback>
           ) : (
             <form
-              className="flex items-end gap-2 border-t border-line p-3"
+              className="flex min-w-0 flex-col gap-3 shape-bl p-4 glass-strong"
               onSubmit={(e) => {
                 e.preventDefault()
                 void submit()
               }}
             >
-              <label htmlFor="doctor-reply" className="sr-only">
-                Reply
+              <label htmlFor="doctor-reply" className="text-label-l">
+                Reply to the patient
               </label>
-              <textarea
-                id="doctor-reply"
-                rows={1}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    void submit()
-                  }
-                }}
-                placeholder="Type a reply…"
-                className="max-h-32 min-h-12 flex-1 resize-none rounded-[24px] border border-line bg-cream px-4 py-3 text-body-l focus:border-brand-500 focus:bg-white focus:outline-none"
-              />
-              {text.trim() ? (
-                <button type="submit" aria-label="Send reply" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white">
-                  <SendHorizontal className="size-5" aria-hidden />
-                </button>
-              ) : (
-                <HoldToRecord size="md" label="Hold to record a voice reply" onRecorded={(r) => void postVoice(r)} />
-              )}
+              <div className="flex min-w-0 items-end gap-3">
+                <Textarea
+                  id="doctor-reply"
+                  rows={2}
+                  disabled={!canWrite || sending}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault()
+                      void submit()
+                    }
+                  }}
+                  placeholder="Type a reply…"
+                  className="min-w-0 flex-1 resize-none"
+                />
+                {text.trim() ? (
+                  <IconButton
+                    type="submit"
+                    icon={SendHorizontal}
+                    label="Send reply"
+                    variant="filled"
+                    disabled={!canWrite || sending}
+                  />
+                ) : canWrite && !sending ? (
+                  <HoldToRecord
+                    size="md"
+                    label="Hold to record a voice reply"
+                    onRecorded={(r) => void postVoice(r)}
+                  />
+                ) : null}
+              </div>
+              <p className="text-label-m text-ink-600" role="status">
+                {sending
+                  ? "Sending…"
+                  : canWrite
+                    ? "Connected · ready to send"
+                    : "Replying is unavailable until this case is claimed and connected."}
+              </p>
             </form>
           )}
-        </section>
-
-        <section className={cn(tab !== "actions" && "hidden lg:block")} aria-label="Actions">
-          <ActionsPanel data={data} onMessage={postText} />
-        </section>
+        </motion.section>
+        <motion.aside
+          variants={popIn}
+          className="flex min-w-0 flex-col gap-4"
+          aria-label="Triage and case actions"
+        >
+          <PatientPanel data={data} />
+          <ActionsPanel
+            key={id}
+            data={data}
+            onMessage={postText}
+            canWrite={canWrite}
+          />
+        </motion.aside>
       </div>
-    </div>
+    </motion.div>
   )
 }

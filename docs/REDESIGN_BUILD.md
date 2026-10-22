@@ -48,7 +48,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | C1 ✅ | `features/profile/Profile.tsx` | `/app/profile` |
 | C2 ✅ | `features/profile/Household.tsx` | `/app/profile/household` |
 | C3 ✅ | `features/doctor/DoctorQueue.tsx` | `/doctor` |
-| C4 | `features/doctor/DoctorCase.tsx` | `/doctor/case/:id` |
+| C4 ✅ | `features/doctor/DoctorCase.tsx` | `/doctor/case/:id` |
 | C5 ✅ | `features/auth/SignIn.tsx` + `features/auth/AuthCallback.tsx` | `/sign-in`, `/auth/callback` |
 | C6 | `features/public/CodeLookup.tsx` | `/rx/:code`, `/ref/:code` |
 | C7 | `features/public/HowItWorks.tsx` | `/how-it-works` |
@@ -124,6 +124,7 @@ A legacy-class → token codemod has already run over the Codex-owned files, so 
 | 2026-10-22 | Codex | C2 Household redesigned: animated add form, member cards, 10-member cap, online/write status and inline removal confirmation. Verified a demo member save, confirmation/cancel and 375/1440 layout. |
 | 2026-10-22 | Codex | C5 auth: landscape + glass sign-in, accessible loading/error feedback and existing Cognito/demo paths. Shared local `features/auth/destination.ts` blocks external/backslash/control-character/looping return URLs and enforces role routes in both sign-in/callback; 10 regression cases pass. Demo Patient and Doctor sign-in and 375/1440 layout verified. Actual Cognito callback requires configured live identity flow and was not exercised in mock mode. |
 | 2026-10-22 | Codex | C3 Doctor Queue redesigned: actual urgency counts in glass chips, RED-first/oldest sorting, waiting/my-cases filters, spring layout updates, connected claim state and visible-only 20 s polling with last update. Verified populated mock case at 375/1440 and claim flow. Queue endpoint has no age/triage payload: show linked-triage context and read age in the case, avoiding invented ages or one request per row. |
+| 2026-10-22 | Codex | C4 Doctor Case: responsive two-column conversation/triage-actions workspace (stacked in the same order on mobile), solid audit/forms, glass composer, claim/ownership/connection gating, visible-only polling and cached-data retention on poll errors. Text retry keeps its idempotency key; issued Rx/referral codes show neutral CodeCard and retry sharing with the same key, distinguishing code issuance from chat delivery. Mock claim, text reply, Rx/referral issue + chat sharing and close confirmation exercised; both widths checked. Voice components preserved; microphone/live S3 upload and actual clinical triage review were not exercised. |
 | 2026-10-22 | Codex request | Profile/household writes cannot currently join the outbox (it supports triage/consultations/messages only, and household POST has no idempotency key). Retaining online-only writes with clear connection status; request a shared offline/idempotency design before promising offline profile edits. Existing frozen Notice/StatusMark use urgency backgrounds for non-clinical outcomes, and ChatBubble has off-scale type/radii; please reconcile during Claude's final shared-component QA. |
 
 ## 7. How to run, verify and hand back
