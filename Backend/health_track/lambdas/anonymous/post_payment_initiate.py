@@ -1,21 +1,14 @@
-import json, logging, os, time, uuid
-import urllib.request
+import logging, os, time, uuid
 
-import boto3
 from health_track_common.anonymous import ANON_PREFIX
+from health_track_common.fapshi import fapshi_initiate
 from health_track_common.response import ok, err
 from anon_util import MAX_ID_CHARS, get_own_consultation, parse_body, response_headers, start, table
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-FAPSHI_BASE = "https://live.fapshi.com"
 MAX_AMOUNT_XAF = 1_000_000
-
-
-def _get_secret(secret_arn: str) -> str:
-    sm = boto3.client("secretsmanager")
-    return sm.get_secret_value(SecretId=secret_arn).get("SecretString", "")
 
 
 def handler(event, context):
@@ -61,26 +54,15 @@ def handler(event, context):
             fapshi_ref = f"sandbox-{payment_id[:8]}"
             payment_url = f"https://fapshi.com/pay/sandbox/{fapshi_ref}"
         else:
-            api_key = _get_secret(os.environ["FAPSHI_API_KEY_SECRET_ARN"])
-            payload = json.dumps({
-                "amount": amount_xaf,
-                "phone": phone,
-                "externalId": payment_id,
-                "userId": payer_reference,
-                "redirectUrl": redirect_url,
-                "message": f"Health Track consultation {consultation_id[:8]}",
-            }).encode()
-            req = urllib.request.Request(
-                f"{FAPSHI_BASE}/initiate-pay",
-                data=payload,
-                headers={"Content-Type": "application/json",
-                         "apiuser": api_key.split(":")[0], "apikey": api_key.split(":")[-1]},
-                method="POST",
+            fapshi_ref, payment_url = fapshi_initiate(
+                api_key_secret_arn=os.environ["FAPSHI_API_KEY_SECRET_ARN"],
+                amount=amount_xaf,
+                phone=phone,
+                external_id=payment_id,
+                user_id=payer_reference,
+                redirect_url=redirect_url,
+                message=f"Health Track consultation {consultation_id[:8]}",
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                fapshi_resp = json.loads(resp.read())
-            fapshi_ref = fapshi_resp.get("transId", "")
-            payment_url = fapshi_resp.get("link", "")
 
         table("PAYMENT_TABLE").put_item(Item={
             "payment_id":      payment_id,

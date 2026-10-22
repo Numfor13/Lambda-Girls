@@ -209,3 +209,50 @@ def test_get_payment_forbidden(aws_resources):
 def test_get_payment_not_found(aws_resources):
     resp = get_payment(_event("u6", method="GET", path_params={"payment_id": "no-such"}), None)
     assert resp["statusCode"] == 404
+
+
+def test_initiate_live_fapshi_request_shape(aws_resources, monkeypatch):
+    """Characterises the non-dev Fapshi call (pins behaviour across the shared-module refactor)."""
+    import io
+    from unittest.mock import patch
+    sm = boto3.client("secretsmanager", region_name="us-east-1")
+    arn = sm.create_secret(Name="pay-fapshi-key", SecretString="user9:key9")["ARN"]
+    monkeypatch.setenv("ENV_NAME", "staging")
+    monkeypatch.setenv("FAPSHI_API_KEY_SECRET_ARN", arn)
+    captured = {}
+
+    class _Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        captured.update(url=req.full_url, method=req.get_method(), timeout=timeout,
+                        headers={k.lower(): v for k, v in req.header_items()},
+                        payload=json.loads(req.data))
+        return _Resp(json.dumps({"transId": "TX-9", "link": "https://pay.example/TX-9"}).encode())
+
+    with patch("urllib.request.urlopen", fake_urlopen):
+        resp = post_initiate(_event("u1", body={
+            "consultation_id": "c-pending", "amount_xaf": 3000,
+            "phone": "+237600000001", "redirect_url": "https://app/done",
+        }), None)
+    assert resp["statusCode"] == 201
+    body = json.loads(resp["body"])
+    assert body["fapshi_ref"] == "TX-9"
+    assert body["payment_url"] == "https://pay.example/TX-9"
+    assert captured["url"] == "https://live.fapshi.com/initiate-pay"
+    assert captured["method"] == "POST"
+    assert captured["timeout"] == 10
+    assert captured["headers"]["apiuser"] == "user9"
+    assert captured["headers"]["apikey"] == "key9"
+    assert captured["headers"]["content-type"] == "application/json"
+    assert captured["payload"] == {
+        "amount": 3000,
+        "phone": "+237600000001",
+        "externalId": body["payment_id"],
+        "redirectUrl": "https://app/done",
+        "message": "Health Track consultation c-pendin",
+    }
