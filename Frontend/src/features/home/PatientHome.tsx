@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
+import { motion } from "motion/react"
 import { ChevronRight, Download, MapPin, MessagesSquare, Plus, Stethoscope, Siren } from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
 import { ButtonLink } from "@/design/components/Button"
+import { EASE_OUT } from "@/design/motion"
 import { Avatar } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { useProfile } from "@/features/profile/useProfile"
@@ -12,6 +14,8 @@ import { useNow } from "@/lib/hooks"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { db } from "@/offline/db"
+
+const MotionLink = motion.create(Link)
 
 interface InstallEvent extends Event {
   prompt: () => Promise<void>
@@ -82,18 +86,21 @@ export default function PatientHome() {
       </header>
 
       <nav aria-label="Quick actions" className="grid grid-cols-2 gap-3">
-        {TILES.map((t) => (
-          <Link
+        {TILES.map((t, i) => (
+          <MotionLink
             key={t.label}
             to={t.to}
             className={cn(
               "flex min-h-32 flex-col justify-between rounded-[16px] p-4 transition-transform active:scale-[0.98]",
               t.tone,
             )}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: EASE_OUT, delay: i * 0.08 }}
           >
             <t.icon className="size-8" strokeWidth={1.75} aria-hidden />
             <span className="font-display text-[17px] leading-tight font-bold">{t.label}</span>
-          </Link>
+          </MotionLink>
         ))}
       </nav>
 

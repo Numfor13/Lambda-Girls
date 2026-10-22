@@ -1,7 +1,11 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { motion } from "motion/react"
 import { ArrowRight, ArrowUpRight, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { hoverZoomTrigger, zoomVariants } from "@/design/motion"
+
+const MotionLink = motion.create(Link)
 
 /**
  * Photo card with a bottom gradient and caption. Real photography goes in
@@ -28,32 +32,35 @@ export function ImageCard({
 }) {
   const [failed, setFailed] = useState(false)
   return (
-    <Link
+    <MotionLink
       to={to}
       className={cn(
         "group relative block overflow-hidden rounded-[16px] bg-brand-900 shadow-[var(--shadow-float)]",
         className,
       )}
+      {...hoverZoomTrigger}
     >
       {failed ? (
-        <div
+        <motion.div
           className={cn(
             "absolute inset-0 flex items-start justify-center bg-gradient-to-br pt-[18%]",
             fallbackTone,
           )}
           aria-hidden
+          variants={zoomVariants}
         >
           <span className="flex size-28 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
             <Icon className="size-14 text-white/80" strokeWidth={1.25} />
           </span>
-        </div>
+        </motion.div>
       ) : (
-        <img
+        <motion.img
           src={image}
           alt=""
           loading="lazy"
           onError={() => setFailed(true)}
-          className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          className="absolute inset-0 size-full object-cover"
+          variants={zoomVariants}
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
@@ -73,6 +80,6 @@ export function ImageCard({
           </span>
         )}
       </div>
-    </Link>
+    </MotionLink>
   )
 }

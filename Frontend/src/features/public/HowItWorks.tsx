@@ -1,5 +1,6 @@
 import { CreditCard, MessagesSquare, Stethoscope, WifiOff } from "lucide-react"
 import { ButtonLink } from "@/design/components/Button"
+import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
 import { AdvisoryNote, Eyebrow } from "@/design/components/primitives"
 import { formatXaf } from "@/lib/format"
 import { env } from "@/config/env"
@@ -32,25 +33,27 @@ const PROMISES = [
 export default function HowItWorks() {
   return (
     <div className="container-page section-y">
-      <Eyebrow>How it works</Eyebrow>
-      <h1 className="mt-4 max-w-2xl text-[36px] leading-[1.08] font-extrabold tracking-[-0.02em] lg:text-[48px]">
-        Three steps to the right care.
-      </h1>
+      <Reveal>
+        <Eyebrow>How it works</Eyebrow>
+        <h1 className="mt-4 max-w-2xl text-[36px] leading-[1.08] font-extrabold tracking-[-0.02em] lg:text-[48px]">
+          Three steps to the right care.
+        </h1>
+      </Reveal>
 
-      <ol className="mt-12 grid gap-5 md:grid-cols-3">
+      <StaggerContainer as="ol" className="mt-12 grid gap-5 md:grid-cols-3" stagger={0.12}>
         {STEPS.map((s, i) => (
-          <li key={s.title} className="rounded-[16px] border border-line bg-white p-6">
+          <StaggerItem as="li" key={s.title} className="rounded-[16px] border border-line bg-white p-6">
             <span className="flex size-12 items-center justify-center rounded-full bg-mint">
               <s.icon className="size-6 text-brand-700" aria-hidden />
             </span>
             <p className="mt-5 text-sm font-semibold text-brand-700">Step {i + 1}</p>
             <h2 className="mt-1 text-[20px] font-bold">{s.title}</h2>
             <p className="mt-2 text-[15px] text-ink-600">{s.body}</p>
-          </li>
+          </StaggerItem>
         ))}
-      </ol>
+      </StaggerContainer>
 
-      <section className="mt-14 grid gap-8 rounded-[16px] bg-mint p-6 sm:p-10 lg:grid-cols-[auto_1fr]">
+      <Reveal as="section" className="mt-14 grid gap-8 rounded-[16px] bg-mint p-6 sm:p-10 lg:grid-cols-[auto_1fr]">
         <WifiOff className="size-12 text-brand-700" strokeWidth={1.5} aria-hidden />
         <div>
           <h2 className="text-[24px] font-bold">Works when the network doesn't</h2>
@@ -60,17 +63,19 @@ export default function HowItWorks() {
             your phone and goes out as soon as you're back online.
           </p>
         </div>
-      </section>
+      </Reveal>
 
       <section id="help" className="mt-14 scroll-mt-24">
-        <h2 className="text-[24px] font-bold">Four things we say before anyone asks</h2>
-        <ul className="mt-5 grid gap-3 md:grid-cols-2">
+        <Reveal>
+          <h2 className="text-[24px] font-bold">Four things we say before anyone asks</h2>
+        </Reveal>
+        <StaggerContainer as="ul" className="mt-5 grid gap-3 md:grid-cols-2" stagger={0.08}>
           {PROMISES.map((p) => (
-            <li key={p} className="rounded-[12px] border border-line bg-white p-4 text-[15px]">
+            <StaggerItem as="li" key={p} className="rounded-[12px] border border-line bg-white p-4 text-[15px]">
               {p}
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerContainer>
         <AdvisoryNote className="mt-6" />
         <div className="mt-8 flex flex-wrap gap-3">
           <ButtonLink to="/app/triage" trailing="arrow">

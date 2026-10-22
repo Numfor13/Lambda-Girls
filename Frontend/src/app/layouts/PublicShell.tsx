@@ -2,8 +2,9 @@ import { useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { useAuth, homeFor } from "@/auth/AuthProvider"
-import { Logo, LogoMark } from "@/design/components/Logo"
+import { Logo, LogoMark, Wordmark } from "@/design/components/Logo"
 import { ButtonLink, buttonClass } from "@/design/components/Button"
+import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
 import { flags } from "@/config/flags"
 import { cn } from "@/lib/utils"
 
@@ -158,7 +159,7 @@ export function PublicFooter() {
   return (
     <footer className="relative overflow-hidden bg-brand-900 text-white">
       <div className="container-page relative z-10">
-        <div className="flex flex-col items-start justify-between gap-6 border-b border-white/15 py-12 sm:flex-row sm:items-center lg:py-14">
+        <Reveal className="flex flex-col items-start justify-between gap-6 border-b border-white/15 py-12 sm:flex-row sm:items-center lg:py-14">
           <p className="font-display text-[28px] leading-[1.15] font-bold tracking-tight text-white lg:text-[34px]">
             Good care starts
             <br />
@@ -171,15 +172,15 @@ export function PublicFooter() {
             Find care near me
             <span aria-hidden>↗</span>
           </Link>
-        </div>
+        </Reveal>
 
-        <div className="grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div>
+        <StaggerContainer className="grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]" stagger={0.1}>
+          <StaggerItem>
             <Logo light size="lg" />
             <p className="mt-6 text-[15px] text-white/85">Connecting communities with care.</p>
-          </div>
+          </StaggerItem>
           {FOOTER_COLUMNS.map((col) => (
-            <div key={col.title}>
+            <StaggerItem key={col.title}>
               <p className="text-[15px] font-semibold text-white">{col.title}</p>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((l) => (
@@ -190,9 +191,9 @@ export function PublicFooter() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
 
         <div className="flex flex-col gap-4 border-t border-white/15 py-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[13px] text-white/85">© CareBridge</p>
@@ -201,13 +202,11 @@ export function PublicFooter() {
       </div>
 
       <div
-        className="pointer-events-none flex items-center justify-center gap-6 pb-2 opacity-[0.07] select-none"
+        className="pointer-events-none flex items-center justify-center gap-4 overflow-hidden px-4 pb-4 opacity-[0.07] select-none sm:gap-8"
         aria-hidden
       >
-        <LogoMark light className="h-24 w-28 sm:h-36 sm:w-40" />
-        <span className="font-display text-[72px] leading-none font-extrabold tracking-tight sm:text-[120px] lg:text-[150px]">
-          CareBridge
-        </span>
+        <LogoMark className="h-20 brightness-0 invert sm:h-32 lg:h-40" />
+        <Wordmark light className="h-16 sm:h-28 lg:h-36" />
       </div>
     </footer>
   )
