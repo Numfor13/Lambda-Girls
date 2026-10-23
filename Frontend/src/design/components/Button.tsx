@@ -23,7 +23,9 @@ type Size = "sm" | "md" | "lg"
 type Trailing = "arrow" | "external" | null
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand-700 text-white shadow-[var(--shadow-elev-1)] hover:bg-brand-800",
+  // Opaque disabled state: primary buttons often float (sticky) over content.
+  primary:
+    "bg-brand-700 text-white shadow-[var(--shadow-elev-1)] hover:bg-brand-800 disabled:bg-mint-200 disabled:text-ink-400 disabled:opacity-100",
   tonal: "bg-mint text-brand-900 hover:bg-mint-200",
   glass: "glass text-brand-900",
   secondary: "bg-white text-brand-900 ring-[1.5px] ring-brand-700/35 ring-inset hover:bg-mint",

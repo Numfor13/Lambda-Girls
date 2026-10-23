@@ -298,8 +298,10 @@ export function Notice({
       className={cn(
         "rounded-md px-4 py-3 text-body-m",
         tone === "info" && "bg-mint text-brand-900",
-        tone === "success" && "bg-urgent-green-50 text-urgent-green",
-        tone === "warn" && "bg-urgent-amber-50 text-urgent-amber-ink",
+        // Urgency greens/ambers are reserved for triage; success and warn stay neutral.
+        // Error keeps red: a failed action is the one non-clinical place it is allowed.
+        tone === "success" && "bg-mint text-brand-900 ring-1 ring-brand-500/25 ring-inset",
+        tone === "warn" && "bg-cream text-ink-900 ring-1 ring-line ring-inset",
         tone === "error" && "bg-urgent-red-50 text-urgent-red",
         className,
       )}

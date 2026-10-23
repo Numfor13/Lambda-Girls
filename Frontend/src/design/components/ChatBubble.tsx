@@ -22,7 +22,13 @@ export function ChatBubble({ item }: { item: ChatItem }) {
     <motion.li
       layout="position"
       className={cn("flex", item.mine ? "justify-end" : "justify-start")}
-      initial={{ opacity: 0, y: 16, scale: 0.92, originX: item.mine ? 1 : 0, originY: 1 }}
+      initial={{
+        opacity: 0,
+        y: 16,
+        scale: 0.92,
+        originX: item.mine ? 1 : 0,
+        originY: 1,
+      }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={SPRING.bouncy}
     >
@@ -30,9 +36,9 @@ export function ChatBubble({ item }: { item: ChatItem }) {
         className={cn(
           "max-w-[85%] rounded-lg px-4 py-2.5 sm:max-w-[70%]",
           item.mine
-            ? "rounded-br-[6px] bg-brand-700 text-white"
-            : "rounded-bl-[6px] bg-mint text-ink-900",
-          item.content_type === "voice_note" && "min-w-[240px]",
+            ? "rounded-br-sm bg-brand-700 text-white"
+            : "rounded-bl-sm bg-mint text-ink-900",
+          item.content_type === "voice_note" && "min-w-[240px]"
         )}
       >
         {item.content_type === "voice_note" && item.voice ? (
@@ -42,14 +48,14 @@ export function ChatBubble({ item }: { item: ChatItem }) {
             light={item.mine}
           />
         ) : (
-          <p className="text-[15px] leading-[22px] break-words whitespace-pre-wrap">
+          <p className="text-body-l break-words whitespace-pre-wrap">
             {item.text_body}
           </p>
         )}
         <div
           className={cn(
-            "mt-1 flex items-center justify-end gap-2 text-[11px]",
-            item.mine ? "text-white/75" : "text-ink-400",
+            "mt-1 flex items-center justify-end gap-2 text-label-m",
+            item.mine ? "text-white/75" : "text-ink-400"
           )}
         >
           <time dateTime={new Date(item.created_at).toISOString()}>

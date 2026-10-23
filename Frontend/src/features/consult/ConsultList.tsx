@@ -1,13 +1,17 @@
 import { Link } from "react-router-dom"
 import { motion } from "motion/react"
-import { popIn, staggerOnMount } from "@/design/motion"
+import { SPRING, popIn, staggerOnMount } from "@/design/motion"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronRight, MessagesSquare, Plus } from "lucide-react"
+import { ChevronRight, MessagesSquare, Plus, Stethoscope } from "lucide-react"
 import { consultApi } from "@/api/endpoints"
 import type { ConsultationStatus, Urgency } from "@/api/types"
 import { ButtonLink } from "@/design/components/Button"
-import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
+import {
+  EmptyState,
+  PageHeader,
+  PageSpinner,
+} from "@/design/components/primitives"
 import { SyncChip } from "@/design/components/SyncChip"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { formatDateTime } from "@/lib/format"
@@ -28,13 +32,21 @@ interface Row {
 
 export default function ConsultList() {
   const local = useLiveQuery(() => db.consultations.toArray(), [])
-  const remote = useQuery({ queryKey: ["consultations"], queryFn: consultApi.list })
+  const remote = useQuery({
+    queryKey: ["consultations"],
+    queryFn: consultApi.list,
+  })
 
-  if (local === undefined || (remote.isPending && !local.length)) return <PageSpinner />
+  if (local === undefined || (remote.isPending && !local.length))
+    return <PageSpinner />
 
-  const byServerId = new Map(local.filter((l) => l.consultation_id).map((l) => [l.consultation_id!, l]))
+  const byServerId = new Map(
+    local.filter((l) => l.consultation_id).map((l) => [l.consultation_id!, l])
+  )
   const rows: Row[] = local.map((l) => {
-    const server = remote.data?.consultations.find((c) => c.consultation_id === l.consultation_id)
+    const server = remote.data?.consultations.find(
+      (c) => c.consultation_id === l.consultation_id
+    )
     return {
       key: l.local_id,
       href: `/app/consult/${l.local_id}`,
@@ -63,7 +75,9 @@ export default function ConsultList() {
   return (
     <div>
       <PageHeader
+        eyebrow="Consults"
         title="My consultations"
+        subtitle="Doctors reply here by text or voice. Urgent cases are seen first."
         action={
           <ButtonLink to="/app/consult/new" size="sm" icon={Plus}>
             New
@@ -81,10 +95,34 @@ export default function ConsultList() {
           }
         />
       ) : (
-        <motion.ul className="flex flex-col gap-3" variants={staggerOnMount(0.05)} initial="hidden" animate="show">
+        <motion.ul
+          className="flex flex-col gap-3"
+          variants={staggerOnMount(0.05)}
+          initial="hidden"
+          animate="show"
+        >
           {rows.map((r) => (
-            <motion.li key={r.key} variants={popIn} layout>
-              <Link to={r.href} className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] transition-shadow hover:shadow-[var(--shadow-elev-2)]">
+            <motion.li
+              key={r.key}
+              variants={popIn}
+              layout
+              whileHover={{ y: -2 }}
+              transition={SPRING.fast}
+            >
+              <Link
+                to={r.href}
+                className="group flex items-center gap-4 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] transition-shadow hover:shadow-[var(--shadow-elev-2)]"
+              >
+                <span
+                  className={cn(
+                    "flex size-12 shrink-0 items-center justify-center shape-bl transition-[border-radius] group-hover:rounded-full",
+                    r.status === "closed"
+                      ? "bg-cream text-ink-400"
+                      : "bg-mint text-brand-700"
+                  )}
+                >
+                  <Stethoscope className="size-5" aria-hidden />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-title-m">{r.complaint}</p>
                   <p className="mt-0.5 text-body-m text-ink-600">
@@ -94,16 +132,25 @@ export default function ConsultList() {
                     <span
                       className={cn(
                         "rounded-full px-2.5 py-0.5 text-label-m font-semibold",
-                        r.status === "closed" ? "bg-cream text-ink-600" : "bg-mint text-brand-900",
+                        r.status === "closed"
+                          ? "bg-cream text-ink-600"
+                          : "bg-mint text-brand-900"
                       )}
                     >
                       {STATUS_LABEL[r.status]}
                     </span>
-                    {r.urgency && <UrgencyBadge urgency={r.urgency} size="sm" />}
-                    {r.sync_state && <SyncChip state={r.sync_state} refId={r.key} />}
+                    {r.urgency && (
+                      <UrgencyBadge urgency={r.urgency} size="sm" />
+                    )}
+                    {r.sync_state && (
+                      <SyncChip state={r.sync_state} refId={r.key} />
+                    )}
                   </div>
                 </div>
-                <ChevronRight className="size-5 shrink-0 text-ink-400" aria-hidden />
+                <ChevronRight
+                  className="size-5 shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
               </Link>
             </motion.li>
           ))}

@@ -14,7 +14,13 @@ import { PageTransition } from "@/design/motion"
 import { cn } from "@/lib/utils"
 
 /** Screens laid out in two columns on desktop (DESIGN_SYSTEM §4); everything else reads at 3xl. */
-const WIDE = [/^\/app\/?$/, /^\/app\/triage\/[^/]+$/, /^\/app\/facilities\/?$/]
+const WIDE = [
+  /^\/app\/?$/,
+  /^\/app\/triage\/[^/]+$/,
+  /^\/app\/facilities\/?$/,
+  /^\/app\/consult\/new$/,
+  /^\/app\/consult\/[^/]+\/pay$/,
+]
 
 export function PatientShell() {
   const { pathname } = useLocation()

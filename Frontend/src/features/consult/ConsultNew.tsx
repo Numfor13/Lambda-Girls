@@ -1,15 +1,23 @@
 import { useState } from "react"
-import { motion } from "motion/react"
-import { SPRING } from "@/design/motion"
+import { AnimatePresence, motion } from "motion/react"
+import { SPRING, popIn, staggerOnMount } from "@/design/motion"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
-import { CloudOff, Trash2, User, UserPlus, Users } from "lucide-react"
+import {
+  CloudOff,
+  Mic,
+  Trash2,
+  User,
+  UserPlus,
+  Users,
+  Wallet,
+} from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
 import { env } from "@/config/env"
 import { Button, ButtonLink } from "@/design/components/Button"
 import { ChoiceCard, Field, Select, Textarea } from "@/design/components/Field"
 import { HoldToRecord } from "@/design/components/HoldToRecord"
-import { Notice, PageHeader } from "@/design/components/primitives"
+import { Notice, PageHeader, StatusMark } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { useProfile } from "@/features/profile/useProfile"
 import { formatDateTime, formatDuration, formatXaf } from "@/lib/format"
@@ -24,7 +32,10 @@ export default function ConsultNew() {
   const profile = useProfile()
   const members = profile.data?.on_behalf_profiles ?? []
 
-  const recent = useLiveQuery(() => db.triage_results.orderBy("created_at").reverse().limit(5).toArray(), [])
+  const recent = useLiveQuery(
+    () => db.triage_results.orderBy("created_at").reverse().limit(5).toArray(),
+    []
+  )
   const [triageId, setTriageId] = useState(params.get("triage") ?? "")
   const linked = recent?.find((r) => r.result_id === triageId)
 
@@ -45,7 +56,8 @@ export default function ConsultNew() {
     if (!session) return
     setSaving(true)
     const local = await createConsultation({
-      complaint: complaint.trim() || "Voice note — please listen to my message.",
+      complaint:
+        complaint.trim() || "Voice note — please listen to my message.",
       subjectLabel: member ? member.name : "You",
       patientId: member ? `${session.sub}#${member.member_id}` : undefined,
       memberId: member?.member_id ?? null,
@@ -61,17 +73,11 @@ export default function ConsultNew() {
   if (savedOffline) {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">
-        <motion.span
-          className="flex size-20 items-center justify-center bg-mint shape-bl"
-          initial={{ scale: 0.4, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={SPRING.bouncy}
-        >
-          <CloudOff className="size-9 text-brand-700" aria-hidden />
-        </motion.span>
+        <StatusMark state="info" icon={CloudOff} />
         <h1 className="text-headline-l">Saved on your phone</h1>
         <p className="max-w-sm text-body-l text-ink-600">
-          We'll send it when you're back online. Payment opens as soon as it reaches CareBridge.
+          We'll send it when you're back online. Payment opens as soon as it
+          reaches CareBridge.
         </p>
         <ButtonLink to={`/app/consult/${savedOffline}`} trailing="arrow">
           Open conversation
@@ -81,95 +87,205 @@ export default function ConsultNew() {
   }
 
   return (
-    <div className="flex flex-col gap-7">
-      <PageHeader title="Message a doctor" subtitle="Describe what's wrong in your own words — by text or voice." />
+    <motion.div
+      variants={staggerOnMount(0.07)}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6"
+    >
+      <div className="lg:col-span-2">
+        <PageHeader
+          eyebrow="New consultation"
+          title="Message a doctor"
+          subtitle="Describe what's wrong in your own words — by text or voice."
+        />
+      </div>
 
-      <section>
-        <h2 className="mb-3 text-headline-s">Who is this for?</h2>
-        <div className="flex flex-col gap-3">
-          <ChoiceCard title="Me" icon={<User className="size-5" />} selected={subject === "me"} onClick={() => setSubject("me")} />
-          {members.map((m) => (
+      <motion.div
+        variants={staggerOnMount(0.07)}
+        className="flex flex-col gap-5"
+      >
+        <motion.section
+          variants={popIn}
+          className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+        >
+          <StepTitle n={1}>Who is this for?</StepTitle>
+          <div className="flex flex-col gap-3">
             <ChoiceCard
-              key={m.member_id}
-              title={m.name}
-              description={m.relationship}
-              icon={<Users className="size-5" />}
-              selected={subject === `member:${m.member_id}`}
-              onClick={() => setSubject(`member:${m.member_id}`)}
+              title="Me"
+              icon={<User className="size-5" />}
+              selected={subject === "me"}
+              onClick={() => setSubject("me")}
             />
-          ))}
-          <Link
-            to="/app/profile/household"
-            className="flex min-h-14 items-center gap-3 rounded-lg border-[1.5px] border-dashed border-brand-500/40 px-4 text-label-l text-brand-700 transition-colors hover:bg-mint"
-          >
-            <UserPlus className="size-5" aria-hidden /> Someone new — add them first
-          </Link>
-        </div>
-        {member && (
-          <Notice tone="info" className="mt-3">
-            This consult is kept out of your own record.
-          </Notice>
-        )}
-      </section>
-
-      <section>
-        <Field label="Link a symptom check (optional)">
-          {(id) => (
-            <Select id={id} value={triageId} onChange={(e) => setTriageId(e.target.value)}>
-              <option value="">No symptom check</option>
-              {recent?.map((r) => (
-                <option key={r.result_id} value={r.result_id}>
-                  {r.urgency} · {r.subject_label} · {formatDateTime(r.created_at)}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
-        {linked && <UrgencyBadge urgency={linked.urgency} className="mt-3" />}
-      </section>
-
-      <section>
-        <Field label="What's wrong?">
-          {(id) => (
-            <Textarea
-              id={id}
-              value={complaint}
-              maxLength={2000}
-              onChange={(e) => setComplaint(e.target.value)}
-              placeholder="For example: my son has had a fever and cough for 3 days."
-            />
-          )}
-        </Field>
-        <div className="mt-5 flex flex-col items-center gap-3 bg-mint p-5 shape-tr">
-          {voice ? (
-            <div className="flex w-full items-center justify-between gap-3">
-              <span className="text-body-l font-medium">
-                Voice note recorded · {formatDuration(voice.duration_seconds)}
-              </span>
-              <button
-                type="button"
-                className="flex h-11 items-center gap-1.5 rounded-full px-3 text-body-m font-semibold text-urgent-red"
-                onClick={() => setVoice(null)}
+            {members.map((m) => (
+              <ChoiceCard
+                key={m.member_id}
+                title={m.name}
+                description={m.relationship}
+                icon={<Users className="size-5" />}
+                selected={subject === `member:${m.member_id}`}
+                onClick={() => setSubject(`member:${m.member_id}`)}
+              />
+            ))}
+            <Link
+              to="/app/profile/household"
+              className="flex min-h-14 items-center gap-3 rounded-lg border-[1.5px] border-dashed border-brand-500/40 px-4 text-label-l text-brand-700 transition-colors hover:bg-mint"
+            >
+              <UserPlus className="size-5" aria-hidden /> Someone new — add them
+              first
+            </Link>
+          </div>
+          <AnimatePresence>
+            {member && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={SPRING.default}
+                className="overflow-hidden"
               >
-                <Trash2 className="size-4" aria-hidden /> Remove
-              </button>
-            </div>
-          ) : (
-            <HoldToRecord onRecorded={setVoice} label="Hold to describe in your own words" />
-          )}
-        </div>
-      </section>
+                <Notice tone="info" className="mt-3">
+                  This consult is kept out of your own record.
+                </Notice>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.section>
 
-      <section className="glass-strong rounded-xl p-5">
-        <p className="text-body-l">
-          Consultation fee: <strong>{formatXaf(env.consultationFeeXaf)}</strong> — paid before a
-          doctor sees your case.
-        </p>
-      </section>
+        <motion.section
+          variants={popIn}
+          className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+        >
+          <StepTitle n={2}>What's wrong?</StepTitle>
+          <Field label="Describe it in writing">
+            {(id) => (
+              <Textarea
+                id={id}
+                value={complaint}
+                maxLength={2000}
+                onChange={(e) => setComplaint(e.target.value)}
+                placeholder="For example: my son has had a fever and cough for 3 days."
+              />
+            )}
+          </Field>
+          <div className="mt-4 flex flex-col items-center gap-3 shape-tr bg-mint p-5">
+            <AnimatePresence mode="wait" initial={false}>
+              {voice ? (
+                <motion.div
+                  key="voice"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={SPRING.bouncy}
+                  className="flex w-full items-center justify-between gap-3"
+                >
+                  <span className="flex items-center gap-2 text-body-l font-medium text-brand-900">
+                    <Mic className="size-5 text-brand-700" aria-hidden />
+                    Voice note · {formatDuration(voice.duration_seconds)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={() => setVoice(null)}
+                  >
+                    Remove
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="record"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={SPRING.bouncy}
+                >
+                  <HoldToRecord
+                    onRecorded={setVoice}
+                    label="Or hold to describe it by voice"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.section>
 
-      <Button size="lg" full trailing="arrow" disabled={!canSubmit} loading={saving} onClick={submit} className="sticky bottom-[104px] z-20 lg:bottom-4">
-        Continue to payment
-      </Button>
-    </div>
+        <motion.section
+          variants={popIn}
+          className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+        >
+          <StepTitle n={3}>Link a symptom check</StepTitle>
+          <Field label="Optional — helps the doctor see your danger signs">
+            {(id) => (
+              <Select
+                id={id}
+                value={triageId}
+                onChange={(e) => setTriageId(e.target.value)}
+              >
+                <option value="">No symptom check</option>
+                {recent?.map((r) => (
+                  <option key={r.result_id} value={r.result_id}>
+                    {r.urgency} · {r.subject_label} ·{" "}
+                    {formatDateTime(r.created_at)}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          {linked && <UrgencyBadge urgency={linked.urgency} className="mt-3" />}
+        </motion.section>
+      </motion.div>
+
+      <motion.aside
+        variants={staggerOnMount(0.07)}
+        className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-4"
+      >
+        <motion.section
+          variants={popIn}
+          className="flex items-center gap-4 shape-bl bg-mint p-5"
+        >
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white">
+            <Wallet className="size-6 text-brand-700" aria-hidden />
+          </span>
+          <p className="text-body-l text-brand-900">
+            Consultation fee{" "}
+            <strong className="text-title-l">
+              {formatXaf(env.consultationFeeXaf)}
+            </strong>
+            <br />
+            <span className="text-body-m text-ink-600">
+              Paid by Mobile Money before a doctor sees your case.
+            </span>
+          </p>
+        </motion.section>
+
+        <motion.div
+          variants={popIn}
+          className="sticky bottom-[104px] z-20 lg:static"
+        >
+          <Button
+            size="lg"
+            full
+            trailing="arrow"
+            disabled={!canSubmit}
+            loading={saving}
+            onClick={submit}
+          >
+            Continue to payment
+          </Button>
+        </motion.div>
+      </motion.aside>
+    </motion.div>
+  )
+}
+
+function StepTitle({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <h2 className="mb-4 flex items-center gap-3 text-headline-s">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-800 text-label-l text-white">
+        {n}
+      </span>
+      {children}
+    </h2>
   )
 }
