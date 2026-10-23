@@ -258,15 +258,18 @@ export function SectionHeader({
   to,
   linkLabel,
   className,
+  id,
 }: {
   title: string
   to?: string
   linkLabel?: string
   className?: string
+  /** Lets the parent <section aria-labelledby> point at this heading. */
+  id?: string
 }) {
   return (
     <div className={cn("mb-3 flex items-center justify-between gap-3", className)}>
-      <h2 className="text-title-l">{title}</h2>
+      <h2 id={id} className="text-title-l">{title}</h2>
       {to && linkLabel && (
         <Link
           to={to}

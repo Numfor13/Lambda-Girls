@@ -12,6 +12,15 @@ export const STATUS_LABEL: Record<ConsultationStatus, string> = {
   closed: "Closed",
 }
 
+/**
+ * The local copy only learns its status at creation, so Home and the list went stale after
+ * payment. Call this whenever the server reports a consultation's status.
+ */
+export async function reconcileStatus(serverId: string, status: ConsultationStatus) {
+  const rec = await db.consultations.where("consultation_id").equals(serverId).first()
+  if (rec && rec.status !== status) await db.consultations.update(rec.local_id, { status })
+}
+
 export async function findLocalConsultation(ref: string): Promise<LocalConsultation | undefined> {
   return (
     (await db.consultations.get(ref)) ??

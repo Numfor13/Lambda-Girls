@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { motion } from "motion/react"
 import { AnimatePresence } from "motion/react"
@@ -24,7 +24,7 @@ import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { db, type SyncState } from "@/offline/db"
-import { STATUS_LABEL } from "./actions"
+import { STATUS_LABEL, reconcileStatus } from "./actions"
 
 interface Row {
   key: string
@@ -43,6 +43,9 @@ export default function ConsultList() {
     queryKey: ["consultations"],
     queryFn: consultApi.list,
   })
+  useEffect(() => {
+    for (const c of remote.data?.consultations ?? []) void reconcileStatus(c.consultation_id, c.status)
+  }, [remote.data])
   const [show, setShow] = useState<"active" | "closed">("active")
   const [q, setQ] = useState("")
 

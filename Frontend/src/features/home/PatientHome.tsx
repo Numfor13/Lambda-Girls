@@ -20,7 +20,7 @@ import {
   ArrowUpRight,
   type LucideIcon,
 } from "lucide-react"
-import { extendedApi } from "@/api/endpoints"
+import { consultApi, extendedApi } from "@/api/endpoints"
 import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
 import { Button, ButtonA, ButtonLink } from "@/design/components/Button"
@@ -36,6 +36,7 @@ import { env } from "@/config/env"
 import { cn } from "@/lib/utils"
 import { db, type LocalConsultation } from "@/offline/db"
 import { useFacilities } from "@/offline/facilities"
+import { reconcileStatus } from "@/features/consult/actions"
 
 interface InstallEvent extends Event {
   prompt: () => Promise<void>
@@ -242,10 +243,7 @@ function MoreServices() {
   if (!items.length) return null
   return (
     <motion.section variants={popIn} aria-labelledby="services-title">
-      <SectionHeader title="More services" />
-      <h2 id="services-title" className="sr-only">
-        More services
-      </h2>
+      <SectionHeader id="services-title" title="More services" />
       <motion.div
         className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3"
         variants={staggerOnMount(0.05)}
@@ -281,13 +279,11 @@ function ActiveConsult({
   return (
     <motion.section variants={popIn} aria-labelledby="active-title">
       <SectionHeader
+        id="active-title"
         title="Active consultation"
         to="/app/consults"
         linkLabel="See all"
       />
-      <h2 id="active-title" className="sr-only">
-        Active consultation
-      </h2>
       {consult ? (
         <motion.div
           layout
@@ -539,6 +535,16 @@ export default function PatientHome() {
   const facilities = useFacilities()
   const { coords } = useGeolocation()
 
+  // Pull fresh statuses so the active-consultation card never shows "Pay" for a paid case.
+  const remoteConsults = useQuery({
+    queryKey: ["consultations"],
+    queryFn: consultApi.list,
+    enabled: Boolean(session),
+  })
+  useEffect(() => {
+    for (const c of remoteConsults.data?.consultations ?? []) void reconcileStatus(c.consultation_id, c.status)
+  }, [remoteConsults.data])
+
   const latestConsult = useLiveQuery(
     () =>
       db.consultations
@@ -572,13 +578,11 @@ export default function PatientHome() {
           {session ? <ActiveConsult consult={latestConsult} /> : <SignInCard />}
           <motion.section variants={popIn} aria-labelledby="nearby-title">
             <SectionHeader
+              id="nearby-title"
               title="Nearby facilities"
               to="/app/facilities"
               linkLabel={coords ? "See all" : "Open list"}
             />
-            <h2 id="nearby-title" className="sr-only">
-              Nearby facilities
-            </h2>
             <motion.ul
               className="flex flex-col gap-2"
               variants={staggerOnMount(0.05, 0.1)}

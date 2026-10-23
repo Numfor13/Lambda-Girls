@@ -62,7 +62,7 @@ export default function ConsultNew() {
     if (!session || saving) return
     if (describeError) {
       setTried(true)
-      document.getElementById("complaint")?.focus()
+      document.querySelector<HTMLElement>("[data-field=complaint]")?.focus()
       return
     }
     setSaving(true)
@@ -175,9 +175,10 @@ export default function ConsultNew() {
             count={complaint.length}
             max={2000}
           >
-            {() => (
+            {(id) => (
               <Textarea
-                id="complaint"
+                id={id}
+                data-field="complaint"
                 value={complaint}
                 maxLength={2000}
                 aria-invalid={tried && describeError ? true : undefined}

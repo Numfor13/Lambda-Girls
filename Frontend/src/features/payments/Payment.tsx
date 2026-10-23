@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { motion } from "motion/react"
@@ -30,7 +30,7 @@ import { popIn, staggerOnMount } from "@/design/motion"
 import { formatXaf } from "@/lib/format"
 import { normalisePhone, rules } from "@/lib/form"
 import { useNow, useOnline } from "@/lib/hooks"
-import { findLocalConsultation } from "@/features/consult/actions"
+import { findLocalConsultation, reconcileStatus } from "@/features/consult/actions"
 
 const POLL_MS = 3_000
 const TIMEOUT_MS = 120_000
@@ -70,6 +70,10 @@ function PaymentStatus({
       q.state.data?.status === "initiated" && !timedOut ? POLL_MS : false,
   })
   const status = payment.data?.status
+  const paidConsultation = status === "confirmed" ? payment.data?.consultation_id : undefined
+  useEffect(() => {
+    if (paidConsultation) void reconcileStatus(paidConsultation, "paid")
+  }, [paidConsultation])
 
   if (status === "confirmed") {
     return (
@@ -245,7 +249,7 @@ export default function Payment() {
   const pay = () => {
     if (phoneError) {
       setPhoneTouched(true)
-      document.getElementById("pay-phone")?.focus()
+      document.querySelector<HTMLElement>("[data-field=pay-phone]")?.focus()
       return
     }
     initiate.mutate()
@@ -308,9 +312,10 @@ export default function Payment() {
           error={shownPhoneError}
           required
         >
-          {() => (
+          {(id) => (
             <Input
-              id="pay-phone"
+              id={id}
+              data-field="pay-phone"
               type="tel"
               inputMode="tel"
               autoComplete={payer === "me" ? "tel" : "off"}

@@ -31,6 +31,7 @@ import { db } from "@/offline/db"
 import {
   extractCodes,
   findLocalConsultation,
+  reconcileStatus,
   sendText,
   sendVoice,
   STATUS_LABEL,
@@ -98,6 +99,9 @@ export default function ConsultChat() {
   const bottom = useRef<HTMLDivElement>(null)
 
   const consultation = query.data?.consultation
+  useEffect(() => {
+    if (consultation) void reconcileStatus(consultation.consultation_id, consultation.status)
+  }, [consultation])
   const status = consultation?.status ?? local?.status ?? "pending_payment"
   const urgency = consultation?.urgency ?? local?.urgency ?? null
   const complaint = consultation?.complaint ?? local?.complaint
