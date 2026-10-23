@@ -159,7 +159,7 @@ export function NavRail({
       initial={{ x: -40, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={SPRING.default}
-      className="glass-strong fixed top-3 bottom-3 left-3 z-30 hidden w-[248px] flex-col gap-2 rounded-xl px-4 py-6 lg:flex"
+      className="glass-strong fixed top-3 bottom-3 left-3 z-30 hidden w-[248px] flex-col gap-2 rounded-xl px-4 py-6 no-scrollbar overflow-y-auto lg:flex"
     >
       <div className="px-2">
         <Logo to={home} />

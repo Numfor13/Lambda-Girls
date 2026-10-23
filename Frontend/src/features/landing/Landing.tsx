@@ -224,13 +224,13 @@ function PreviewCard({ className }: { className?: string }) {
 function Hero() {
   return (
     <section className="relative isolate -mt-[76px] overflow-hidden bg-mint-200 lg:-mt-[92px]">
-      <Landscape className="top-[30%] -z-10 sm:top-[22%] lg:top-[26%]" />
-      <div className="container-page grid min-h-[100svh] items-center gap-10 pt-[112px] pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[140px] lg:pb-32">
+      <Landscape className="fade-top top-[30%] -z-10 sm:top-[22%] lg:top-[26%]" />
+      <div className="container-page grid min-h-[100svh] items-center gap-10 pt-[112px] pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[clamp(108px,17svh,140px)] lg:pb-[clamp(56px,11svh,128px)]">
         <motion.div variants={hero} initial="hidden" animate="show" className="max-w-[640px]">
           <motion.div variants={rise}>
             <Eyebrow>Offline-first care · Buea, Cameroon</Eyebrow>
           </motion.div>
-          <motion.h1 variants={rise} className="mt-5 text-[52px] leading-[1] font-extrabold tracking-[-0.04em] sm:text-display-l lg:text-display-xl">
+          <motion.h1 variants={rise} className="mt-4 text-[52px] lg:mt-5 leading-[1] font-extrabold tracking-[-0.04em] sm:text-display-l lg:text-display-xl">
             Care that
             <br />
             reaches you.

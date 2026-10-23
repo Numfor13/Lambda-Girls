@@ -120,28 +120,28 @@ export function Landscape({
 export function Backdrop({ tone = "brand", className }: { tone?: "brand" | "red" | "amber" | "green"; className?: string }) {
   const blobs =
     tone === "red"
-      ? ["bg-urgent-red/12", "bg-mint-200/80", "bg-urgent-red/6", "bg-brand-500/8"]
+      ? ["bg-urgent-red/16", "bg-mint-200", "bg-urgent-red/10", "bg-brand-500/16"]
       : tone === "amber"
-        ? ["bg-urgent-amber/16", "bg-mint-200/80", "bg-urgent-amber/8", "bg-brand-500/10"]
+        ? ["bg-urgent-amber/22", "bg-mint-200", "bg-urgent-amber/12", "bg-brand-500/16"]
         : tone === "green"
-          ? ["bg-urgent-green/12", "bg-mint-200/90", "bg-brand-500/10", "bg-land-far/40"]
-          : ["bg-brand-500/14", "bg-mint-200/90", "bg-brand-700/8", "bg-land-far/40"]
+          ? ["bg-urgent-green/18", "bg-mint-200", "bg-brand-500/18", "bg-land-far/60"]
+          : ["bg-brand-500/26", "bg-mint-200", "bg-brand-700/16", "bg-land-far/70"]
   const base =
     tone === "red" ? "bg-urgent-red-50" : tone === "amber" ? "bg-urgent-amber-50" : tone === "green" ? "bg-urgent-green-50" : "bg-cream"
   // Portalled to <body>: page transitions transform their content, which would trap `fixed`.
   return createPortal(
     <div className={cn("pointer-events-none fixed inset-0 -z-10 overflow-hidden", base, className)} aria-hidden>
-      <div className={cn("animate-drift absolute -top-[18%] -left-[10%] size-[60vmax] rounded-full blur-[120px]", blobs[0])} />
+      <div className={cn("animate-drift absolute -top-[18%] -left-[10%] size-[60vmax] rounded-full blur-[90px]", blobs[0])} />
       <div
-        className={cn("animate-drift absolute -top-[25%] -right-[15%] size-[55vmax] rounded-full blur-[120px]", blobs[1])}
+        className={cn("animate-drift absolute -top-[25%] -right-[15%] size-[55vmax] rounded-full blur-[90px]", blobs[1])}
         style={{ animationDelay: "-6s" }}
       />
       <div
-        className={cn("animate-drift absolute top-[45%] left-[25%] size-[45vmax] rounded-full blur-[120px]", blobs[2])}
+        className={cn("animate-drift absolute top-[45%] left-[25%] size-[45vmax] rounded-full blur-[90px]", blobs[2])}
         style={{ animationDelay: "-11s" }}
       />
       <div
-        className={cn("animate-drift absolute -right-[10%] -bottom-[20%] size-[40vmax] rounded-full blur-[120px]", blobs[3])}
+        className={cn("animate-drift absolute -right-[10%] -bottom-[20%] size-[40vmax] rounded-full blur-[90px]", blobs[3])}
         style={{ animationDelay: "-3s" }}
       />
     </div>,
