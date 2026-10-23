@@ -2,7 +2,6 @@ import { Link } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
 const MARK = { src: "/brand/carebridge-mark.png", width: 322, height: 256 }
-const FULL_LOGO = { src: "/CareBridge Healthcare Logo.png", width: 640, height: 256 }
 
 export function LogoMark({ className }: { className?: string }) {
   return (
@@ -18,7 +17,12 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
+/**
+ * Mark + live wordmark. The raster lockup's wordmark and tagline were unreadable at nav
+ * sizes, so the name is set in the display serif instead (crisp at any size, translatable).
+ */
 export function Logo({
+  light = false,
   size = "md",
   to = "/",
 }: {
@@ -27,15 +31,17 @@ export function Logo({
   to?: string
 }) {
   return (
-    <Link to={to} className="inline-flex shrink-0 items-center" aria-label="CareBridge home">
-      <img
-        src={FULL_LOGO.src}
-        width={FULL_LOGO.width}
-        height={FULL_LOGO.height}
-        alt="CareBridge"
-        draggable={false}
-        className={cn("w-auto select-none", size === "lg" ? "h-14" : "h-10")}
-      />
+    <Link to={to} className="inline-flex shrink-0 items-center gap-2 rounded-md" aria-label="CareBridge home">
+      <LogoMark className={size === "lg" ? "h-10" : "h-7"} />
+      <span
+        className={cn(
+          "font-display leading-none font-[560] tracking-[-0.02em]",
+          size === "lg" ? "text-[28px]" : "text-[21px]",
+          light ? "text-white" : "text-brand-900",
+        )}
+      >
+        CareBridge
+      </span>
     </Link>
   )
 }

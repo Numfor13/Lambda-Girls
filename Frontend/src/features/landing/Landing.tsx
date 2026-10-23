@@ -1,372 +1,542 @@
-import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { AnimatePresence, LayoutGroup, motion } from "motion/react"
+import { motion } from "motion/react"
 import {
   Activity,
   ArrowRight,
-  CreditCard,
+  ChevronRight,
+  CloudOff,
   HeartHandshake,
   MapPin,
-  Mic,
+  MessageCircle,
+  Phone,
   Play,
+  ShieldCheck,
+  Siren,
+  Smartphone,
   Users,
   WifiOff,
   type LucideIcon,
 } from "lucide-react"
 import seed from "@/data/facilities.seed.json"
+import type { Facility } from "@/api/types"
 import { env } from "@/config/env"
-import { ButtonLink, LinkArrow } from "@/design/components/Button"
+import { ButtonLink } from "@/design/components/Button"
 import { Landscape } from "@/design/components/Landscape"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { Reveal, SPRING, StaggerContainer, StaggerItem } from "@/design/motion"
-import { Eyebrow } from "@/design/components/primitives"
 import { formatXaf } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-const MotionLink = motion.create(Link)
-const FACILITY_COUNT = (seed as unknown[]).length
+/*
+ * Landing, v2 (docs/DESIGN_LANGUAGE.md). Composition taken from the reference study:
+ *  - Hero: editorial serif headline on the Buea landscape (One Medical type, Mercury scene),
+ *    with a working "What do you need?" panel instead of a picture (NHS 111 options, Wise's
+ *    live calculator): the first screen already does something.
+ *  - Bento of real product fragments, not stock photos (Stripe, Headspace, Oscar).
+ *  - One dark band for safety facts (Maven), then household + closing call to action.
+ * Every number on this page comes from data or config; sample UI is labelled "Example".
+ */
 
-const hero = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
+const FACILITIES = seed as unknown as Facility[]
+const FACILITY_COUNT = FACILITIES.length
+const COUNT = {
+  emergency: FACILITIES.filter((f) => f.capabilities.includes("emergency")).length,
+  maternity: FACILITIES.filter((f) => f.capabilities.includes("maternity")).length,
+  allDay: FACILITIES.filter((f) => f.opening_hours === "24/7").length,
+  quarters: new Set(FACILITIES.map((f) => f.quarter)).size,
 }
+const FEE = formatXaf(env.consultationFeeXaf)
+
 const rise = {
-  hidden: { opacity: 0, y: 32 },
+  hidden: { opacity: 0, y: 18 },
   show: { opacity: 1, y: 0, transition: SPRING.default },
 }
 
-// ---------- Interactive preview card ----------
+// ---------- Hero ----------
 
-const TABS = ["Triage", "Consult", "Pay"] as const
-type Tab = (typeof TABS)[number]
-
-const PREVIEW: Record<Tab, { title: string; body: string }> = {
-  Triage: {
-    title: "Know how urgent it is — in under a minute",
-    body: "Danger-sign check that works offline, re-checked by our server when you reconnect.",
+const NEEDS: { to: string; icon: LucideIcon; title: string; meta: string }[] = [
+  { to: "/app/triage", icon: Activity, title: "Check my symptoms", meta: "About 1 minute · free · works offline" },
+  {
+    to: "/app/facilities?locate=1",
+    icon: MapPin,
+    title: "Find the nearest facility",
+    meta: `${FACILITY_COUNT} around Buea, sorted by distance`,
   },
-  Consult: {
-    title: "A doctor replies by text or voice note",
-    body: "For you or someone in your household. Messages wait safely on your phone until you're online.",
-  },
-  Pay: {
-    title: "Pay by mobile money — or for someone else",
-    body: "One clear price per consultation. You get a receipt, and family can pay for you.",
-  },
-}
+  { to: "/app/consult/new", icon: MessageCircle, title: "Message a doctor", meta: `Text or voice note · ${FEE}` },
+]
 
-function TriagePreview() {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg bg-white p-4">
-      <div className="flex items-center justify-between gap-2">
-        <UrgencyBadge urgency="AMBER" />
-        <span className="text-label-m text-ink-600">Example</span>
-      </div>
-      <div className="flex items-center gap-3 rounded-md bg-cream p-3">
-        <span className="flex size-11 items-center justify-center rounded-md bg-mint">
-          <Activity className="size-5 text-brand-700" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-title-m">Nearest clinic for this</span>
-          <span className="block text-body-m text-ink-600">Sorted by distance from you</span>
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function ConsultPreview() {
-  return (
-    <div className="flex flex-col gap-2 rounded-lg bg-white p-4">
-      <motion.p
-        initial={{ opacity: 0, x: 16 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ ...SPRING.bouncy, delay: 0.05 }}
-        className="ml-auto max-w-[80%] rounded-lg rounded-br-[6px] bg-brand-700 px-4 py-2 text-body-m text-white"
-      >
-        My daughter has had a fever since yesterday.
-      </motion.p>
-      <motion.div
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ ...SPRING.bouncy, delay: 0.25 }}
-        className="flex max-w-[85%] items-center gap-3 rounded-lg rounded-bl-[6px] bg-mint px-3 py-2"
-      >
-        <span className="flex size-9 items-center justify-center rounded-full bg-brand-700 text-white">
-          <Play className="size-4 fill-current" aria-hidden />
-        </span>
-        <span className="flex h-6 items-end gap-0.5" aria-hidden>
-          {[8, 14, 20, 12, 18, 24, 10, 16, 22, 12, 8, 14].map((h, i) => (
-            <motion.span
-              key={i}
-              className="w-1 rounded-full bg-brand-700/70"
-              animate={{ height: [h * 0.5, h, h * 0.6] }}
-              transition={{ duration: 1.2, repeat: Infinity, repeatType: "mirror", delay: i * 0.05 }}
-            />
-          ))}
-        </span>
-        <span className="text-label-m text-brand-900">Doctor · 0:42</span>
-      </motion.div>
-    </div>
-  )
-}
-
-function PayPreview() {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg bg-white p-4">
-      <div className="flex items-baseline justify-between">
-        <span className="text-body-m text-ink-600">Consultation</span>
-        <motion.span
-          className="text-headline-m"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={SPRING.bouncy}
-        >
-          {formatXaf(env.consultationFeeXaf)}
-        </motion.span>
-      </div>
-      <div className="flex gap-2">
-        <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-mint px-3 text-label-m text-brand-900">
-          <CreditCard className="size-4" aria-hidden />
-          Mobile money
-        </span>
-        <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-cream px-3 text-label-m text-ink-900">
-          <Users className="size-4" aria-hidden />
-          Pay for someone
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function PreviewCard({ className }: { className?: string }) {
-  const [tab, setTab] = useState<Tab>("Triage")
-  const [paused, setPaused] = useState(false)
-  useEffect(() => {
-    if (paused) return
-    const id = window.setInterval(() => setTab((t) => TABS[(TABS.indexOf(t) + 1) % TABS.length]), 4500)
-    return () => window.clearInterval(id)
-  }, [paused])
-
+function NeedsPanel() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 60, scale: 0.92, rotate: -2 }}
-      animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-      transition={{ ...SPRING.bouncy, delay: 0.35 }}
-      onHoverStart={() => setPaused(true)}
-      onHoverEnd={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      className={cn("glass-strong flex flex-col gap-5 p-5 shape-bl sm:p-7", className)}
+      initial={{ opacity: 0, y: 28 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...SPRING.slow, delay: 0.25 }}
+      className="w-full overflow-hidden rounded-2xl bg-white shadow-[var(--shadow-float)]"
     >
-      <LayoutGroup id="preview-tabs">
-        <div className="flex items-center gap-2" role="tablist" aria-label="What CareBridge does">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={cn(
-                "relative h-10 rounded-full px-4 text-label-l transition-colors",
-                tab === t ? "text-white" : "bg-white/70 text-ink-900 ring-1 ring-line ring-inset",
-              )}
-            >
-              {tab === t && (
-                <motion.span layoutId="preview-chip" className="absolute inset-0 rounded-full bg-brand-900" transition={SPRING.bouncy} />
-              )}
-              <span className="relative">{t}</span>
-            </button>
-          ))}
-        </div>
-      </LayoutGroup>
-      <div className="relative min-h-[236px]" role="tabpanel">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -10, filter: "blur(6px)" }}
-            transition={SPRING.default}
-            className="flex flex-col gap-4"
-          >
-            <div>
-              <h2 className="text-headline-s sm:text-headline-m">{PREVIEW[tab].title}</h2>
-              <p className="mt-2 text-body-m text-ink-900">{PREVIEW[tab].body}</p>
-            </div>
-            {tab === "Triage" && <TriagePreview />}
-            {tab === "Consult" && <ConsultPreview />}
-            {tab === "Pay" && <PayPreview />}
-          </motion.div>
-        </AnimatePresence>
+      <div className="px-5 pt-5 pb-2 sm:px-7 sm:pt-7">
+        <p className="eyebrow">Start here</p>
+        <h2 className="mt-2 text-headline-m">What do you need right now?</h2>
       </div>
-      <div className="flex gap-1.5" aria-hidden>
-        {TABS.map((t) => (
-          <span key={t} className="relative h-1 flex-1 overflow-hidden rounded-full bg-brand-900/10">
-            {tab === t && (
-              <motion.span
-                key={`${t}-${paused}`}
-                className="absolute inset-y-0 left-0 rounded-full bg-brand-700"
-                initial={{ width: "0%" }}
-                animate={{ width: paused ? "100%" : "100%" }}
-                transition={paused ? { duration: 0.2 } : { duration: 4.5, ease: "linear" }}
+      <ul className="px-2 pb-2 sm:px-4">
+        {NEEDS.map((n, i) => (
+          <motion.li
+            key={n.to}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ ...SPRING.default, delay: 0.45 + i * 0.07 }}
+          >
+            <Link
+              to={n.to}
+              className="group flex items-center gap-4 rounded-lg px-3 py-3.5 transition-colors hover:bg-cream sm:px-4"
+            >
+              <span
+                className={cn(
+                  "flex size-11 shrink-0 items-center justify-center rounded-full transition-colors",
+                  i === 0 ? "bg-brand-700 text-white" : "bg-mint text-brand-700 group-hover:bg-mint-200",
+                )}
+              >
+                <n.icon className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-title-m text-ink-900">{n.title}</span>
+                <span className="block text-body-m text-ink-600">{n.meta}</span>
+              </span>
+              <ChevronRight
+                className="size-5 text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
+                aria-hidden
               />
-            )}
-          </span>
+            </Link>
+          </motion.li>
         ))}
+      </ul>
+      <div className="flex flex-col gap-3 border-t border-urgent-red/15 bg-urgent-red-50 px-5 py-4 sm:flex-row sm:items-center sm:px-7">
+        <p className="flex-1 text-body-m text-ink-900">
+          <span className="font-semibold text-urgent-red">Emergency?</span> Can&apos;t breathe, won&apos;t wake or
+          bleeding heavily: don&apos;t wait.
+        </p>
+        <a
+          href="tel:15"
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-urgent-red px-4 text-label-l text-white hover:brightness-110"
+        >
+          <Phone className="size-4" aria-hidden /> Call 15
+        </a>
       </div>
     </motion.div>
   )
 }
 
-// ---------- Sections ----------
-
 function Hero() {
   return (
-    <section className="relative isolate -mt-[76px] overflow-hidden bg-mint-200 lg:-mt-[92px]">
-      <Landscape className="fade-top top-[30%] -z-10 sm:top-[22%] lg:top-[26%]" />
-      <div className="container-page grid min-h-[100svh] items-center gap-10 pt-[112px] pb-20 lg:grid-cols-[1.1fr_0.9fr] lg:pt-[clamp(108px,17svh,140px)] lg:pb-[clamp(56px,11svh,128px)]">
-        <motion.div variants={hero} initial="hidden" animate="show" className="max-w-[640px]">
-          <motion.div variants={rise}>
-            <Eyebrow>Offline-first care · Buea, Cameroon</Eyebrow>
-          </motion.div>
-          <motion.h1 variants={rise} className="mt-4 text-[52px] lg:mt-5 leading-[1] font-extrabold tracking-[-0.04em] sm:text-display-l lg:text-display-xl">
-            Care that
-            <br />
-            reaches you.
-          </motion.h1>
-          <motion.p variants={rise} className="mt-5 text-headline-s text-brand-800">
-            Even when the network doesn’t.
+    <section className="relative isolate -mt-[76px] overflow-hidden bg-gradient-to-b from-mint via-cream to-cream lg:-mt-[92px]">
+      <div className="relative z-10 container-page grid grid-cols-[minmax(0,1fr)] items-center gap-10 pt-[124px] pb-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16 lg:pt-[clamp(128px,19svh,176px)]">
+        <motion.div
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
+          initial="hidden"
+          animate="show"
+          className="max-w-[660px]"
+        >
+          <motion.p variants={rise} className="eyebrow">
+            Buea · Fako · works offline
           </motion.p>
-          <motion.p variants={rise} className="mt-4 max-w-[520px] text-body-l text-ink-900">
-            Check danger signs, find the nearest facility and message a doctor by text or voice note — for you or
-            someone in your household, on any phone.
+          <motion.h1 variants={rise} className="mt-5 text-display-l lg:text-display-xl">
+            Care that <em className="accent">reaches you.</em>
+          </motion.h1>
+          <motion.p variants={rise} className="mt-6 max-w-[540px] text-[18px] leading-[30px] text-ink-600">
+            Check danger signs, find the nearest facility and hear from a doctor by text or voice note, for you or
+            anyone in your household. Even when the network drops.
           </motion.p>
           <motion.div variants={rise} className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink to="/app/triage" icon={Activity} size="lg">
               Check symptoms
             </ButtonLink>
-            <ButtonLink to="/app/facilities?locate=1" icon={MapPin} variant="glass" size="lg">
-              Find a facility
+            <ButtonLink to="/how-it-works" variant="secondary" size="lg" trailing="arrow">
+              How it works
             </ButtonLink>
           </motion.div>
+          <motion.ul variants={rise} className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-body-m text-ink-600">
+            {[
+              { icon: CloudOff, text: "No signal? It still works" },
+              { icon: Smartphone, text: "Any phone, no app store" },
+              { icon: ShieldCheck, text: "Urgent cases seen first" },
+            ].map((t) => (
+              <li key={t.text} className="flex items-center gap-2">
+                <t.icon className="size-4 text-brand-600" aria-hidden />
+                {t.text}
+              </li>
+            ))}
+          </motion.ul>
         </motion.div>
-        <PreviewCard className="w-full max-w-[540px] justify-self-center lg:justify-self-end" />
+        <div className="w-full max-w-[520px] justify-self-center lg:justify-self-end">
+          <NeedsPanel />
+        </div>
+      </div>
+      {/* Mount Cameroon band: the ridges run into the dark facts strip below. */}
+      <div className="relative -mt-10 h-[clamp(150px,20vw,280px)] lg:-mt-24" aria-hidden>
+        <Landscape sky={false} viewBox="0 262 1440 584" preserve="none" className="inset-0" />
       </div>
     </section>
   )
 }
 
-function GroundBand() {
-  return (
-    <section className="bg-ground text-white">
-      <div className="container-page grid gap-6 py-14 lg:grid-cols-[1fr_300px_1.2fr] lg:gap-8 lg:py-20">
-        <Reveal className="flex flex-col gap-4 bg-brand-800 p-7 shape-br">
-          <MapPin className="size-8 text-mint-200" aria-hidden />
-          <h2 className="text-headline-l text-white">{FACILITY_COUNT} verified facilities around Buea</h2>
-          <p className="text-body-m text-white/80">
-            Molyko · Buea Town · Great Soppo · Mile 17. Saved on your phone, sorted by distance, one tap to call.
-          </p>
-        </Reveal>
-        <StaggerContainer className="flex flex-col gap-4" stagger={0.1}>
-          <StaggerItem className="glass-dark rounded-xl p-6">
-            <WifiOff className="size-6 text-mint-200" aria-hidden />
-            <p className="mt-3 text-headline-m text-white">Works offline</p>
-            <p className="text-body-m text-white/80">Facilities and symptom checks need no network</p>
-          </StaggerItem>
-          <StaggerItem className="glass-dark rounded-xl p-6">
-            <p className="text-headline-m text-white">{formatXaf(env.consultationFeeXaf)}</p>
-            <p className="text-body-m text-white/80">per consultation, paid by mobile money</p>
-          </StaggerItem>
-        </StaggerContainer>
-        <Reveal variant="right" className="flex flex-col justify-center gap-6">
-          <p className="text-headline-l text-white lg:text-display-m">CHECK, FIND AND CONSULT — EVEN OFFLINE.</p>
-          <LinkArrow to="/how-it-works" light>
-            How it works
-          </LinkArrow>
-          <p className="text-body-m text-white/70">Advisory, not a diagnosis. In an emergency call 15.</p>
-        </Reveal>
-      </div>
-    </section>
-  )
-}
+// ---------- Facts strip ----------
 
-const STEPS: { icon: LucideIcon; title: string; body: string; to: string }[] = [
-  { icon: Activity, title: "Check danger signs", body: "Answer a few questions. Get red, amber or green — and why.", to: "/app/triage" },
-  { icon: MapPin, title: "Find the right place", body: "The nearest facility that can help, with one tap to call.", to: "/app/facilities" },
-  { icon: Mic, title: "Talk to a doctor", body: "Send text or a voice note. Pay by mobile money.", to: "/app/consult/new" },
-]
-
-function Steps() {
+function FactsStrip() {
+  const facts = [
+    { value: String(FACILITY_COUNT), label: "facilities saved offline" },
+    { value: String(COUNT.emergency), label: "with emergency care" },
+    { value: String(COUNT.allDay), label: "open 24/7" },
+    { value: FEE, label: "per doctor consultation" },
+  ]
   return (
-    <section className="container-page section-y">
-      <Reveal className="max-w-[640px]">
-        <Eyebrow>How it works</Eyebrow>
-        <h2 className="mt-4 text-headline-l lg:text-display-m">Three steps to the right care.</h2>
-      </Reveal>
-      <StaggerContainer className="mt-10 grid gap-4 md:grid-cols-3" stagger={0.1}>
-        {STEPS.map((s, i) => (
-          <StaggerItem key={s.title}>
-            <MotionLink
-              to={s.to}
-              whileHover={{ y: -6, borderRadius: "32px" }}
-              transition={SPRING.fast}
-              style={{ borderRadius: ["40px 16px 40px 40px", "40px 40px 40px 16px", "40px 40px 16px 40px"][i] }}
-              className={cn(
-                "group flex h-full flex-col gap-6 p-7",
-                i === 1 ? "bg-brand-700 text-white" : i === 0 ? "bg-mint" : "bg-white shadow-[var(--shadow-elev-1)]",
-              )}
-            >
-              <span className="flex items-center justify-between">
-                <span className={cn("flex size-14 items-center justify-center rounded-full", i === 1 ? "bg-white/15" : "bg-white")}>
-                  <s.icon className={cn("size-6", i === 1 ? "text-white" : "text-brand-700")} aria-hidden />
-                </span>
-                <span className={cn("text-display-m", i === 1 ? "text-white/25" : "text-brand-700/15")}>0{i + 1}</span>
-              </span>
-              <span>
-                <span className={cn("block text-headline-s", i === 1 ? "text-white" : "text-ink-900")}>{s.title}</span>
-                <span className={cn("mt-2 block text-body-l", i === 1 ? "text-white/80" : "text-ink-600")}>{s.body}</span>
-              </span>
-              <ArrowRight
-                className={cn("mt-auto size-6 transition-transform group-hover:translate-x-1", i === 1 ? "text-white" : "text-brand-700")}
-                aria-hidden
-              />
-            </MotionLink>
-          </StaggerItem>
+    <section className="bg-ground text-white" aria-label="CareBridge in numbers">
+      <div className="container-page grid grid-cols-2 gap-y-6 py-8 lg:grid-cols-4 lg:py-10">
+        {facts.map((f, i) => (
+          <Reveal
+            key={f.label}
+            delay={i * 0.05}
+            className={cn("flex flex-col gap-1 px-1 lg:px-6", i > 0 && "lg:border-l lg:border-white/12")}
+          >
+            <span className="font-display text-[34px] leading-none font-[440] tracking-[-0.02em] tabular lg:text-[44px]">
+              {f.value}
+            </span>
+            <span className="text-body-m text-white/70">{f.label}</span>
+          </Reveal>
         ))}
+      </div>
+    </section>
+  )
+}
+
+// ---------- Bento: real product fragments ----------
+
+function ExampleTag({ dark = false }: { dark?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center rounded-full px-2 text-label-m",
+        dark ? "bg-white/12 text-white/80" : "bg-ink-900/[0.05] text-ink-600",
+      )}
+    >
+      Example
+    </span>
+  )
+}
+
+function TriageVignette() {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-2)] sm:p-5">
+      <div className="flex items-center justify-between gap-2">
+        <UrgencyBadge urgency="AMBER" />
+        <ExampleTag />
+      </div>
+      <p className="font-display text-[24px] leading-[30px] font-[480] tracking-[-0.012em]">See a doctor today.</p>
+      <ul className="flex flex-col gap-1.5 text-body-m text-ink-600">
+        {["Hot body (fever)", "Breathing fast"].map((r) => (
+          <li key={r} className="flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-urgent-amber" aria-hidden />
+            {r}
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-3 rounded-lg bg-cream p-3">
+        <span className="flex size-10 items-center justify-center rounded-md bg-mint text-brand-700">
+          <MapPin className="size-[18px]" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-label-l">Nearest clinic for this</span>
+          <span className="block text-label-m font-normal text-ink-600">Sorted by distance from you</span>
+        </span>
+        <span className="flex size-9 items-center justify-center rounded-full bg-brand-700 text-white">
+          <Phone className="size-4" aria-hidden />
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function VoiceVignette() {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="ml-auto max-w-[85%] rounded-lg rounded-br-sm bg-white px-4 py-2.5 text-body-m text-ink-900 shadow-[var(--shadow-elev-1)]">
+        My daughter has had a fever since yesterday.
+      </p>
+      <div className="flex max-w-[90%] items-center gap-3 rounded-lg rounded-bl-sm bg-brand-700 px-3 py-2.5 text-white">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15">
+          <Play className="size-4 fill-current" aria-hidden />
+        </span>
+        <span className="flex h-6 flex-1 items-center gap-[3px]" aria-hidden>
+          {[6, 12, 18, 10, 22, 14, 8, 16, 20, 9, 13, 6, 11, 17].map((h, i) => (
+            <motion.span
+              key={i}
+              className="w-[3px] rounded-full bg-white/75"
+              animate={{ height: [h * 0.55, h, h * 0.7] }}
+              transition={{ duration: 1.4, repeat: Infinity, repeatType: "mirror", delay: i * 0.06 }}
+            />
+          ))}
+        </span>
+        <span className="text-label-m text-white/80 tabular">0:42</span>
+      </div>
+      <p className="pl-1 text-label-m font-normal text-ink-600">Doctor · voice note</p>
+    </div>
+  )
+}
+
+function OfflineVignette() {
+  return (
+    <div className="flex flex-col gap-2">
+      {[
+        { icon: CloudOff, text: "Offline · 2 saved on this phone", tone: "bg-white text-ink-900" },
+        { icon: ArrowRight, text: "Back online · sending…", tone: "bg-white/70 text-ink-600" },
+        { icon: ShieldCheck, text: "Sent to the doctor", tone: "bg-brand-700 text-white" },
+      ].map((s, i) => (
+        <motion.div
+          key={s.text}
+          initial={{ opacity: 0, x: -10 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ ...SPRING.default, delay: 0.15 + i * 0.25 }}
+          className={cn("flex h-11 items-center gap-2.5 rounded-full px-4 text-label-l shadow-[var(--shadow-elev-1)]", s.tone)}
+        >
+          <s.icon className="size-4" aria-hidden />
+          {s.text}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+function HouseholdVignette() {
+  const people = [
+    { n: "You", t: "bg-brand-700" },
+    { n: "Mother", t: "bg-brand-500" },
+    { n: "Son, 4", t: "bg-land-near" },
+  ]
+  return (
+    <div className="flex flex-col gap-2">
+      {people.map((p, i) => (
+        <div
+          key={p.n}
+          className={cn(
+            "flex items-center gap-3 rounded-lg bg-white/90 p-2.5 pr-4 shadow-[var(--shadow-elev-1)]",
+            i === 2 && "ring-2 ring-brand-700",
+          )}
+        >
+          <span className={cn("flex size-9 items-center justify-center rounded-full text-label-l text-white", p.t)}>
+            {p.n[0]}
+          </span>
+          <span className="flex-1 text-label-l">{p.n}</span>
+          {i === 2 && <span className="text-label-m text-brand-700">Checking for</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Tile({
+  eyebrow,
+  title,
+  body,
+  to,
+  cta,
+  className,
+  dark = false,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  body: string
+  to: string
+  cta: string
+  className?: string
+  dark?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <StaggerItem
+      className={cn(
+        "group flex flex-col justify-between gap-8 overflow-hidden rounded-2xl p-6 sm:p-8",
+        dark ? "bg-brand-900 text-white" : "bg-white shadow-[var(--shadow-elev-1)]",
+        className,
+      )}
+    >
+      <div>
+        <p className={cn("eyebrow", dark && "text-mint-200")}>{eyebrow}</p>
+        <h3 className={cn("mt-3 max-w-[22ch] text-headline-m lg:text-headline-l", dark && "text-white")}>{title}</h3>
+        <p className={cn("mt-3 max-w-[48ch] text-body-l", dark ? "text-white/75" : "text-ink-600")}>{body}</p>
+        <Link
+          to={to}
+          className={cn(
+            "mt-5 inline-flex items-center gap-1.5 text-label-l underline-offset-4 hover:underline",
+            dark ? "text-white" : "text-brand-700",
+          )}
+        >
+          {cta}
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </Link>
+      </div>
+      {children}
+    </StaggerItem>
+  )
+}
+
+function Bento() {
+  return (
+    <section className="container-page section-y" aria-labelledby="bento-title">
+      <Reveal className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-[640px]">
+          <p className="eyebrow">What you can do</p>
+          <h2 id="bento-title" className="mt-4 text-display-m">
+            Built for how care <em className="accent">really</em> happens here.
+          </h2>
+        </div>
+        <p className="max-w-[420px] text-body-l text-ink-600">
+          Weak signal, shared phones, family decisions, mobile money. CareBridge was designed around all of it.
+        </p>
+      </Reveal>
+      <StaggerContainer className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-6 lg:gap-5" stagger={0.08}>
+        <Tile
+          eyebrow="Danger-sign check"
+          title="Know how urgent it is, and why."
+          body="Answer a few plain questions. You get red, amber or green with the reasons, then the nearest place that can help."
+          to="/app/triage"
+          cta="Check symptoms"
+          className="bg-mint shadow-none lg:col-span-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-center lg:gap-12"
+        >
+          <div className="w-full max-w-[420px] lg:justify-self-end">
+            <TriageVignette />
+          </div>
+        </Tile>
+        <Tile
+          eyebrow="Doctor consultations"
+          title="A doctor replies by voice or text."
+          body={`For you or someone you care for. ${FEE}, paid by Mobile Money.`}
+          to="/app/consult/new"
+          cta="Message a doctor"
+          className="lg:col-span-3"
+        >
+          <VoiceVignette />
+        </Tile>
+        <Tile
+          eyebrow="Offline first"
+          title="No signal? Nothing is lost."
+          body="Messages wait safely on your phone and send themselves when you reconnect."
+          to="/how-it-works#help"
+          cta="What works offline"
+          dark
+          className="lg:col-span-3"
+        >
+          <OfflineVignette />
+        </Tile>
       </StaggerContainer>
     </section>
   )
 }
 
-function Household() {
+// ---------- Safety band ----------
+
+const SAFETY: { icon: LucideIcon; title: string; body: string }[] = [
+  {
+    icon: Siren,
+    title: "Emergencies come first",
+    body: "A red result always leads with Call 15 and directions, before anything else.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Advisory, never a diagnosis",
+    body: "The check looks for danger signs so you know how fast to act. A clinician decides the rest.",
+  },
+  {
+    icon: Users,
+    title: "Most urgent, seen first",
+    body: "Doctors work a queue ordered by urgency, so a sick child isn't stuck behind a routine question.",
+  },
+  {
+    icon: WifiOff,
+    title: "Built for a weak signal",
+    body: "What you write is saved on your phone first and sent when you're back online, with its status shown.",
+  },
+]
+
+function SafetyBand() {
   return (
-    <section className="container-page pb-14 lg:pb-24">
-      <Reveal className="relative isolate overflow-hidden bg-mint-200 p-8 shape-tl lg:p-14">
-        <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_1fr]">
-          <div>
-            <Eyebrow>Care for someone you love</Eyebrow>
-            <h2 className="mt-4 text-headline-l lg:text-display-m">One phone can care for the whole household.</h2>
-            <p className="mt-4 max-w-[520px] text-body-l text-ink-900">
-              Add family members without phones, run a symptom check for them, and keep each person’s history separate.
-            </p>
-            <ButtonLink to="/app/profile/household" className="mt-8" icon={HeartHandshake} size="lg">
-              Add your household
+    <section className="relative isolate overflow-hidden bg-ground text-white">
+      <div className="container-page grid gap-12 py-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20 lg:py-28">
+        <Reveal className="flex flex-col gap-6 lg:sticky lg:top-28 lg:self-start">
+          <p className="eyebrow text-mint-200">Safety by design</p>
+          <h2 className="text-display-m text-white">
+            Designed so the urgent case <em className="font-[inherit] text-mint-200 italic">never waits.</em>
+          </h2>
+          <p className="max-w-[46ch] text-body-l text-white/70">
+            The symptom check looks for danger signs. Its rules are not yet clinically validated, so the advice
+            always errs towards care: if in doubt, go now.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink to="/app/triage" variant="light" icon={Activity}>
+              Check symptoms
+            </ButtonLink>
+            <ButtonLink to="/about" variant="outline-light" trailing="arrow">
+              About CareBridge
             </ButtonLink>
           </div>
-          <div className="flex justify-center gap-3" aria-hidden>
-            {["M", "A", "T"].map((l, i) => (
-              <motion.span
-                key={l}
-                className="flex size-24 items-center justify-center bg-white text-display-m text-brand-700 shadow-[var(--shadow-elev-2)] lg:size-32"
-                style={{ borderRadius: i === 1 ? "50%" : i === 0 ? "40px 40px 40px 16px" : "40px 16px 40px 40px" }}
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
-              >
-                {l}
-              </motion.span>
-            ))}
+        </Reveal>
+        <StaggerContainer as="ul" className="grid gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-2" stagger={0.08}>
+          {SAFETY.map((s) => (
+            <StaggerItem as="li" key={s.title} className="flex flex-col gap-4 bg-ground p-6 sm:p-8">
+              <span className="flex size-11 items-center justify-center rounded-full bg-white/8 ring-1 ring-white/15">
+                <s.icon className="size-5 text-mint-200" aria-hidden />
+              </span>
+              <h3 className="text-title-l text-white">{s.title}</h3>
+              <p className="text-body-m text-white/70">{s.body}</p>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </div>
+    </section>
+  )
+}
+
+// ---------- Household + facilities ----------
+
+function HouseholdAndPlaces() {
+  return (
+    <section className="container-page section-y grid gap-5 lg:grid-cols-2">
+      <Reveal className="flex flex-col justify-between gap-10 overflow-hidden rounded-2xl bg-white p-6 shadow-[var(--shadow-elev-1)] sm:p-10">
+        <div>
+          <p className="eyebrow">Care for someone you love</p>
+          <h2 className="mt-4 text-headline-l lg:text-display-m">One phone for the whole household.</h2>
+          <p className="mt-4 max-w-[46ch] text-body-l text-ink-600">
+            Add family members who don&apos;t have a phone. Check symptoms or ask a doctor on their behalf, with each
+            person&apos;s history kept separate.
+          </p>
+        </div>
+        <div className="grid items-end gap-6 sm:grid-cols-[1fr_auto]">
+          <div className="max-w-[320px]">
+            <HouseholdVignette />
           </div>
+          <ButtonLink to="/app/profile/household" icon={HeartHandshake} variant="tonal">
+            Add your household
+          </ButtonLink>
+        </div>
+      </Reveal>
+      <Reveal delay={0.08} className="relative isolate flex flex-col justify-between gap-10 overflow-hidden rounded-2xl bg-mint-200 p-6 sm:p-10">
+        <Landscape className="top-[52%] -z-10 opacity-90" sky={false} />
+        <div>
+          <p className="eyebrow">Facilities</p>
+          <h2 className="mt-4 text-headline-l lg:text-display-m">
+            Every clinic in Buea, <em className="accent">in your pocket.</em>
+          </h2>
+          <p className="mt-4 max-w-[46ch] text-body-l text-ink-900/80">
+            {FACILITY_COUNT} facilities across {COUNT.quarters} quarters, including {COUNT.maternity} with maternity
+            care. Sorted by distance, one tap to call, saved for offline use.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <ButtonLink to="/app/facilities?locate=1" icon={MapPin}>
+            Find care near me
+          </ButtonLink>
+          <ButtonLink to="/app/facilities?capability=emergency" variant="light">
+            Emergency care
+          </ButtonLink>
         </div>
       </Reveal>
     </section>
@@ -377,9 +547,10 @@ export default function Landing() {
   return (
     <>
       <Hero />
-      <GroundBand />
-      <Steps />
-      <Household />
+      <FactsStrip />
+      <Bento />
+      <SafetyBand />
+      <HouseholdAndPlaces />
     </>
   )
 }

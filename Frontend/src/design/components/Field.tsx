@@ -5,7 +5,7 @@ import { SPRING } from "@/design/motion"
 import { cn } from "@/lib/utils"
 
 const control =
-  "w-full rounded-md border-[1.5px] border-line bg-white px-4 text-body-l text-ink-900 transition-[border-color,box-shadow,border-radius] duration-200 placeholder:text-ink-400 hover:border-brand-500/50 focus:rounded-sm focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-cream aria-invalid:border-urgent-red aria-invalid:focus:ring-urgent-red/15"
+  "w-full rounded-md border border-ink-900/15 bg-white px-4 text-body-l text-ink-900 shadow-[0_1px_2px_rgb(15_31_23/0.04)] transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 hover:border-ink-900/30 focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-cream aria-invalid:border-urgent-red aria-invalid:focus:ring-urgent-red/15"
 
 export function Field({
   label,
@@ -101,7 +101,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   )
 }
 
-/** Large selectable card. Selected state morphs to the expressive shape with a spring. */
+/** Large selectable card (NHS 111 answer pattern): whole row is the target, check on select. */
 export function ChoiceCard({
   selected,
   onClick,
@@ -120,16 +120,13 @@ export function ChoiceCard({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      animate={{
-        borderRadius: selected ? "28px 28px 28px 10px" : "20px 20px 20px 20px",
-      }}
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.99 }}
       transition={SPRING.fast}
       className={cn(
-        "flex min-h-16 w-full items-center gap-4 border-[1.5px] px-4 py-3 text-left transition-colors",
+        "flex min-h-16 w-full items-center gap-4 rounded-lg px-4 py-3 text-left transition-[background-color,box-shadow] duration-150",
         selected
-          ? "border-brand-700 bg-mint"
-          : "border-line bg-white hover:border-brand-500/50 hover:bg-cream"
+          ? "bg-mint shadow-[inset_0_0_0_2px_var(--color-brand-700)]"
+          : "bg-white shadow-[var(--shadow-elev-1)] hover:shadow-[inset_0_0_0_1px_var(--color-brand-500),var(--shadow-elev-1)]"
       )}
     >
       {icon && (
@@ -152,8 +149,8 @@ export function ChoiceCard({
         {selected && (
           <motion.span
             className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"
-            initial={{ scale: 0, rotate: -90 }}
-            animate={{ scale: 1, rotate: 0 }}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0 }}
             transition={SPRING.bouncy}
           >
@@ -165,7 +162,7 @@ export function ChoiceCard({
   )
 }
 
-/** Figma: Chip. Selected = brand/900. */
+/** Filter chip. Selected = brand/900 with a check. */
 export function Chip({
   selected,
   onClick,
@@ -186,10 +183,10 @@ export function Chip({
       whileTap={{ scale: 0.94 }}
       transition={SPRING.fast}
       className={cn(
-        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-label-l transition-colors",
+        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-label-l transition-colors duration-150",
         selected
           ? "bg-brand-900 text-white"
-          : "bg-white/70 text-ink-900 ring-1 ring-line ring-inset hover:bg-white",
+          : "bg-white text-ink-900 ring-1 ring-ink-900/12 ring-inset hover:bg-cream hover:ring-ink-900/25",
         className
       )}
     >

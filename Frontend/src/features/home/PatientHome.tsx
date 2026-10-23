@@ -17,6 +17,7 @@ import {
   Phone,
   Plus,
   Users,
+  ArrowUpRight,
   type LucideIcon,
 } from "lucide-react"
 import { extendedApi } from "@/api/endpoints"
@@ -70,200 +71,141 @@ function greeting(now: number) {
   return "Good evening"
 }
 
-// ---------- Hero band ----------
+// ---------- Greeting + hero ----------
 
-function HeroBand({ name }: { name?: string }) {
+function Greeting({ name }: { name?: string }) {
   const now = useNow(60_000)
+  return (
+    <motion.header variants={popIn} className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <h1 className="text-headline-l lg:text-display-m">
+        {greeting(now)}
+        {name ? (
+          <>
+            , <em className="accent">{name.split(" ")[0]}.</em>
+          </>
+        ) : (
+          "."
+        )}
+      </h1>
+      <p className="text-body-m text-ink-600">
+        {new Date(now).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+      </p>
+    </motion.header>
+  )
+}
+
+/** The one dark moment on Home (Maven/One Medical): the danger-sign check, with Call 15 beside it. */
+function HeroBand() {
   return (
     <motion.section
       variants={popIn}
-      className="relative isolate overflow-hidden rounded-xl lg:rounded-2xl"
+      className="relative isolate overflow-hidden rounded-2xl bg-brand-900 text-white"
       aria-labelledby="home-hero"
     >
-      <Landscape className="-z-10" preserve="xMidYMid slice" />
-      <div className="flex min-h-[420px] flex-col justify-between gap-6 p-4 sm:p-6 lg:min-h-[400px] lg:p-8">
-        <motion.div
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={SPRING.default}
-        >
-          <p className="text-body-l text-ink-600">
-            {name ? `${greeting(now)},` : greeting(now)}
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-[30%] opacity-40" aria-hidden>
+        <Landscape sky={false} viewBox="0 262 1440 584" preserve="none" />
+      </div>
+      <div
+        className="absolute -top-24 -right-24 -z-10 size-[420px] rounded-full bg-brand-500/30 blur-[90px]"
+        aria-hidden
+      />
+      <div className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between lg:p-10">
+        <div className="max-w-[560px]">
+          <p className="eyebrow text-mint-200">Danger-sign check · about 1 minute</p>
+          <h2 id="home-hero" className="mt-3 text-display-m text-white">
+            How are you <em className="text-mint-200 italic">feeling</em> today?
+          </h2>
+          <p className="mt-3 max-w-[46ch] text-body-l text-white/75">
+            Answer a few questions for yourself or someone at home. You&apos;ll see how urgent it is and where to go.
+            Works without network.
           </p>
-          <p className="text-headline-l">{name ?? "Welcome to CareBridge"}</p>
-        </motion.div>
-        <motion.div
-          className="max-w-[560px] shape-bl p-5 glass-strong sm:p-7"
-          initial={{ opacity: 0, y: 40, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ ...SPRING.bouncy, delay: 0.15 }}
-        >
-          <h1 id="home-hero" className="text-headline-l lg:text-display-m">
-            How are you feeling today?
-          </h1>
-          <p className="mt-2 text-body-l text-ink-900">
-            A 1-minute danger-sign check tells you where to go. Works without
-            network.
-          </p>
-          <div className="mt-5 flex items-center gap-3">
-            <ButtonLink
-              to="/app/triage"
-              icon={Activity}
-              size="lg"
-              className="min-w-0 flex-1 sm:flex-none"
-            >
-              Check symptoms
-            </ButtonLink>
-            <ButtonA
-              href="tel:15"
-              icon={Phone}
-              variant="danger"
-              size="lg"
-              aria-label="Call emergency 15"
-              className="shrink-0 px-5"
-            >
-              <span className="hidden sm:inline">Emergency ·</span> 15
-            </ButtonA>
-          </div>
-        </motion.div>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+          <ButtonLink to="/app/triage" icon={Activity} size="lg" variant="light">
+            Check symptoms
+          </ButtonLink>
+          <ButtonA href="tel:15" icon={Phone} variant="danger" size="lg" aria-label="Call emergency 15">
+            Emergency · 15
+          </ButtonA>
+        </div>
       </div>
     </motion.section>
   )
 }
 
-// ---------- Quick actions (M3 Expressive tiles) ----------
-
-const TILE_SHAPES = [
-  "40px 16px 40px 40px",
-  "16px 40px 40px 40px",
-  "40px 40px 40px 16px",
-  "40px 40px 16px 40px",
-]
+// ---------- Quick actions ----------
 
 function Tile({
   to,
   title,
   sub,
   icon: Icon,
-  tone,
-  shape,
-  compact = false,
+  primary = false,
 }: {
   to: string
   title: string
   sub: string
   icon: LucideIcon
-  tone: "mint" | "brand" | "white" | "mint-200"
-  shape: number
-  compact?: boolean
+  primary?: boolean
 }) {
-  const dark = tone === "brand"
   return (
-    <motion.div variants={popIn}>
-      <motion.div
-        style={{ borderRadius: TILE_SHAPES[shape] }}
-        whileHover={{ borderRadius: "32px", y: -3 }}
-        whileTap={{ scale: 0.96, borderRadius: "24px" }}
-        transition={SPRING.fast}
+    <motion.div variants={popIn} className="h-full">
+      <Link
+        to={to}
         className={cn(
-          "h-full overflow-hidden",
-          tone === "mint" && "bg-mint",
-          tone === "brand" && "bg-brand-700",
-          tone === "white" && "bg-white shadow-[var(--shadow-elev-1)]",
-          tone === "mint-200" && "bg-mint-200"
+          "group flex h-full min-h-[120px] flex-col justify-between gap-5 rounded-xl p-4 transition-shadow duration-200 sm:p-5",
+          primary
+            ? "bg-brand-700 text-white hover:bg-brand-800"
+            : "bg-white shadow-[var(--shadow-elev-1)] hover:shadow-[var(--shadow-elev-2)]",
         )}
       >
-        <Link
-          to={to}
-          className={cn(
-            "flex h-full flex-col justify-between p-4",
-            compact ? "min-h-[112px] gap-4" : "min-h-[136px] gap-5"
-          )}
-        >
-          <Icon
+        <span className="flex items-start justify-between">
+          <span
             className={cn(
-              "size-[26px]",
-              dark ? "text-white" : "text-brand-700"
+              "flex size-10 items-center justify-center rounded-full",
+              primary ? "bg-white/15 text-white" : "bg-mint text-brand-700",
             )}
-            strokeWidth={2}
+          >
+            <Icon className="size-5" strokeWidth={1.9} aria-hidden />
+          </span>
+          <ArrowUpRight
+            className={cn(
+              "size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5",
+              primary ? "text-white/70" : "text-ink-400",
+            )}
             aria-hidden
           />
-          <span>
-            <span
-              className={cn(
-                "block text-title-m",
-                dark ? "text-white" : "text-ink-900"
-              )}
-            >
-              {title}
-            </span>
-            <span
-              className={cn(
-                "block text-body-m",
-                dark ? "text-white/80" : "text-ink-600"
-              )}
-            >
-              {sub}
-            </span>
-          </span>
-        </Link>
-      </motion.div>
+        </span>
+        <span>
+          <span className={cn("block text-title-m", primary ? "text-white" : "text-ink-900")}>{title}</span>
+          <span className={cn("block text-body-m", primary ? "text-white/75" : "text-ink-600")}>{sub}</span>
+        </span>
+      </Link>
     </motion.div>
   )
 }
 
-function QuickActions({
-  facilityCount,
-  members,
-}: {
-  facilityCount?: number
-  members: number
-}) {
+function QuickActions({ facilityCount, members }: { facilityCount?: number; members: number }) {
   return (
     <section aria-labelledby="qa-title">
       <h2 id="qa-title" className="sr-only">
         Quick actions
       </h2>
-      <motion.div
-        className="grid grid-cols-2 gap-3"
-        variants={staggerOnMount(0.05)}
-      >
+      <motion.div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4" variants={staggerOnMount(0.05)}>
+        <Tile to="/app/consult/new" title="Talk to a doctor" sub="Text or voice note" icon={MessageCircle} primary />
         <Tile
           to="/app/facilities?locate=1"
           title="Find a facility"
-          sub={facilityCount ? `${facilityCount} near Buea` : "Near you"}
+          sub={facilityCount ? `${facilityCount} around Buea` : "Near you"}
           icon={MapPin}
-          tone="mint"
-          shape={0}
-        />
-        <Tile
-          to="/app/consult/new"
-          title="Talk to a doctor"
-          sub="Text or voice"
-          icon={MessageCircle}
-          tone="brand"
-          shape={1}
         />
         <Tile
           to="/app/profile/household"
           title="Household"
-          sub={
-            members
-              ? `${members} member${members === 1 ? "" : "s"}`
-              : "Add family"
-          }
+          sub={members ? `${members} member${members === 1 ? "" : "s"}` : "Add family"}
           icon={Users}
-          tone="white"
-          shape={2}
         />
-        <Tile
-          to="/app/consults"
-          title="My consultations"
-          sub="History & receipts"
-          icon={History}
-          tone="mint-200"
-          shape={3}
-        />
+        <Tile to="/app/consults" title="My consultations" sub="Replies and receipts" icon={History} />
       </motion.div>
     </section>
   )
@@ -309,17 +251,11 @@ function MoreServices() {
         More services
       </h2>
       <motion.div
-        className="grid grid-cols-[repeat(auto-fit,minmax(148px,1fr))] gap-3"
+        className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3"
         variants={staggerOnMount(0.05)}
       >
-        {items.map((i, n) => (
-          <Tile
-            key={i.to}
-            {...i}
-            tone={n % 2 ? "mint" : "white"}
-            shape={n % 4}
-            compact
-          />
+        {items.map((i) => (
+          <Tile key={i.to} {...i} />
         ))}
       </motion.div>
     </motion.section>
@@ -424,7 +360,7 @@ function ActiveConsult({
         </motion.div>
       ) : (
         <div className="flex flex-col items-start gap-4 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)] sm:flex-row sm:items-center">
-          <span className="flex size-12 items-center justify-center shape-bl bg-mint">
+          <span className="flex size-12 items-center justify-center rounded-full bg-mint">
             <MessageCircle className="size-6 text-brand-700" aria-hidden />
           </span>
           <p className="flex-1 text-body-l text-ink-600">
@@ -511,19 +447,14 @@ function HealthTipCard() {
   return (
     <motion.section
       variants={popIn}
-      className="flex gap-4 bg-mint-200 p-5"
-      style={{ borderRadius: "40px 16px 40px 40px" }}
+      className="flex gap-4 rounded-xl bg-mint p-5"
     >
-      <motion.span
-        animate={{ rotate: [0, -8, 8, 0] }}
-        transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 3 }}
-        className="flex h-fit"
-      >
-        <Lightbulb className="size-7 text-brand-800" aria-hidden />
-      </motion.span>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-brand-700">
+        <Lightbulb className="size-5" aria-hidden />
+      </span>
       <div className="min-w-0">
         <p className="eyebrow">Health tip</p>
-        <h2 className="mt-1 text-title-m">{tip.title}</h2>
+        <h2 className="mt-1.5 font-display text-[20px] leading-[26px] font-[500]">{tip.title}</h2>
         <p className="mt-1 text-body-m text-ink-600">{tip.body}</p>
         <p className="mt-2 text-label-m text-ink-600">
           Source: {tip.source_name} · {formatDate(tip.published_date)}
@@ -568,9 +499,9 @@ function HouseholdStrip({
           className="flex w-16 shrink-0 flex-col items-center gap-1.5"
         >
           <motion.span
-            whileHover={{ rotate: 90 }}
-            transition={SPRING.bouncy}
-            className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-brand-500 text-brand-700"
+            whileTap={{ scale: 0.92 }}
+            transition={SPRING.fast}
+            className="flex size-12 items-center justify-center rounded-full bg-mint text-brand-700 ring-1 ring-brand-500/30"
           >
             <Plus className="size-5" aria-hidden />
           </motion.span>
@@ -585,17 +516,14 @@ function SignInCard() {
   return (
     <motion.section
       variants={popIn}
-      className="shape-br bg-brand-800 p-6 text-white"
+      className="rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)]"
     >
-      <h2 className="text-headline-s text-white">
-        Message a doctor and keep your history
-      </h2>
-      <p className="mt-2 text-body-l text-white/80">
+      <h2 className="text-headline-m">Message a doctor and keep your history</h2>
+      <p className="mt-2 text-body-l text-ink-600">
         Facilities and symptom checks work without an account.
       </p>
       <ButtonLink
         to="/sign-in?returnTo=/app"
-        variant="light"
         className="mt-5"
         trailing="arrow"
       >
@@ -639,16 +567,12 @@ export default function PatientHome() {
       initial="hidden"
       animate="show"
     >
-      <HeroBand name={session ? name : undefined} />
+      <Greeting name={session ? name : undefined} />
+      <HeroBand />
+      <QuickActions facilityCount={facilities?.length} members={members.length} />
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
         <div className="contents lg:flex lg:flex-col lg:gap-8">
-          <div className="lg:hidden">
-            <QuickActions
-              facilityCount={facilities?.length}
-              members={members.length}
-            />
-          </div>
           {session ? <ActiveConsult consult={latestConsult} /> : <SignInCard />}
           <motion.section variants={popIn} aria-labelledby="nearby-title">
             <SectionHeader
@@ -671,13 +595,6 @@ export default function PatientHome() {
           {session && <MoreServices />}
         </div>
         <aside className="contents lg:flex lg:flex-col lg:gap-6">
-          <div className="hidden lg:block">
-            <SectionHeader title="Quick actions" />
-            <QuickActions
-              facilityCount={facilities?.length}
-              members={members.length}
-            />
-          </div>
           <DoctorsOnline />
           <HealthTipCard />
           {session && <HouseholdStrip members={members} />}

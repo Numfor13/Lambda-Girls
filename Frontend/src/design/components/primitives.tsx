@@ -12,7 +12,7 @@ export function Eyebrow({ children, className }: { children: React.ReactNode; cl
 
 export function FeaturePill({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <span className="glass inline-flex h-10 items-center gap-2 rounded-full px-4 text-label-l text-ink-900">
+    <span className="inline-flex h-9 items-center gap-2 rounded-full bg-white/80 px-3.5 text-label-l text-ink-900 ring-1 ring-ink-900/8">
       <Icon className="size-[18px] text-brand-700" strokeWidth={2} aria-hidden />
       {label}
     </span>
@@ -46,7 +46,7 @@ export function InfoCard({
   className?: string
 }) {
   return (
-    <div className={cn("glass-strong flex gap-3 rounded-lg p-4", className)}>
+    <div className={cn("flex gap-3 rounded-lg bg-white p-4 shadow-[var(--shadow-elev-1)]", className)}>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mint">
         <Icon className="size-5 text-brand-700" strokeWidth={2} aria-hidden />
       </span>
@@ -63,7 +63,7 @@ export function AdvisoryNote({ className, long = false }: { className?: string; 
   return (
     <p
       className={cn(
-        "flex items-start gap-3 rounded-md border border-line bg-white/85 p-4 text-body-m text-ink-600",
+        "flex items-start gap-3 rounded-md bg-ink-900/[0.035] p-4 text-body-m text-ink-600",
         className,
       )}
     >
@@ -140,7 +140,7 @@ export function StatusMark({
         ))}
       <motion.span
         className={cn(
-          "relative flex size-24 items-center justify-center shape-bl",
+          "relative flex size-24 items-center justify-center rounded-full",
           state === "done" && "bg-brand-700 text-white",
           state === "error" && "bg-urgent-red-50 text-urgent-red",
           state === "info" && "bg-mint text-brand-700",
@@ -173,17 +173,17 @@ export function EmptyState({
       variants={popIn}
       initial="hidden"
       animate="show"
-      className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-brand-500/30 bg-white/60 px-6 py-10 text-center"
+      className="flex flex-col items-center gap-4 rounded-xl bg-white px-6 py-12 text-center shadow-[var(--shadow-elev-1)]"
     >
       <motion.span
-        className="flex size-16 items-center justify-center bg-mint shape-bl"
-        initial={{ rotate: -12, scale: 0.6 }}
-        animate={{ rotate: 0, scale: 1 }}
+        className="flex size-14 items-center justify-center rounded-full bg-mint"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={SPRING.bouncy}
       >
-        <Icon className="size-7 text-brand-700" strokeWidth={1.75} aria-hidden />
+        <Icon className="size-6 text-brand-700" strokeWidth={1.75} aria-hidden />
       </motion.span>
-      <p className="max-w-xs text-body-l text-ink-600">{title}</p>
+      <p className="max-w-sm text-body-l text-ink-600">{title}</p>
       {action}
     </motion.div>
   )
@@ -206,7 +206,7 @@ export function Avatar({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-display font-bold text-white ring-2 ring-white",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-sans font-semibold text-white ring-2 ring-white",
         AVATAR_TONES[t],
         size === "sm" && "size-9 text-xs",
         size === "md" && "size-12 text-sm",
@@ -266,11 +266,11 @@ export function SectionHeader({
 }) {
   return (
     <div className={cn("mb-3 flex items-center justify-between gap-3", className)}>
-      <h2 className="text-headline-s">{title}</h2>
+      <h2 className="text-title-l">{title}</h2>
       {to && linkLabel && (
         <Link
           to={to}
-          className="group inline-flex h-10 items-center gap-0.5 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
+          className="group -mr-3 inline-flex h-9 items-center gap-0.5 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
         >
           {linkLabel}
           <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />

@@ -46,20 +46,15 @@ function PublicNav() {
   const [openOn, setOpenOn] = useState<string | null>(null)
   const open = openOn === pathname
 
+  const authClass =
+    "inline-flex h-10 items-center rounded-full px-4 text-label-l text-ink-900 transition-colors hover:bg-ink-900/5"
   const auth = session ? (
-    <Link
-      to={homeFor(session)}
-      className="text-label-l text-brand-900 underline underline-offset-4"
-    >
-      MY ACCOUNT
+    <Link to={homeFor(session)} className={authClass}>
+      My account
     </Link>
   ) : (
-    <button
-      type="button"
-      onClick={() => navigate("/sign-in?returnTo=/app")}
-      className="text-label-l text-brand-900 underline underline-offset-4"
-    >
-      SIGN IN
+    <button type="button" onClick={() => navigate("/sign-in?returnTo=/app")} className={authClass}>
+      Sign in
     </button>
   )
 
@@ -70,20 +65,20 @@ function PublicNav() {
         animate={{ y: 0, opacity: 1, scale: lifted ? 0.985 : 1 }}
         transition={SPRING.default}
         className={cn(
-          "mx-auto flex h-[64px] max-w-[1280px] items-center justify-between gap-4 rounded-full pr-2 pl-5 glass-strong lg:h-[72px]",
-          lifted && "shadow-[0_18px_48px_rgb(15_31_23/0.18)]"
+          "mx-auto flex h-[60px] max-w-[1200px] items-center justify-between gap-4 rounded-full pr-2 pl-5 transition-[background-color,box-shadow] duration-300 lg:h-[64px]",
+          lifted ? "glass-strong" : "bg-white/40 ring-1 ring-white/60"
         )}
       >
         <Logo />
-        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
+        <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
               className={({ isActive }) =>
                 cn(
-                  "relative rounded-full px-4 py-2 text-title-m transition-colors",
-                  isActive ? "text-brand-900" : "text-ink-900 hover:bg-white/60"
+                  "relative rounded-full px-4 py-2 text-label-l transition-colors duration-150",
+                  isActive ? "text-brand-900" : "text-ink-600 hover:text-ink-900"
                 )
               }
             >
@@ -93,7 +88,7 @@ function PublicNav() {
                     <motion.span
                       layoutId="public-nav"
                       className="absolute inset-0 rounded-full bg-mint"
-                      transition={SPRING.bouncy}
+                      transition={SPRING.default}
                     />
                   )}
                   <span className="relative">{n.label}</span>
@@ -102,9 +97,9 @@ function PublicNav() {
             </NavLink>
           ))}
         </nav>
-        <div className="hidden items-center gap-5 lg:flex">
-          <span className="inline-flex items-center gap-1.5 text-label-l text-brand-900">
-            <Globe className="size-4 text-brand-800" aria-hidden />
+        <div className="hidden items-center gap-1 lg:flex">
+          <span className="inline-flex h-10 items-center gap-1.5 px-2 text-label-l text-ink-600" title="Language">
+            <Globe className="size-4" aria-hidden />
             EN
           </span>
           {auth}
@@ -227,20 +222,18 @@ export function PublicFooter() {
   return (
     <footer className="relative overflow-hidden bg-ground text-white">
       <div className="relative z-10 container-page">
-        <Reveal className="flex flex-col items-start justify-between gap-6 border-b border-white/15 py-12 sm:flex-row sm:items-center lg:py-16">
-          <p className="text-headline-l text-white lg:text-display-m">
-            Good care starts
-            <br />
-            with a simple step.
+        <Reveal className="flex flex-col items-start justify-between gap-8 border-b border-white/12 py-14 lg:flex-row lg:items-end lg:py-20">
+          <p className="max-w-[16ch] text-display-m text-white">
+            Good care starts with <em className="text-mint-200 italic">one simple step.</em>
           </p>
-          <ButtonLink
-            to="/app/facilities"
-            variant="light"
-            size="lg"
-            trailing="external"
-          >
-            Find care near me
-          </ButtonLink>
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink to="/app/triage" variant="light" size="lg" icon={Activity}>
+              Check symptoms
+            </ButtonLink>
+            <ButtonLink to="/app/facilities" variant="outline-light" size="lg" trailing="arrow">
+              Find care near me
+            </ButtonLink>
+          </div>
         </Reveal>
 
         <StaggerContainer
@@ -248,16 +241,16 @@ export function PublicFooter() {
           stagger={0.08}
         >
           <StaggerItem>
-            <span className="inline-flex rounded-lg bg-white px-4 py-2">
-              <Logo size="lg" />
+            <span className="inline-flex rounded-full bg-white py-1.5 pr-4 pl-2.5">
+              <Logo />
             </span>
-            <p className="mt-6 text-body-l text-white/80">
+            <p className="mt-5 max-w-[28ch] text-body-l text-white/75">
               Health within reach — even offline.
             </p>
           </StaggerItem>
           {FOOTER_COLUMNS.map((col) => (
             <StaggerItem key={col.title}>
-              <p className="text-title-m text-white">{col.title}</p>
+              <p className="text-label-m tracking-[0.08em] text-white/50 uppercase">{col.title}</p>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>
@@ -274,7 +267,7 @@ export function PublicFooter() {
           ))}
         </StaggerContainer>
 
-        <div className="flex flex-col gap-4 border-t border-white/15 py-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-t border-white/12 py-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-body-m text-white/70">
             © CareBridge · Advisory, not a diagnosis. In an emergency call 15.
           </p>

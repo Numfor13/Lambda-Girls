@@ -111,8 +111,8 @@ export function SyncStatus({ className, glass = true }: { className?: string; gl
       whileTap={{ scale: 0.94 }}
       transition={SPRING.fast}
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-full px-3 text-label-m text-brand-900",
-        glass ? "glass" : "bg-mint",
+        "inline-flex h-8 items-center gap-2 rounded-full px-3 text-label-m text-brand-900",
+        glass ? "bg-white/70 ring-1 ring-ink-900/8" : "bg-mint",
         !online && "text-ink-900",
         className,
       )}
@@ -155,22 +155,18 @@ export function NavRail({
 }) {
   const { pathname } = useLocation()
   return (
-    <motion.aside
-      initial={{ x: -40, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={SPRING.default}
-      className="glass-strong fixed top-3 bottom-3 left-3 z-30 hidden w-[248px] flex-col gap-2 rounded-xl px-4 py-6 no-scrollbar overflow-y-auto lg:flex"
-    >
-      <div className="px-2">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col gap-1 border-r border-ink-900/[0.07] bg-white/75 px-3 py-5 no-scrollbar overflow-y-auto backdrop-blur-xl lg:flex">
+      <div className="px-3">
         <Logo to={home} />
       </div>
       {fab && (
-        <ButtonLink to={fab.to} icon={Plus} size="lg" full className="mt-6 mb-3">
+        <ButtonLink to={fab.to} icon={Plus} size="md" full className="mt-6 mb-4">
           {fab.label}
         </ButtonLink>
       )}
+      <p className="px-3 pb-1 text-label-m text-ink-400">Menu</p>
       <LayoutGroup id="rail">
-        <nav aria-label="App" className="flex flex-col gap-1">
+        <nav aria-label="App" className="flex flex-col gap-0.5">
           {dests.map((d) => {
             const active = d.match(pathname)
             return (
@@ -179,32 +175,32 @@ export function NavRail({
                 to={d.to}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-[52px] items-center gap-3 rounded-full px-4 text-label-l transition-colors",
-                  active ? "text-brand-900" : "text-ink-600 hover:bg-white/60 hover:text-ink-900",
+                  "relative flex h-10 items-center gap-3 rounded-md px-3 text-label-l transition-colors duration-150",
+                  active ? "text-brand-900" : "text-ink-600 hover:bg-ink-900/[0.04] hover:text-ink-900",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="rail-indicator"
-                    className="absolute inset-0 rounded-full bg-mint"
-                    transition={SPRING.bouncy}
+                    className="absolute inset-0 rounded-md bg-mint"
+                    transition={SPRING.default}
                   />
                 )}
-                <motion.span
-                  className="relative flex"
-                  animate={{ scale: active ? 1.1 : 1 }}
-                  transition={SPRING.bouncy}
-                >
-                  <d.icon className="size-[22px]" strokeWidth={active ? 2.25 : 1.9} aria-hidden />
-                </motion.span>
+                <span className="relative flex">
+                  <d.icon
+                    className={cn("size-[19px]", active ? "text-brand-700" : "text-ink-400")}
+                    strokeWidth={active ? 2.2 : 1.9}
+                    aria-hidden
+                  />
+                </span>
                 <span className="relative">{d.label}</span>
               </Link>
             )
           })}
         </nav>
       </LayoutGroup>
-      <div className="mt-auto flex flex-col gap-3 px-1">{footer}</div>
-    </motion.aside>
+      <div className="mt-auto flex flex-col gap-3 border-t border-ink-900/[0.06] px-2 pt-4">{footer}</div>
+    </aside>
   )
 }
 
@@ -233,7 +229,7 @@ export function TabBar({ dests }: { dests: NavDest[] }) {
         transition={SPRING.default}
         className={cn(
           "glass-strong flex w-full max-w-[420px] items-center justify-between rounded-full p-1.5",
-          compact ? "h-[60px]" : "h-[72px]",
+          compact ? "h-[58px]" : "h-[68px]",
         )}
       >
         <LayoutGroup id="tabs">
@@ -249,26 +245,21 @@ export function TabBar({ dests }: { dests: NavDest[] }) {
                   {active && (
                     <motion.span
                       layoutId="tab-indicator"
-                      className="absolute inset-0 rounded-full bg-mint shadow-[inset_0_1px_1px_rgb(255_255_255/0.9)]"
-                      transition={SPRING.bouncy}
+                      className="absolute inset-0 rounded-full bg-mint"
+                      transition={SPRING.default}
                     />
                   )}
-                  <motion.span
-                    className="relative flex"
-                    animate={{ scale: active ? 1.12 : 1, y: active ? -1 : 0 }}
-                    whileTap={{ scale: 0.85 }}
-                    transition={SPRING.bouncy}
-                  >
+                  <motion.span className="relative flex" whileTap={{ scale: 0.9 }} transition={SPRING.fast}>
                     <d.icon
-                      className={cn("size-[22px]", active ? "text-brand-800" : "text-brand-900")}
-                      strokeWidth={active ? 2.25 : 1.9}
+                      className={cn("size-[22px]", active ? "text-brand-700" : "text-ink-600")}
+                      strokeWidth={active ? 2.2 : 1.8}
                       aria-hidden
                     />
                   </motion.span>
                   <AnimatePresence initial={false}>
                     {!compact && (
                       <motion.span
-                        className={cn("relative text-label-m", active ? "text-brand-900" : "text-ink-600")}
+                        className={cn("relative text-[11px] leading-4 font-semibold", active ? "text-brand-900" : "text-ink-600")}
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
@@ -298,7 +289,7 @@ export function MobileTopBar({ home = "/", right }: { home?: string; right?: Rea
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={SPRING.default}
-        className="glass-strong flex h-[60px] items-center justify-between rounded-full pr-1.5 pl-4"
+        className="glass-strong flex h-14 items-center justify-between rounded-full pr-1.5 pl-4"
       >
         <Logo to={home} />
         <div className="flex items-center gap-1.5">{right}</div>
@@ -313,14 +304,14 @@ export function AccountButton() {
   if (session) {
     return (
       <Link to="/app/profile" aria-label="Your profile" className="rounded-full">
-        <Avatar name={session.name} size="md" />
+        <Avatar name={session.name} size="sm" />
       </Link>
     )
   }
   return (
     <Link
       to={`/sign-in?returnTo=${encodeURIComponent(pathname)}`}
-      className="inline-flex h-12 items-center rounded-full bg-brand-700 px-5 text-label-l text-white"
+      className="inline-flex h-10 items-center rounded-full bg-brand-700 px-4 text-label-l text-white hover:bg-brand-800"
     >
       Log in
     </Link>

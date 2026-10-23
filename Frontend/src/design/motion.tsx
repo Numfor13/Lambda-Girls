@@ -3,31 +3,31 @@ import { motion, type HTMLMotionProps, type Transition, type Variants } from "mo
 export const EASE_OUT = [0.22, 1, 0.36, 1] as const
 
 /**
- * Material 3 Expressive motion physics. Spatial springs move things (position, size, shape);
- * effects springs change colour/opacity without overshoot. Use these, not ad-hoc durations.
+ * Motion physics, v2. The reference platforms (Apple, Stripe, Linear, One Medical) move with
+ * short, critically-damped springs and 150–300ms colour transitions: things settle, they
+ * don't bounce. `bouncy` keeps its name for existing call sites but only overshoots slightly.
  */
 export const SPRING = {
   /** Small components: buttons, chips, toggles, nav indicators. */
-  fast: { type: "spring", stiffness: 800, damping: 40, mass: 1 },
+  fast: { type: "spring", stiffness: 700, damping: 48, mass: 1 },
   /** Cards, sheets, page content. */
-  default: { type: "spring", stiffness: 420, damping: 32, mass: 1 },
-  /** Hero moments: a little overshoot, the "expressive" bounce. */
-  bouncy: { type: "spring", stiffness: 380, damping: 20, mass: 1 },
+  default: { type: "spring", stiffness: 360, damping: 38, mass: 1 },
+  /** Emphasis moments (status marks, selection pills): a hint of overshoot, no wobble. */
+  bouncy: { type: "spring", stiffness: 420, damping: 30, mass: 1 },
   /** Large, slow surfaces: backdrops, landscape. */
-  slow: { type: "spring", stiffness: 140, damping: 26, mass: 1 },
+  slow: { type: "spring", stiffness: 140, damping: 28, mass: 1 },
 } satisfies Record<string, Transition>
 
-/** Press feedback: squash + corner morph (M3 Expressive shape morph). */
+/** Press feedback: a small press-in, no hover growth (hover is a colour change). */
 export const pressable = {
-  whileTap: { scale: 0.96 },
-  whileHover: { scale: 1.02 },
+  whileTap: { scale: 0.97 },
   transition: SPRING.fast,
 } as const
 
 /** Entrance for content that pops in (cards, tiles). */
 export const popIn: Variants = {
-  hidden: { opacity: 0, y: 24, scale: 0.96 },
-  show: { opacity: 1, y: 0, scale: 1, transition: SPRING.default },
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: SPRING.default },
 }
 
 /** Stagger parent for popIn children, used on mount (not scroll). */
@@ -41,7 +41,7 @@ export function PageTransition({ children, id }: { children: React.ReactNode; id
   return (
     <motion.div
       key={id}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0, transition: SPRING.default }}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
@@ -61,10 +61,10 @@ const reveal = (from: { x?: number; y?: number }, duration = 0.6): Variants => (
 })
 
 export const revealVariants = {
-  up: reveal({ y: 28 }),
+  up: reveal({ y: 20 }),
   in: reveal({}, 0.7),
-  left: reveal({ x: -32 }),
-  right: reveal({ x: 32 }),
+  left: reveal({ x: -20 }),
+  right: reveal({ x: 20 }),
 } satisfies Record<string, Variants>
 
 export type RevealVariant = keyof typeof revealVariants
@@ -144,7 +144,7 @@ const ZOOM_TRANSITION: Transition = { duration: 0.45, ease: EASE_OUT }
  */
 export const zoomVariants: Variants = {
   rest: { scale: 1, transition: ZOOM_TRANSITION },
-  hover: { scale: 1.08, transition: ZOOM_TRANSITION },
+  hover: { scale: 1.04, transition: ZOOM_TRANSITION },
 }
 
 export const hoverZoomTrigger = { initial: "rest", whileHover: "hover", animate: "rest" } as const

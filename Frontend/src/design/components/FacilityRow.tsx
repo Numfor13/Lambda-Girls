@@ -13,7 +13,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react"
-import type { Capability } from "@/api/types"
+import type { Capability, Facility } from "@/api/types"
 import { popIn } from "@/design/motion"
 import { formatDistance, type RankedFacility } from "@/lib/geo"
 import { CAPABILITY_LABELS, telHref } from "@/lib/format"
@@ -37,9 +37,15 @@ export function primaryCapability(caps: Capability[]): Capability {
   return caps.find((c) => c !== "general") ?? "general"
 }
 
+/** "Open 24/7", a short hours string, or nothing when hours are structured per day. */
+export function hoursLabel(hours: Facility["opening_hours"]): string | null {
+  if (typeof hours !== "string" || !hours.trim()) return null
+  return hours.trim() === "24/7" ? "Open 24/7" : hours.trim()
+}
+
 /**
- * Figma: FacilityRow. Capability tile · name · distance pill + one-line meta · tonal call button.
- * Solid white surface (reading content). Animates in when used inside a stagger parent.
+ * Directory row (Airbnb/Zocdoc listing density): capability tile · name · where/when/how far ·
+ * up to three service tags · call button. Solid white surface (reading content).
  */
 export function FacilityRow({
   facility,
@@ -52,43 +58,70 @@ export function FacilityRow({
 }) {
   const cap = focus && facility.capabilities.includes(focus) ? focus : primaryCapability(facility.capabilities)
   const Icon = CAPABILITY_ICON[cap]
-  const meta = [facility.quarter, CAPABILITY_LABELS[cap]].join(" · ")
+  const hours = hoursLabel(facility.opening_hours)
+  const tags = [cap, ...facility.capabilities.filter((c) => c !== cap && c !== "general")]
+  const extra = tags.length - 3
   return (
     <motion.li
       variants={popIn}
       layout
-      className="flex items-center gap-3 rounded-lg bg-white p-3 shadow-[var(--shadow-elev-1)]"
+      className="group/row relative flex items-start gap-3 rounded-lg bg-white p-3 shadow-[var(--shadow-elev-1)] transition-shadow duration-200 hover:shadow-[var(--shadow-elev-2)] sm:p-4"
     >
-      <Link
-        to={`/app/facilities/${facility.facility_id}`}
-        className="group flex min-w-0 flex-1 items-center gap-3 rounded-md"
+      <span
+        className={
+          cap === "emergency"
+            ? "flex size-12 shrink-0 items-center justify-center rounded-md bg-brand-900 text-white"
+            : "flex size-12 shrink-0 items-center justify-center rounded-md bg-mint text-brand-700"
+        }
       >
-        <span className="flex size-[52px] shrink-0 items-center justify-center rounded-md bg-mint transition-[border-radius] duration-300 ease-[var(--ease-emphasized)] group-hover:rounded-[26px]">
-          <Icon className="size-[22px] text-brand-700" strokeWidth={2} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-title-m text-ink-900">{facility.name}</span>
-          <span className="mt-1 flex min-w-0 items-center gap-2 text-body-m text-ink-600">
-            {facility.distanceKm !== null && (
-              <span className="shrink-0 rounded-full bg-cream px-2 py-0.5 text-label-m text-brand-800">
-                {formatDistance(facility.distanceKm)}
+        <Icon className="size-[22px]" strokeWidth={1.9} aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <Link
+          to={`/app/facilities/${facility.facility_id}`}
+          className="block truncate text-title-m text-ink-900 after:absolute after:inset-0 after:rounded-lg hover:text-brand-700"
+        >
+          {facility.name}
+        </Link>
+        <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-body-m text-ink-600">
+          <span className="truncate">{facility.quarter}</span>
+          {hours && (
+            <>
+              <span className="text-ink-400" aria-hidden>·</span>
+              <span className="truncate">{hours}</span>
+            </>
+          )}
+          {facility.distanceKm !== null && (
+            <>
+              <span className="text-ink-400" aria-hidden>·</span>
+              <span className="font-semibold text-brand-700 tabular">{formatDistance(facility.distanceKm)}</span>
+            </>
+          )}
+        </p>
+        {!compact && (
+          <p className="mt-2 flex flex-wrap items-center gap-1.5">
+            {tags.slice(0, 3).map((c) => (
+              <span key={c} className="inline-flex h-6 items-center rounded-full bg-cream px-2 text-label-m text-ink-600">
+                {CAPABILITY_LABELS[c]}
+              </span>
+            ))}
+            {extra > 0 && <span className="text-label-m text-ink-400">+{extra}</span>}
+            {facility.has_backup_power && (
+              <span className="inline-flex h-6 items-center gap-1 rounded-full px-1 text-label-m text-ink-600">
+                <Zap className="size-3.5 fill-current text-brand-600" aria-hidden />
+                Backup power
               </span>
             )}
-            <span className="truncate">{meta}</span>
-            {facility.has_backup_power && !compact && (
-              <Zap className="size-3.5 shrink-0 fill-urgent-amber text-urgent-amber" aria-label="Backup power" />
-            )}
-          </span>
-        </span>
-      </Link>
+          </p>
+        )}
+      </div>
       <motion.a
         href={telHref(facility.phone)}
-        className={iconButtonClass("tonal")}
+        className={iconButtonClass("tonal", "relative z-10 self-center")}
         aria-label={`Call ${facility.name}`}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.88 }}
+        whileTap={{ scale: 0.92 }}
       >
-        <Phone className="size-5" aria-hidden />
+        <Phone className="size-[18px]" aria-hidden />
       </motion.a>
     </motion.li>
   )

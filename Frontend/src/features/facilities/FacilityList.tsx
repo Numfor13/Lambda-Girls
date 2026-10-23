@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { AnimatePresence, motion } from "motion/react"
-import { LocateFixed, MapPin, RefreshCw, Search, SearchX } from "lucide-react"
+import { LocateFixed, MapPin, Phone, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
-import { FacilityRow } from "@/design/components/FacilityRow"
-import { Chip, Select } from "@/design/components/Field"
+import { FacilityRow, hoursLabel } from "@/design/components/FacilityRow"
+import { Chip } from "@/design/components/Field"
+import { AppPage, Panel } from "@/design/components/AppPage"
+import { buttonClass } from "@/design/components/Button"
 import { SPRING, staggerOnMount } from "@/design/motion"
-import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
+import { EmptyState, PageSpinner } from "@/design/components/primitives"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { quarterCentroids, rankFacilities } from "@/lib/geo"
 import { CAPABILITY_LABELS, formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { refreshFacilities, useFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 
 type FilterKey = Capability | "backup_power" | "csu"
@@ -78,62 +81,118 @@ export default function FacilityList() {
 
   if (!facilities) return <PageSpinner />
 
-  return (
-    <div>
-      <PageHeader eyebrow="Facilities" title="Find care near you" subtitle="Health facilities in and around Buea — saved on your phone." />
+  // Real counts from the directory, for the "by service" shortcuts in the aside.
+  const counts = FILTERS.map((f) => ({
+    ...f,
+    n: facilities.filter((x) =>
+      f.key === "backup_power" ? x.has_backup_power : f.key === "csu" ? x.accepts_csu_card : x.capabilities.includes(f.key),
+    ).length,
+  }))
+  const open247 = facilities.filter((f) => hoursLabel(f.opening_hours) === "Open 24/7").length
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400"
-            aria-hidden
-          />
+  return (
+    <AppPage
+      eyebrow="Facilities"
+      title="Find care near you"
+      subtitle="Every health facility in and around Buea, saved on your phone so it works without a network."
+      aside={
+        <>
+          <Panel tone="mint" className="hidden lg:block">
+            <p className="eyebrow">By service</p>
+            <ul className="mt-3 flex flex-col">
+              {counts.map((c) => (
+                <li key={c.key}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(c.key)}
+                    aria-pressed={filters.has(c.key)}
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md px-3 text-label-l transition-colors",
+                      filters.has(c.key) ? "bg-brand-900 text-white" : "text-brand-900 hover:bg-white/70",
+                    )}
+                  >
+                    {c.label}
+                    <span className={cn("tabular", filters.has(c.key) ? "text-white/80" : "text-ink-600")}>{c.n}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 px-3 text-body-m text-ink-600">{open247} open around the clock.</p>
+          </Panel>
+          <Panel>
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-urgent-red-50 text-urgent-red">
+                <Phone className="size-[18px]" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-title-m">Someone can&apos;t breathe, won&apos;t wake or is bleeding heavily?</p>
+                <p className="mt-1 text-body-m text-ink-600">Don&apos;t search. Call the emergency line now.</p>
+              </div>
+            </div>
+            <a href="tel:15" className={buttonClass({ variant: "danger", full: true, className: "mt-4" })}>
+              <Phone className="size-5" aria-hidden /> Call 15
+            </a>
+          </Panel>
+          <p className="flex flex-wrap items-center gap-x-2 px-1 text-body-m text-ink-600">
+            {syncedAt ? `Updated ${formatDate(syncedAt)}` : "Built-in directory"} · Works offline
+            {online && (
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={refreshing}
+                className="inline-flex h-9 items-center gap-1 rounded-full px-2 text-label-l text-brand-700 hover:bg-mint"
+              >
+                <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
+                Refresh
+              </button>
+            )}
+          </p>
+        </>
+      }
+    >
+      {/* Search bar: one solid surface with three segments (Airbnb pattern). */}
+      <div className="flex flex-col gap-2 rounded-xl bg-white p-2 shadow-[var(--shadow-elev-2)] md:flex-row md:items-center md:gap-0 md:rounded-full">
+        <label className="relative flex min-w-0 flex-1 items-center">
+          <Search className="pointer-events-none absolute left-4 size-5 text-ink-400" aria-hidden />
+          <span className="sr-only">Search facilities</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search in Buea"
-            aria-label="Search facilities"
-            className="h-14 w-full rounded-full border-[1.5px] border-white/80 bg-white/80 pr-4 pl-12 text-body-l shadow-[var(--shadow-elev-1)] backdrop-blur-xl transition-shadow placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
+            placeholder="Name, quarter or street"
+            className="h-12 w-full rounded-full bg-transparent pr-4 pl-12 text-body-l placeholder:text-ink-400 hover:bg-cream focus:bg-cream focus:outline-none"
           />
-        </div>
-        <div className="glass flex flex-wrap items-center gap-3 rounded-full py-1.5 pr-1.5 pl-4 text-label-l text-brand-900">
-          {coords && !quarter ? (
-            <span className="flex items-center gap-2">
-              <LocateFixed className="size-4" aria-hidden /> Nearest first
-            </span>
-          ) : (
-            <>
-              <span className="flex items-center gap-2">
-                <MapPin className="size-4" aria-hidden />
-                {quarter ? `Nearest to ${quarter}` : "Sorted A–Z"}
-              </span>
-              {status !== "denied" && status !== "unavailable" && !quarter && (
-                <button type="button" onClick={locate} className="text-brand-700 underline underline-offset-2">
-                  {status === "locating" ? "Finding you…" : "Use my location"}
-                </button>
-              )}
-            </>
-          )}
-          <label className="ml-auto flex items-center">
-            <span className="sr-only">Choose your quarter</span>
-            <Select
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-              className="h-11 w-auto rounded-full bg-white text-label-l"
-            >
-              <option value="">{coords ? "My location" : "Choose your quarter"}</option>
-              {quarters.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </Select>
-          </label>
-        </div>
+        </label>
+        <span className="mx-1 hidden h-8 w-px bg-line md:block" aria-hidden />
+        <label className="relative flex items-center md:w-56">
+          <MapPin className="pointer-events-none absolute left-4 size-[18px] text-ink-400" aria-hidden />
+          <span className="sr-only">Sort by distance from a quarter</span>
+          <select
+            value={quarter}
+            onChange={(e) => setQuarter(e.target.value)}
+            className="h-12 w-full appearance-none rounded-full bg-transparent pr-8 pl-11 text-label-l text-ink-900 hover:bg-cream focus:bg-cream focus:outline-none"
+          >
+            <option value="">{coords ? "My location" : "Any quarter"}</option>
+            {quarters.map((q) => (
+              <option key={q} value={q}>
+                {q}
+              </option>
+            ))}
+          </select>
+        </label>
+        {status !== "denied" && status !== "unavailable" && (
+          <button
+            type="button"
+            onClick={locate}
+            className={buttonClass({ variant: coords && !quarter ? "tonal" : "primary", className: "md:ml-1" })}
+          >
+            <LocateFixed className="size-[18px]" aria-hidden />
+            {status === "locating" ? "Finding you…" : coords && !quarter ? "Nearest first" : "Near me"}
+          </button>
+        )}
       </div>
 
-      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0" role="group" aria-label="Filters">
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filters">
         {FILTERS.map((f) => (
           <Chip key={f.key} selected={filters.has(f.key)} onClick={() => toggle(f.key)}>
             {f.label}
@@ -141,28 +200,44 @@ export default function FacilityList() {
         ))}
       </div>
 
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.p
-          key={visible.length}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={SPRING.fast}
-          className="mt-5 text-label-l text-ink-600"
-          aria-live="polite"
-        >
-          {visible.length} {visible.length === 1 ? "facility" : "facilities"}
-        </motion.p>
-      </AnimatePresence>
+      <div className="flex items-baseline justify-between gap-3">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.p
+            key={visible.length}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={SPRING.fast}
+            className="text-label-l text-ink-900"
+            aria-live="polite"
+          >
+            {visible.length} {visible.length === 1 ? "facility" : "facilities"}
+            <span className="font-normal text-ink-600">
+              {" "}
+              · {coords && !quarter ? "nearest first" : quarter ? `nearest to ${quarter}` : "A–Z"}
+            </span>
+          </motion.p>
+        </AnimatePresence>
+        {(filters.size > 0 || query) && (
+          <button
+            type="button"
+            onClick={() => {
+              setFilters(new Set())
+              setQuery("")
+            }}
+            className="text-label-l text-brand-700 underline-offset-4 hover:underline"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
 
       {visible.length === 0 ? (
-        <div className="mt-3">
-          <EmptyState icon={SearchX} title="No facilities match your search or filters." />
-        </div>
+        <EmptyState icon={SearchX} title="No facilities match your search or filters." />
       ) : (
         <motion.ul
           key={[...filters].join() + quarter}
-          className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-2 lg:grid-cols-2 lg:gap-3"
+          className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3"
           variants={staggerOnMount(0.03)}
           initial="hidden"
           animate="show"
@@ -172,21 +247,6 @@ export default function FacilityList() {
           ))}
         </motion.ul>
       )}
-
-      <p className="mt-6 flex flex-wrap items-center gap-x-2 text-body-m text-ink-600">
-        {syncedAt ? `Last updated ${formatDate(syncedAt)}` : "Built-in directory"} · Available offline
-        {online && (
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={refreshing}
-            className="inline-flex h-10 items-center gap-1 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
-          >
-            <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
-            Refresh
-          </button>
-        )}
-      </p>
-    </div>
+    </AppPage>
   )
 }

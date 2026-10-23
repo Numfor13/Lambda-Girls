@@ -61,17 +61,20 @@ export function Landscape({
   className,
   sky = true,
   preserve = "xMidYMax slice",
+  viewBox = "0 0 1440 900",
 }: {
   className?: string
   sky?: boolean
   preserve?: string
+  /** Crop the scene, e.g. "0 250 1440 650" shows only the ridges (for a landscape band). */
+  viewBox?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] })
   return (
     <div ref={ref} className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden>
-      <svg viewBox="0 0 1440 900" preserveAspectRatio={preserve} className="size-full overflow-visible">
+      <svg viewBox={viewBox} preserveAspectRatio={preserve} className="size-full overflow-visible">
         <defs>
           <linearGradient id="cb-sky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" style={{ stopColor: "var(--color-mint-200)" }} />
@@ -114,37 +117,27 @@ export function Landscape({
 }
 
 /**
- * Ambient backdrop behind app chrome (Figma: Backdrop/Ambient). Soft brand blobs that slowly
- * drift so the Liquid Glass rail, tab bar and top bars always have something to refract.
+ * Page ground behind app chrome. v2: a still, paper-like cream with a faint brand glow at the
+ * top (no drifting blobs: they made every screen look murky and cost GPU on low-end phones).
+ * Urgency tones tint the glow only; the clinical colour itself lives in the result hero.
  */
+const GLOW: Record<"brand" | "red" | "amber" | "green", string> = {
+  brand: "rgb(207 230 215 / 0.6)",
+  red: "rgb(253 236 234 / 0.95)",
+  amber: "rgb(253 244 225 / 0.95)",
+  green: "rgb(232 243 233 / 0.95)",
+}
+
 export function Backdrop({ tone = "brand", className }: { tone?: "brand" | "red" | "amber" | "green"; className?: string }) {
-  const blobs =
-    tone === "red"
-      ? ["bg-urgent-red/16", "bg-mint-200", "bg-urgent-red/10", "bg-brand-500/16"]
-      : tone === "amber"
-        ? ["bg-urgent-amber/22", "bg-mint-200", "bg-urgent-amber/12", "bg-brand-500/16"]
-        : tone === "green"
-          ? ["bg-urgent-green/18", "bg-mint-200", "bg-brand-500/18", "bg-land-far/60"]
-          : ["bg-brand-500/26", "bg-mint-200", "bg-brand-700/16", "bg-land-far/70"]
-  const base =
-    tone === "red" ? "bg-urgent-red-50" : tone === "amber" ? "bg-urgent-amber-50" : tone === "green" ? "bg-urgent-green-50" : "bg-cream"
   // Portalled to <body>: page transitions transform their content, which would trap `fixed`.
   return createPortal(
-    <div className={cn("pointer-events-none fixed inset-0 -z-10 overflow-hidden", base, className)} aria-hidden>
-      <div className={cn("animate-drift absolute -top-[18%] -left-[10%] size-[60vmax] rounded-full blur-[90px]", blobs[0])} />
-      <div
-        className={cn("animate-drift absolute -top-[25%] -right-[15%] size-[55vmax] rounded-full blur-[90px]", blobs[1])}
-        style={{ animationDelay: "-6s" }}
-      />
-      <div
-        className={cn("animate-drift absolute top-[45%] left-[25%] size-[45vmax] rounded-full blur-[90px]", blobs[2])}
-        style={{ animationDelay: "-11s" }}
-      />
-      <div
-        className={cn("animate-drift absolute -right-[10%] -bottom-[20%] size-[40vmax] rounded-full blur-[90px]", blobs[3])}
-        style={{ animationDelay: "-3s" }}
-      />
-    </div>,
+    <div
+      className={cn("pointer-events-none fixed inset-0 -z-10 bg-cream", className)}
+      style={{
+        background: `radial-gradient(110% 55% at 15% -5%, ${GLOW[tone]}, transparent 62%), radial-gradient(80% 45% at 100% 0%, rgb(243 239 228 / 0.85), transparent 60%), var(--color-cream)`,
+      }}
+      aria-hidden
+    />,
     document.body,
   )
 }
