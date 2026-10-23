@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { useAuth, homeFor } from "@/auth/AuthProvider"
-import { Logo } from "@/design/components/Logo"
+import { Logo, LogoMark, Wordmark } from "@/design/components/Logo"
 import { ButtonLink, buttonClass } from "@/design/components/Button"
 import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
 import { flags } from "@/config/flags"
@@ -54,7 +54,7 @@ function PublicNav() {
         </nav>
         <div className="hidden items-center gap-8 lg:flex">
           {authLink}
-          <ButtonLink to="/app" size="sm" className="h-11 px-5">
+          <ButtonLink to="/sign-in?mode=signup" size="sm" className="h-11 px-5">
             Get started
           </ButtonLink>
         </div>
@@ -83,7 +83,7 @@ function PublicNav() {
             ))}
             <div className="mt-2 flex items-center gap-4 border-t border-line pt-4">
               {authLink}
-              <ButtonLink to="/app" size="sm" className="ml-auto" onClick={() => setOpen(false)}>
+              <ButtonLink to="/sign-in?mode=signup" size="sm" className="ml-auto" onClick={() => setOpen(false)}>
                 Get started
               </ButtonLink>
             </div>
@@ -205,12 +205,8 @@ export function PublicFooter() {
         className="pointer-events-none flex items-center justify-center gap-4 overflow-hidden px-4 pb-4 opacity-[0.07] select-none sm:gap-8"
         aria-hidden
       >
-        <img
-          src="/CareBridge Healthcare Logo.png"
-          alt=""
-          draggable={false}
-          className="h-20 w-auto brightness-0 invert sm:h-32 lg:h-40"
-        />
+        <LogoMark className="h-20 brightness-0 invert sm:h-32 lg:h-40" />
+        <Wordmark light className="h-16 sm:h-28 lg:h-36" />
       </div>
     </footer>
   )

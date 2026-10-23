@@ -25,11 +25,21 @@ export function getUserManager(): UserManager | null {
     redirect_uri: env.cognito.redirectUri,
     post_logout_redirect_uri: window.location.origin,
     response_type: "code",
-    scope: "openid email phone profile",
+    scope: "openid email",
     automaticSilentRenew: true,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
   })
   return manager
+}
+
+/**
+ * Redirect to Cognito's signup page while still using oidc-client-ts state
+ * management so the callback can exchange the code after account creation.
+ */
+export async function signUpRedirect(returnTo?: string): Promise<void> {
+  const um = getUserManager()
+  if (!um) return
+  await um.signinRedirect({ state: { returnTo: returnTo ?? "/app" } })
 }
 
 export function sessionFromUser(user: User): Session {

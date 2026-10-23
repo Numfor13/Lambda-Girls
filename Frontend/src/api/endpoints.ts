@@ -2,19 +2,23 @@ import { request } from "./client"
 import type {
   CaseDetail,
   Consultation,
+  DoctorApplication,
   Facility,
+  HospitalEntry,
   HouseholdMember,
   Message,
   Payment,
   Prescription,
   Profile,
   PushSubscriptionJSON,
+  RecommendingHospital,
   Referral,
-  SymptomPayload,
+  Specialty,
   SyncResponse,
   TriageResult,
   Urgency,
 } from "./types"
+
 
 export const profileApi = {
   get: () => request<Profile>("profile", "/profile"),
@@ -40,8 +44,6 @@ export const facilityApi = {
 export const triageApi = {
   list: () => request<{ results: TriageResult[]; count: number }>("triage", "/triage"),
   get: (id: string) => request<TriageResult>("triage", `/triage/${id}`),
-  submit: (body: SymptomPayload & { on_behalf_member_id?: string | null; queued_at?: number }) =>
-    request<TriageResult>("triage", "/triage", { method: "POST", body }),
 }
 
 export interface NewConsultation {
@@ -53,12 +55,9 @@ export interface NewConsultation {
 }
 
 export interface SyncBody {
-  triage_results: {
-    result_id: string
-    symptom_payload: SymptomPayload
-    on_behalf_member_id?: string | null
+  triage_results: (Omit<TriageResult, "synced_from_offline" | "created_at"> & {
     queued_at: number
-  }[]
+  })[]
   messages: (Pick<
     Message,
     | "consultation_id"
@@ -149,4 +148,63 @@ export const pushApi = {
     request<{ ok: boolean }>("push", "/push/subscribe", { method: "POST", body }),
   unsubscribe: () =>
     request<{ ok: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
+}
+
+export interface NewDoctorApplication {
+  full_name: string
+  email: string
+  phone: string
+  specialty: Specialty
+  medical_school: string
+  graduation_year: number
+  years_experience: number
+  hospitals_worked: HospitalEntry[]
+  recommending_hospital: RecommendingHospital
+  document_s3_key: string
+}
+
+export const doctorApplicationApi = {
+  getUploadUrl: (contentType = "application/pdf") =>
+    request<{ upload_url: string; key: string }>(
+      "doctorApplication",
+      `/upload-url?content_type=${encodeURIComponent(contentType)}`,
+      { auth: false },
+    ),
+  submit: (body: NewDoctorApplication) =>
+    request<{ application_id: string; status: string }>(
+      "doctorApplication",
+      "/applications",
+      { method: "POST", body, auth: false },
+    ),
+  getStatus: (applicationId: string) =>
+    request<Pick<DoctorApplication, "application_id" | "full_name" | "specialty" | "status" | "submitted_at" | "reviewed_at" | "rejection_reason">>(
+      "doctorApplication",
+      `/applications/${applicationId}`,
+      { auth: false },
+    ),
+  // Admin endpoints
+  adminList: (status?: string) =>
+    request<{ applications: DoctorApplication[]; count: number }>(
+      "doctorApplication",
+      `/admin/applications${status ? `?status=${status}` : ""}`,
+    ),
+  adminGet: (id: string) =>
+    request<DoctorApplication>("doctorApplication", `/admin/applications/${id}`),
+  adminUpdateNotes: (id: string, body: { admin_notes?: string; called_hospital?: boolean }) =>
+    request<{ updated: string }>("doctorApplication", `/admin/applications/${id}`, {
+      method: "PUT",
+      body,
+    }),
+  adminApprove: (id: string) =>
+    request<{ approved: string; email: string }>(
+      "doctorApplication",
+      `/admin/applications/${id}/approve`,
+      { method: "POST", body: {} },
+    ),
+  adminReject: (id: string, reason: string) =>
+    request<{ rejected: string }>(
+      "doctorApplication",
+      `/admin/applications/${id}/reject`,
+      { method: "POST", body: { reason } },
+    ),
 }

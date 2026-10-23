@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ulid } from "ulid"
 import { Baby, Check, ChevronLeft, Search, Siren, User, UserPlus, Users } from "lucide-react"
@@ -7,11 +7,11 @@ import { useAuth } from "@/auth/AuthProvider"
 import { Button } from "@/design/components/Button"
 import { ChoiceCard, Field, Input, Select } from "@/design/components/Field"
 import { AdvisoryNote, Notice } from "@/design/components/primitives"
+import { SlideStep } from "@/design/motion"
 import { useProfile } from "@/features/profile/useProfile"
 import { ageInMonths, describeAge } from "@/lib/format"
 import { useNow } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
-import { triageApi } from "@/api/endpoints"
 import { db } from "@/offline/db"
 import { enqueue } from "@/offline/outbox"
 import { evaluate } from "@/triage-engine/engine"
@@ -71,6 +71,7 @@ export default function TriageWizard() {
   const [stepIndex, setStepIndex] = useState(0)
   const [search, setSearch] = useState("")
   const [saving, setSaving] = useState(false)
+  const dirRef = useRef<1 | -1>(1)
 
   const ageMonths = Number(a.years || 0) * 12 + Number(a.months || 0)
   const ageKnown = a.years !== "" || a.months !== ""
@@ -107,8 +108,8 @@ export default function TriageWizard() {
         : `Someone else (${describeAge(ageMonths)}, ${a.sex || "sex not given"})`
 
   const update = (patch: Partial<Answers>) => setA((prev) => ({ ...prev, ...patch }))
-  const next = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1))
-  const back = () => (stepIndex === 0 ? navigate(-1) : setStepIndex((i) => i - 1))
+  const next = () => { dirRef.current = 1; setStepIndex((i) => Math.min(i + 1, steps.length - 1)) }
+  const back = () => { dirRef.current = -1; stepIndex === 0 ? navigate(-1) : setStepIndex((i) => i - 1) }
 
   const chooseSubject = (subject: Subject, memberId: string | null = null) => {
     const patch: Partial<Answers> = { subject, memberId }
@@ -155,23 +156,6 @@ export default function TriageWizard() {
     })
     localStorage.setItem(CONSENT_KEY, "1")
     await enqueue("triage", resultId)
-    if (navigator.onLine) {
-      triageApi
-        .submit({ ...payload, on_behalf_member_id: a.subject === "member" ? a.memberId : null })
-        .then(async (serverResult) => {
-          await db.triage_results.update(resultId, {
-            urgency: serverResult.urgency,
-            recommendation: serverResult.recommendation,
-            facility_type_needed: serverResult.facility_type_needed,
-            rules_fired: serverResult.rules_fired,
-            sync_state: "sent",
-          })
-          await db.outbox.where("ref").equals(resultId).delete()
-        })
-        .catch(() => {
-          // Falls back to offline sync; the outbox item is already enqueued.
-        })
-    }
     navigate(`/app/triage/${resultId}`, { replace: true })
   }
 
@@ -212,7 +196,7 @@ export default function TriageWizard() {
         </span>
       </div>
 
-      <div className="mt-6 flex-1">
+      <SlideStep stepKey={step} direction={dirRef.current} className="mt-6 flex-1">
         {step === "who" && (
           <section>
             <h1 className="text-[26px] font-extrabold">Who is this for?</h1>
@@ -457,7 +441,7 @@ export default function TriageWizard() {
             <AdvisoryNote className="mt-4" />
           </section>
         )}
-      </div>
+      </SlideStep>
 
       {step !== "who" && (
         <div className="sticky bottom-20 mt-8 bg-white/95 py-3 lg:bottom-0">

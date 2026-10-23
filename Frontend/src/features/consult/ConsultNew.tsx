@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
-import { CloudOff, Trash2, User, UserPlus, Users } from "lucide-react"
+import { CloudOff, FlaskConical, Stethoscope, Trash2, User, UserPlus, Users, UserCog } from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
 import { env } from "@/config/env"
 import { Button, ButtonLink } from "@/design/components/Button"
@@ -11,9 +11,33 @@ import { Notice, PageHeader } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { useProfile } from "@/features/profile/useProfile"
 import { formatDateTime, formatDuration, formatXaf } from "@/lib/format"
-import { db } from "@/offline/db"
+import { db, type ConsultType } from "@/offline/db"
 import type { Recording } from "@/offline/voiceRecorder"
 import { createConsultation } from "./actions"
+
+const CONSULT_TYPES: { type: ConsultType; label: string; description: string; icon: React.ElementType; fee: number }[] = [
+  {
+    type: "general",
+    label: "General Consultation",
+    description: "Family medicine, common illnesses, follow-ups",
+    icon: Stethoscope,
+    fee: env.consultationFees.general,
+  },
+  {
+    type: "specialist",
+    label: "Specialist Consultation",
+    description: "Cardiologist, pediatrician, gynecologist, and more",
+    icon: UserCog,
+    fee: env.consultationFees.specialist,
+  },
+  {
+    type: "lab",
+    label: "Lab Test Request",
+    description: "Blood work, urinalysis, imaging referral, culture",
+    icon: FlaskConical,
+    fee: env.consultationFees.lab,
+  },
+]
 
 export default function ConsultNew() {
   const [params] = useSearchParams()
@@ -26,6 +50,7 @@ export default function ConsultNew() {
   const [triageId, setTriageId] = useState(params.get("triage") ?? "")
   const linked = recent?.find((r) => r.result_id === triageId)
 
+  const [consultType, setConsultType] = useState<ConsultType>("general")
   const [subject, setSubject] = useState<string>(() => {
     const fromTriage = params.get("member")
     return fromTriage ? `member:${fromTriage}` : "me"
@@ -39,11 +64,14 @@ export default function ConsultNew() {
   const member = members.find((m) => m.member_id === memberId)
   const canSubmit = (complaint.trim().length > 0 || voice) && !saving
 
+  const selectedType = CONSULT_TYPES.find((t) => t.type === consultType)!
+
   const submit = async () => {
     if (!session) return
     setSaving(true)
     const local = await createConsultation({
       complaint: complaint.trim() || "Voice note — please listen to my message.",
+      consultType,
       subjectLabel: member ? member.name : "You",
       patientId: member ? `${session.sub}#${member.member_id}` : undefined,
       memberId: member?.member_id ?? null,
@@ -75,7 +103,36 @@ export default function ConsultNew() {
 
   return (
     <div className="flex flex-col gap-7">
-      <PageHeader title="Message a doctor" subtitle="Describe what's wrong in your own words — by text or voice." />
+      <PageHeader title="Book a consultation" subtitle="Choose the type of care you need." />
+
+      <section>
+        <h2 className="mb-3 text-[16px] font-bold">Type of consultation</h2>
+        <div className="flex flex-col gap-3">
+          {CONSULT_TYPES.map((t) => (
+            <button
+              key={t.type}
+              type="button"
+              onClick={() => setConsultType(t.type)}
+              className={`flex items-center gap-4 rounded-[16px] border-2 p-4 text-left transition-colors ${
+                consultType === t.type
+                  ? "border-brand-700 bg-mint"
+                  : "border-line bg-white hover:bg-cream"
+              }`}
+            >
+              <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${consultType === t.type ? "bg-brand-700 text-white" : "bg-cream text-brand-700"}`}>
+                <t.icon className="size-5" aria-hidden />
+              </span>
+              <span className="flex-1">
+                <span className="block font-bold">{t.label}</span>
+                <span className="text-sm text-ink-600">{t.description}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block font-display text-[17px] font-extrabold text-brand-700">{formatXaf(t.fee)}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-[16px] font-bold">Who is this for?</h2>
@@ -122,14 +179,20 @@ export default function ConsultNew() {
       </section>
 
       <section>
-        <Field label="What's wrong?">
+        <Field label={consultType === "lab" ? "What test do you need and why?" : "What's wrong?"}>
           {(id) => (
             <Textarea
               id={id}
               value={complaint}
               maxLength={2000}
               onChange={(e) => setComplaint(e.target.value)}
-              placeholder="For example: my son has had a fever and cough for 3 days."
+              placeholder={
+                consultType === "lab"
+                  ? "For example: I need a full blood count and malaria test."
+                  : consultType === "specialist"
+                  ? "For example: I've had chest pain for two weeks and need a cardiologist."
+                  : "For example: my son has had a fever and cough for 3 days."
+              }
             />
           )}
         </Field>
@@ -153,11 +216,14 @@ export default function ConsultNew() {
         </div>
       </section>
 
-      <section className="rounded-[16px] border border-line p-5">
-        <p className="text-[15px]">
-          Consultation fee: <strong>{formatXaf(env.consultationFeeXaf)}</strong> — paid before a
-          doctor sees your case.
-        </p>
+      <section className="rounded-[16px] border-2 border-brand-700 bg-mint p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-bold text-brand-900">{selectedType.label}</p>
+            <p className="text-sm text-brand-700">Paid before a doctor sees your case</p>
+          </div>
+          <p className="font-display text-[24px] font-extrabold text-brand-700">{formatXaf(selectedType.fee)}</p>
+        </div>
       </section>
 
       <Button size="lg" full trailing="arrow" disabled={!canSubmit} loading={saving} onClick={submit}>

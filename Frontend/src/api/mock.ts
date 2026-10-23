@@ -1,6 +1,5 @@
 import { ulid } from "ulid"
 import seed from "@/data/facilities.seed.json"
-import { evaluate } from "@/triage-engine/engine"
 import { ApiError } from "./errors"
 import type {
   Consultation,
@@ -10,7 +9,6 @@ import type {
   Prescription,
   Profile,
   Referral,
-  SymptomPayload,
   TriageResult,
   Urgency,
 } from "./types"
@@ -26,7 +24,6 @@ interface MockDb {
   payments: Payment[]
   prescriptions: Prescription[]
   referrals: Referral[]
-  push_subscriptions: Record<string, unknown>
 }
 
 const KEY = "cb_mock_db"
@@ -47,7 +44,6 @@ function load(): MockDb {
     payments: [],
     prescriptions: [],
     referrals: [],
-    push_subscriptions: {},
   }
 }
 
@@ -154,51 +150,6 @@ const routes: [string, RegExp, Handler][] = [
       const f = facilities.find((x) => x.facility_id === params[0])
       if (!f) throw new ApiError(404, "Facility not found")
       return f
-    },
-  ],
-  [
-    "POST",
-    /^\/triage$/,
-    ({ user, data, body }) => {
-      const sub = requireUser(user).sub
-      const payload = {
-        age_months: (body.age_months as number) ?? 999,
-        is_pregnant: Boolean(body.is_pregnant),
-        symptoms: (body.symptoms as string[]) ?? [],
-        vitals: (body.vitals as { resp_rate?: number }) ?? {},
-      }
-      const result = evaluate(payload)
-      const item = {
-        result_id: crypto.randomUUID(),
-        user_id: sub,
-        ...result,
-        symptom_payload: payload,
-        on_behalf_member_id: (body.on_behalf_member_id as string) ?? null,
-        synced_from_offline: Boolean(body.queued_at),
-        created_at: (body.queued_at as number) ?? Date.now(),
-      }
-      data.triage.push(item)
-      return item
-    },
-  ],
-  ["GET", /^\/push\/vapid-public-key$/, () => ({ public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" })],
-  [
-    "POST",
-    /^\/push\/subscribe$/,
-    ({ user, data, body }) => {
-      const sub = requireUser(user).sub
-      data.push_subscriptions ??= {}
-      data.push_subscriptions[sub] = body.subscription
-      return { ok: true }
-    },
-  ],
-  [
-    "DELETE",
-    /^\/push\/subscribe$/,
-    ({ user, data }) => {
-      const sub = requireUser(user).sub
-      if (data.push_subscriptions) delete data.push_subscriptions[sub]
-      return { ok: true }
     },
   ],
   [
@@ -330,30 +281,15 @@ const routes: [string, RegExp, Handler][] = [
         messages: [] as { message_id: string; status: "ok" | "duplicate" }[],
       }
       let hasRed = false
-      for (const tr of (body.triage_results as {
-        result_id: string
-        symptom_payload?: SymptomPayload
-        on_behalf_member_id?: string | null
-        queued_at?: number
-      }[]) ?? []) {
-        const payload: SymptomPayload = tr.symptom_payload ?? {
-          age_months: 999,
-          is_pregnant: false,
-          symptoms: [],
-          vitals: {},
-        }
-        const result = evaluate(payload)
+      for (const tr of (body.triage_results as (TriageResult & { queued_at: number })[]) ?? []) {
         data.triage = data.triage.filter((t) => t.result_id !== tr.result_id)
         data.triage.push({
-          result_id: tr.result_id ?? crypto.randomUUID(),
+          ...tr,
           user_id: sub,
-          ...result,
-          symptom_payload: payload,
-          on_behalf_member_id: tr.on_behalf_member_id ?? null,
           synced_from_offline: true,
-          created_at: tr.queued_at ?? Date.now(),
+          created_at: tr.queued_at,
         })
-        if (result.urgency === "RED") hasRed = true
+        if (tr.urgency === "RED") hasRed = true
         results.triage_results.push({ result_id: tr.result_id, status: "ok" })
       }
       for (const msg of (body.messages as Message[]) ?? []) {

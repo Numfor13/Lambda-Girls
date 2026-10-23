@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
+import { AnimatePresence, motion } from "motion/react"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { CircleCheck, Clock, Share2, Smartphone, TriangleAlert, WifiOff } from "lucide-react"
@@ -11,6 +12,7 @@ import { flags } from "@/config/flags"
 import { Button, ButtonLink } from "@/design/components/Button"
 import { ChoiceCard, Field, Input } from "@/design/components/Field"
 import { Card, Notice, PageHeader, PageSpinner } from "@/design/components/primitives"
+import { EASE_OUT } from "@/design/motion"
 import { formatXaf } from "@/lib/format"
 import { useNow, useOnline } from "@/lib/hooks"
 import { findLocalConsultation } from "@/features/consult/actions"
@@ -45,33 +47,45 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
   })
   const status = payment.data?.status
 
+  const fadeProps = {
+    initial: { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -12 },
+    transition: { duration: 0.3, ease: EASE_OUT },
+  }
+
   if (status === "confirmed") {
     return (
-      <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <CircleCheck className="size-16 text-urgent-green" strokeWidth={1.5} aria-hidden />
-        <h1 className="text-[26px] font-extrabold">Payment received</h1>
-        <p className="max-w-sm text-[15px] text-ink-600">You're in the queue. A doctor will reply soon.</p>
-        <p className="text-sm text-ink-600">Reference: {payment.data?.fapshi_ref}</p>
-        <ButtonLink to={`/app/consult/${consultRef}`} trailing="arrow" size="lg">
-          Go to conversation
-        </ButtonLink>
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key="confirmed" className="flex flex-col items-center gap-4 py-8 text-center" {...fadeProps}>
+          <CircleCheck className="size-16 text-urgent-green" strokeWidth={1.5} aria-hidden />
+          <h1 className="text-[26px] font-extrabold">Payment received</h1>
+          <p className="max-w-sm text-[15px] text-ink-600">You're in the queue. A doctor will reply soon.</p>
+          <p className="text-sm text-ink-600">Reference: {payment.data?.fapshi_ref}</p>
+          <ButtonLink to={`/app/consult/${consultRef}`} trailing="arrow" size="lg">
+            Go to conversation
+          </ButtonLink>
+        </motion.div>
+      </AnimatePresence>
     )
   }
 
   if (status === "failed") {
     return (
-      <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <TriangleAlert className="size-14 text-urgent-red" strokeWidth={1.5} aria-hidden />
-        <h1 className="text-[24px] font-extrabold">The payment didn't go through</h1>
-        <p className="max-w-sm text-[15px] text-ink-600">No money was taken. You can try again.</p>
-        <Button onClick={onRetry}>Try again</Button>
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key="failed" className="flex flex-col items-center gap-4 py-8 text-center" {...fadeProps}>
+          <TriangleAlert className="size-14 text-urgent-red" strokeWidth={1.5} aria-hidden />
+          <h1 className="text-[24px] font-extrabold">The payment didn't go through</h1>
+          <p className="max-w-sm text-[15px] text-ink-600">No money was taken. You can try again.</p>
+          <Button onClick={onRetry}>Try again</Button>
+        </motion.div>
+      </AnimatePresence>
     )
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 py-8 text-center">
+    <AnimatePresence mode="wait">
+    <motion.div key="waiting" className="flex flex-col items-center gap-4 py-8 text-center" {...fadeProps}>
       <Clock className="size-14 animate-pulse text-brand-700" strokeWidth={1.5} aria-hidden />
       <h1 className="text-[24px] font-extrabold">
         {timedOut ? "Still waiting for confirmation" : "Confirming your payment…"}
@@ -104,7 +118,8 @@ function PaymentStatus({ consultRef, pending, onRetry }: { consultRef: string; p
           Start a new payment
         </Button>
       )}
-    </div>
+    </motion.div>
+    </AnimatePresence>
   )
 }
 
@@ -125,6 +140,11 @@ export default function Payment() {
   const [pending, setPending] = useState<Pending | null>(() => readPending(id))
   const [payer, setPayer] = useState<"me" | "other">("me")
   const [phone, setPhone] = useState(session?.phone ?? "")
+
+  // Derive consult type early — local may be undefined (loading) or null (not found)
+  const consultType = local?.consult_type ?? "general"
+  const fee = env.consultationFees[consultType]
+  const consultTypeName = consultType === "lab" ? "Lab Test" : consultType === "specialist" ? "Specialist" : "General"
 
   const initiate = useMutation({
     mutationFn: () =>
@@ -182,7 +202,7 @@ export default function Payment() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Pay for your consultation" subtitle="Paid once. A doctor sees your case after payment." />
+      <PageHeader title="Pay for your consultation" subtitle={`${consultTypeName} consultation · Paid once. A doctor sees your case after payment.`} />
 
       {consult.isError && <Notice tone="error">{friendlyError(consult.error)}</Notice>}
 
@@ -196,9 +216,13 @@ export default function Payment() {
             <dt className="text-ink-600">Request</dt>
             <dd className="line-clamp-2 max-w-[60%] text-right font-medium">{c?.complaint ?? local?.complaint}</dd>
           </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-ink-600">Type</dt>
+            <dd className="font-medium capitalize">{consultType === "lab" ? "Lab Test" : consultType === "specialist" ? "Specialist" : "General"}</dd>
+          </div>
           <div className="flex justify-between gap-4 border-t border-line pt-3">
             <dt className="font-semibold">Amount</dt>
-            <dd className="font-display text-[20px] font-extrabold">{formatXaf(env.consultationFeeXaf)}</dd>
+            <dd className="font-display text-[20px] font-extrabold">{formatXaf(fee)}</dd>
           </div>
         </dl>
       </Card>

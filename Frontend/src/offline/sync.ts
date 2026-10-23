@@ -50,6 +50,10 @@ async function syncTriage(items: OutboxItem[]) {
       if (!r) continue
       body.triage_results.push({
         result_id: r.result_id,
+        urgency: r.urgency,
+        recommendation: r.recommendation,
+        facility_type_needed: r.facility_type_needed,
+        rules_fired: r.rules_fired,
         symptom_payload: r.symptom_payload,
         on_behalf_member_id: r.on_behalf_member_id,
         queued_at: r.created_at,
