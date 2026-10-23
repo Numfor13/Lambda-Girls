@@ -28,6 +28,7 @@ import {
 } from "@/design/components/primitives"
 import { popIn, staggerOnMount } from "@/design/motion"
 import { formatXaf } from "@/lib/format"
+import { normalisePhone, rules } from "@/lib/form"
 import { useNow, useOnline } from "@/lib/hooks"
 import { findLocalConsultation } from "@/features/consult/actions"
 
@@ -175,12 +176,13 @@ export default function Payment() {
   const [pending, setPending] = useState<Pending | null>(() => readPending(id))
   const [payer, setPayer] = useState<"me" | "other">("me")
   const [phone, setPhone] = useState(session?.phone ?? "")
+  const [phoneTouched, setPhoneTouched] = useState(false)
 
   const initiate = useMutation({
     mutationFn: () =>
       paymentApi.initiate({
         consultation_id: serverId!,
-        phone: phone.replace(/\s/g, ""),
+        phone: normalisePhone(phone),
         redirect_url: `${window.location.origin}/app/consult/${ref}/pay`,
       }),
     onSuccess: (res) => {
@@ -233,7 +235,21 @@ export default function Payment() {
     )
   }
 
-  const phoneValid = /^\+?\d{9,15}$/.test(phone.replace(/\s/g, ""))
+  const phoneError =
+    rules.required(
+      payer === "me"
+        ? "Enter the number that will pay."
+        : "Enter their Mobile Money number."
+    )(phone) ?? rules.phone()(phone)
+  const shownPhoneError = phoneTouched ? phoneError : undefined
+  const pay = () => {
+    if (phoneError) {
+      setPhoneTouched(true)
+      document.getElementById("pay-phone")?.focus()
+      return
+    }
+    initiate.mutate()
+  }
 
   return (
     <motion.div
@@ -275,6 +291,7 @@ export default function Payment() {
                 onClick={() => {
                   setPayer("other")
                   setPhone("")
+                  setPhoneTouched(false)
                 }}
               />
             </div>
@@ -287,16 +304,22 @@ export default function Payment() {
               ? "Your Mobile Money number"
               : "Their Mobile Money number"
           }
-          hint="MTN Mobile Money or Orange Money, for example +237 677 000 000"
+          hint="MTN Mobile Money or Orange Money, for example 677 000 000"
+          error={shownPhoneError}
+          required
         >
-          {(fid) => (
+          {() => (
             <Input
-              id={fid}
+              id="pay-phone"
               type="tel"
               inputMode="tel"
-              autoComplete="tel"
+              autoComplete={payer === "me" ? "tel" : "off"}
+              placeholder="677 000 000"
               value={phone}
+              aria-invalid={shownPhoneError ? true : undefined}
               onChange={(e) => setPhone(e.target.value)}
+              onBlur={() => setPhoneTouched(true)}
+              onKeyDown={(e) => e.key === "Enter" && pay()}
             />
           )}
         </Field>
@@ -342,9 +365,9 @@ export default function Payment() {
           <Button
             size="lg"
             full
-            disabled={!online || !phoneValid}
+            disabled={!online}
             loading={initiate.isPending}
-            onClick={() => initiate.mutate()}
+            onClick={pay}
             icon={Smartphone}
           >
             Pay with Mobile Money (Fapshi)

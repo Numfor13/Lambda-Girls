@@ -10,7 +10,7 @@
 
 We are **redesigning the frontend** (`Frontend/`) on top of the existing backend. **Backend issues are being handled by someone else.** We design and build only against the functionality that exists today.
 
-> **🚦 Codex: if the owner says "go", open `docs/REDESIGN_BUILD.md` and build Batch 2 (§3b, C10–C19).** Batch 1 (C1–C9) is done. We are building the redesign directly in code now (no more Figma mockups), in tandem with Claude, with a strict file-ownership split.
+> **🚦 Codex: if the owner says "go", open `docs/REDESIGN_BUILD.md` and do Batch 3 (§0 + §3c): the quality rework of every page you built, against the owner's inspiration image `C:\Users\Bryan\OneDrive\Pictures\Screenshots\Landing Page.webp`.** Finish any Batch 2 work in flight first. Batch 1 (C1–C9) is done. We are building the redesign directly in code now (no more Figma mockups), in tandem with Claude, with a strict file-ownership split.
 
 Read these documents before doing anything:
 
@@ -104,7 +104,8 @@ npm run build
 
 ### Next steps: current (supersedes the list below)
 
-- **Codex: build Batch 2, `docs/REDESIGN_BUILD.md` §3b (C10–C19)**: tips, appointments, labs, blood, emergency share, history/receipts, operator and admin consoles, anonymous ask, doctor presence. For this batch you also own `App.tsx`, `config/env.ts`, `config/flags.ts`, the API layer (append only) and demo auth roles. Log "Batch 2 done" in §6 when finished.
+- **Codex: Batch 3 first, `docs/REDESIGN_BUILD.md` §0 + §3c.** The owner rejected most undesigned pages as tacky, off-inspiration, missing validation and UX features, and wasting space. Use `AppPage`/`CardGrid`/`Panel`, `PublicHero`/`FeatureCard`/`StatementBand`, `lib/form.ts` + `Field`, and `Toast`. Empty `LEGACY_NARROW` in `PatientShell.tsx` as you go.
+- **Codex: Batch 2, `docs/REDESIGN_BUILD.md` §3b (C10–C19)**: tips, appointments, labs, blood, emergency share, history/receipts, operator and admin consoles, anonymous ask, doctor presence. For this batch you also own `App.tsx`, `config/env.ts`, `config/flags.ts`, the API layer (append only) and demo auth roles. Log "Batch 2 done" in §6 when finished.
 - Codex C1–C9 are complete and pushed. Shared feedback/recovery components are available for reuse.
 - **All screens must hold on short laptops:** check 1280×620 and 1536×730 (1080p at 150%/125% scaling) as well as 375 and 1440, in real Chrome. Rules are in `docs/REDESIGN_BUILD.md` §4.
 - **Claude:** Consult/Payment are done; the glass and short-desktop fixes are pushed. Next: Home tiles for the batch 2 services, wiring `EmergencyShare` into the RED result, then the final cross-screen QA once Codex logs "Batch 2 done". Profile/household offline support still needs backend idempotency before queued writes are promised.

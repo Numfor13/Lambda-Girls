@@ -18,9 +18,19 @@ import { useAuth } from "@/auth/AuthProvider"
 import { ButtonA, ButtonLink, IconButton } from "@/design/components/Button"
 import { FacilityRow } from "@/design/components/FacilityRow"
 import { Backdrop } from "@/design/components/Landscape"
-import { AdvisoryNote, EmptyState, PageSpinner, SectionHeader } from "@/design/components/primitives"
+import { EmergencyShare } from "@/design/components/EmergencyShare"
+import {
+  AdvisoryNote,
+  EmptyState,
+  PageSpinner,
+  SectionHeader,
+} from "@/design/components/primitives"
 import { SyncChip } from "@/design/components/SyncChip"
-import { URGENCY_META, UrgencyBadge, UrgencyDot } from "@/design/components/UrgencyBadge"
+import {
+  URGENCY_META,
+  UrgencyBadge,
+  UrgencyDot,
+} from "@/design/components/UrgencyBadge"
 import { SPRING, popIn, staggerOnMount } from "@/design/motion"
 import { useGeolocation } from "@/lib/hooks"
 import { rankFacilities, type RankedFacility } from "@/lib/geo"
@@ -51,9 +61,24 @@ function RouteIllustration({ urgent }: { urgent: boolean }) {
   return (
     <svg viewBox="0 0 416 180" className="h-auto w-full rounded-lg" aria-hidden>
       <rect width="416" height="180" className="fill-mint" />
-      <path d="M-10 140C70 120 150 150 230 104S360 46 430 64" className="stroke-white" strokeWidth="14" fill="none" />
-      <path d="M118 -10C138 54 118 124 166 190" className="stroke-white" strokeWidth="10" fill="none" />
-      <path d="M300 -10L280 190" className="stroke-white" strokeWidth="8" fill="none" />
+      <path
+        d="M-10 140C70 120 150 150 230 104S360 46 430 64"
+        className="stroke-white"
+        strokeWidth="14"
+        fill="none"
+      />
+      <path
+        d="M118 -10C138 54 118 124 166 190"
+        className="stroke-white"
+        strokeWidth="10"
+        fill="none"
+      />
+      <path
+        d="M300 -10L280 190"
+        className="stroke-white"
+        strokeWidth="8"
+        fill="none"
+      />
       <motion.path
         d="M92 130C150 102 226 92 296 70"
         className={urgent ? "stroke-urgent-red" : "stroke-brand-700"}
@@ -65,7 +90,13 @@ function RouteIllustration({ urgent }: { urgent: boolean }) {
         animate={{ pathLength: 1 }}
         transition={{ duration: 1.4, ease: "easeInOut", delay: 0.4 }}
       />
-      <circle cx="92" cy="130" r="9" className="fill-brand-700 stroke-white" strokeWidth="3" />
+      <circle
+        cx="92"
+        cy="130"
+        r="9"
+        className="fill-brand-700 stroke-white"
+        strokeWidth="3"
+      />
       <motion.g
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -94,17 +125,19 @@ export default function TriageResultPage() {
   const facilities = useFacilities()
   const { coords } = useGeolocation()
 
-  const result: (TriageResult & Partial<LocalTriage>) | undefined = local ?? remote.data
+  const result: (TriageResult & Partial<LocalTriage>) | undefined =
+    local ?? remote.data
   const nearest = useMemo(() => {
     if (!result || !facilities) return []
     const cap = capabilityFor(result.facility_type_needed)
     return rankFacilities(
       facilities.filter((f) => f.capabilities.includes(cap)),
-      coords,
+      coords
     ).slice(0, 3)
   }, [result, facilities, coords])
 
-  if (local === undefined || (remote.isLoading && !local)) return <PageSpinner />
+  if (local === undefined || (remote.isLoading && !local))
+    return <PageSpinner />
   if (!result) {
     return (
       <EmptyState
@@ -125,22 +158,36 @@ export default function TriageResultPage() {
   const cap = capabilityFor(result.facility_type_needed)
   const consultHref = `/app/consult/new?triage=${result.result_id}`
   const red = result.urgency === "RED"
-  const detail = result.recommendation.replace(meta.headline, "").trim() || result.recommendation
+  const detail =
+    result.recommendation.replace(meta.headline, "").trim() ||
+    result.recommendation
 
   return (
-    <motion.div variants={staggerOnMount(0.07)} initial="hidden" animate="show" className="flex flex-col gap-5">
+    <motion.div
+      variants={staggerOnMount(0.07)}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-5"
+    >
       <Backdrop tone={meta.backdrop} />
 
       <motion.div variants={popIn} className="flex items-center gap-3">
-        <IconButton icon={ArrowLeft} label="Back" variant="glass" onClick={() => navigate("/app")} />
-        <h1 className="min-w-0 flex-1 text-title-l lg:text-headline-m">Triage result</h1>
+        <IconButton
+          icon={ArrowLeft}
+          label="Back"
+          variant="glass"
+          onClick={() => navigate("/app")}
+        />
+        <h1 className="min-w-0 flex-1 text-title-l lg:text-headline-m">
+          Triage result
+        </h1>
         {result.sync_state && result.sync_state !== "sent" ? (
-          <span className="glass inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-label-m text-brand-900">
+          <span className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-label-m text-brand-900 glass">
             <WifiOff className="size-3.5" aria-hidden />
             <SyncChip state={result.sync_state} refId={result.result_id} />
           </span>
         ) : (
-          <span className="glass hidden h-9 items-center rounded-full px-3 text-label-m text-brand-900 sm:inline-flex">
+          <span className="hidden h-9 items-center rounded-full px-3 text-label-m text-brand-900 glass sm:inline-flex">
             Saved · {formatDateTime(result.created_at)}
           </span>
         )}
@@ -151,13 +198,20 @@ export default function TriageResultPage() {
         <div className="flex flex-col gap-4">
           <motion.section
             variants={popIn}
-            className={cn("relative overflow-hidden p-6 shape-bl sm:p-8 lg:p-10", meta.hero)}
+            className={cn(
+              "relative overflow-hidden shape-bl p-6 sm:p-8 lg:p-10",
+              meta.hero
+            )}
             aria-labelledby="verdict"
           >
             <motion.span
               className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10"
               animate={{ scale: [1, 1.15, 1] }}
-              transition={{ duration: red ? 1.6 : 4, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: red ? 1.6 : 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
               aria-hidden
             />
             <div className="relative flex items-center justify-between gap-3">
@@ -173,31 +227,66 @@ export default function TriageResultPage() {
             <p className="relative mt-5 text-label-m tracking-[0.14em] uppercase opacity-85">
               For {result.subject_label ?? "this check"}
             </p>
-            <h2 id="verdict" className="relative mt-2 text-display-m text-inherit lg:text-display-l">
+            <h2
+              id="verdict"
+              className="relative mt-2 text-display-m text-inherit lg:text-display-l"
+            >
               {meta.headline}
             </h2>
-            <p className="relative mt-4 max-w-[560px] text-body-l opacity-95">{detail}</p>
+            <p className="relative mt-4 max-w-[560px] text-body-l opacity-95">
+              {detail}
+            </p>
           </motion.section>
 
-          <motion.div variants={popIn} className="flex flex-col gap-3 sm:flex-row">
+          <motion.div
+            variants={popIn}
+            className="flex flex-col gap-3 sm:flex-row"
+          >
             {red ? (
               <>
-                <ButtonA href="tel:15" icon={Phone} variant="danger" size="lg" className="sm:flex-1">
+                <ButtonA
+                  href="tel:15"
+                  icon={Phone}
+                  variant="danger"
+                  size="lg"
+                  className="sm:flex-1"
+                >
                   Call 15 — Emergency
                 </ButtonA>
                 {top && (
-                  <ButtonA href={directionsHref(top)} target="_blank" rel="noreferrer" icon={Navigation} variant="glass" size="lg" className="sm:flex-1">
+                  <ButtonA
+                    href={directionsHref(top)}
+                    target="_blank"
+                    rel="noreferrer"
+                    icon={Navigation}
+                    variant="glass"
+                    size="lg"
+                    className="sm:flex-1"
+                  >
                     Get directions
                   </ButtonA>
                 )}
               </>
             ) : (
               <>
-                <ButtonLink to={consultHref} icon={MessageCircle} size="lg" className="sm:flex-1">
+                <ButtonLink
+                  to={consultHref}
+                  icon={MessageCircle}
+                  size="lg"
+                  className="sm:flex-1"
+                >
                   Message a doctor
                 </ButtonLink>
                 {top && (
-                  <ButtonA href={directionsHref(top)} target="_blank" rel="noreferrer" icon={Navigation} variant="glass" size="lg" className="sm:flex-1">
+                  <ButtonA
+                    href={directionsHref(top)}
+                    target="_blank"
+                    rel="noreferrer"
+                    icon={Navigation}
+                    variant="glass"
+                    size="lg"
+                    className="sm:flex-1"
+                  >
                     Directions to nearest
                   </ButtonA>
                 )}
@@ -205,8 +294,24 @@ export default function TriageResultPage() {
             )}
           </motion.div>
 
+          {red && (
+            <motion.div variants={popIn}>
+              {/* Link the server copy only once it has synced; otherwise share location alone. */}
+              <EmergencyShare
+                triageResultId={
+                  !result.sync_state || result.sync_state === "sent"
+                    ? result.result_id
+                    : undefined
+                }
+              />
+            </motion.div>
+          )}
+
           {result.urgency === "GREEN" && (
-            <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
+            <motion.section
+              variants={popIn}
+              className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+            >
               <h2 className="text-title-l">Caring at home</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {SELF_CARE.map((t) => (
@@ -226,20 +331,32 @@ export default function TriageResultPage() {
 
         {/* Right: where to go + why */}
         <div className="flex flex-col gap-4">
-          <motion.section variants={popIn} className="flex flex-col gap-3 rounded-xl bg-white p-3 shadow-[var(--shadow-elev-1)]">
+          <motion.section
+            variants={popIn}
+            className="flex flex-col gap-3 rounded-xl bg-white p-3 shadow-[var(--shadow-elev-1)]"
+          >
             <RouteIllustration urgent={red} />
             <div className="px-2">
               <p className={cn("eyebrow", red && "text-urgent-red")}>
                 {red ? "Nearest emergency care" : "Where to go"}
               </p>
               <p className="mt-1 text-body-m text-ink-600">
-                {FACILITY_TYPE_LABEL[result.facility_type_needed] ?? "A health facility"}
+                {FACILITY_TYPE_LABEL[result.facility_type_needed] ??
+                  "A health facility"}
                 {coords ? " — nearest first" : ""}
               </p>
             </div>
-            <motion.ul className="flex flex-col gap-2" variants={staggerOnMount(0.06, 0.2)}>
+            <motion.ul
+              className="flex flex-col gap-2"
+              variants={staggerOnMount(0.06, 0.2)}
+            >
               {nearest.map((f) => (
-                <FacilityRow key={f.facility_id} facility={f} compact focus={cap} />
+                <FacilityRow
+                  key={f.facility_id}
+                  facility={f}
+                  compact
+                  focus={cap}
+                />
               ))}
             </motion.ul>
             <Link
@@ -250,10 +367,15 @@ export default function TriageResultPage() {
             </Link>
           </motion.section>
 
-          <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
+          <motion.section
+            variants={popIn}
+            className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+          >
             <SectionHeader title="Why this result" className="mb-2" />
             {result.rules_fired.length === 0 ? (
-              <p className="text-body-l text-ink-600">None of the danger signs we check for were found.</p>
+              <p className="text-body-l text-ink-600">
+                None of the danger signs we check for were found.
+              </p>
             ) : (
               <ul className="flex flex-col gap-3">
                 {result.rules_fired.map((r, i) => (
@@ -267,7 +389,9 @@ export default function TriageResultPage() {
                     <UrgencyDot urgency={r.urgency} className="mt-1.5" />
                     <span className="text-body-m">
                       {r.description}
-                      <span className="block text-label-m text-ink-400">Rule {r.rule_id}</span>
+                      <span className="block text-label-m text-ink-400">
+                        Rule {r.rule_id}
+                      </span>
                     </span>
                   </motion.li>
                 ))}
@@ -281,7 +405,13 @@ export default function TriageResultPage() {
 
           <motion.div variants={popIn} className="flex flex-col gap-2">
             {red && (
-              <ButtonLink to={consultHref} icon={MessageCircle} variant="secondary" size="lg" full>
+              <ButtonLink
+                to={consultHref}
+                icon={MessageCircle}
+                variant="secondary"
+                size="lg"
+                full
+              >
                 Also ask a doctor
               </ButtonLink>
             )}
@@ -292,7 +422,10 @@ export default function TriageResultPage() {
           {!session && result.sync_state === "queued" && (
             <p className="text-center text-body-m text-ink-600">
               Saved on this phone.{" "}
-              <Link to={`/sign-in?returnTo=/app/triage/${result.result_id}`} className="text-label-l text-brand-700">
+              <Link
+                to={`/sign-in?returnTo=/app/triage/${result.result_id}`}
+                className="text-label-l text-brand-700"
+              >
                 Sign in
               </Link>{" "}
               to share it with a doctor.

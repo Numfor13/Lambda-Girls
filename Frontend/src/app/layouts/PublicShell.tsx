@@ -1,13 +1,31 @@
 import { useState } from "react"
-import { Link, NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom"
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react"
+import {
+  Link,
+  NavLink,
+  useLocation,
+  useNavigate,
+  useOutlet,
+} from "react-router-dom"
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+} from "motion/react"
 import { Activity, Globe, Menu, X } from "lucide-react"
 import { useAuth, homeFor } from "@/auth/AuthProvider"
 import { Logo } from "@/design/components/Logo"
 import { ButtonLink, IconButton } from "@/design/components/Button"
-import { PageTransition, Reveal, SPRING, StaggerContainer, StaggerItem } from "@/design/motion"
+import {
+  PageTransition,
+  Reveal,
+  SPRING,
+  StaggerContainer,
+  StaggerItem,
+} from "@/design/motion"
 import { flags } from "@/config/flags"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/design/components/Toast"
 
 const NAV = [
   { to: "/how-it-works", label: "How it works" },
@@ -29,7 +47,10 @@ function PublicNav() {
   const open = openOn === pathname
 
   const auth = session ? (
-    <Link to={homeFor(session)} className="text-label-l text-brand-900 underline underline-offset-4">
+    <Link
+      to={homeFor(session)}
+      className="text-label-l text-brand-900 underline underline-offset-4"
+    >
       MY ACCOUNT
     </Link>
   ) : (
@@ -49,8 +70,8 @@ function PublicNav() {
         animate={{ y: 0, opacity: 1, scale: lifted ? 0.985 : 1 }}
         transition={SPRING.default}
         className={cn(
-          "glass-strong mx-auto flex h-[64px] max-w-[1280px] items-center justify-between gap-4 rounded-full pr-2 pl-5 lg:h-[72px]",
-          lifted && "shadow-[0_18px_48px_rgb(15_31_23/0.18)]",
+          "mx-auto flex h-[64px] max-w-[1280px] items-center justify-between gap-4 rounded-full pr-2 pl-5 glass-strong lg:h-[72px]",
+          lifted && "shadow-[0_18px_48px_rgb(15_31_23/0.18)]"
         )}
       >
         <Logo />
@@ -62,14 +83,18 @@ function PublicNav() {
               className={({ isActive }) =>
                 cn(
                   "relative rounded-full px-4 py-2 text-title-m transition-colors",
-                  isActive ? "text-brand-900" : "text-ink-900 hover:bg-white/60",
+                  isActive ? "text-brand-900" : "text-ink-900 hover:bg-white/60"
                 )
               }
             >
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <motion.span layoutId="public-nav" className="absolute inset-0 rounded-full bg-mint" transition={SPRING.bouncy} />
+                    <motion.span
+                      layoutId="public-nav"
+                      className="absolute inset-0 rounded-full bg-mint"
+                      transition={SPRING.bouncy}
+                    />
                   )}
                   <span className="relative">{n.label}</span>
                 </>
@@ -106,7 +131,7 @@ function PublicNav() {
             exit={{ opacity: 0, y: -12, scale: 0.96 }}
             transition={SPRING.default}
             style={{ originY: 0 }}
-            className="glass-strong mx-auto mt-2 flex max-w-[1280px] flex-col p-3 shape-tr lg:hidden"
+            className="mx-auto mt-2 flex max-w-[1280px] flex-col shape-tr p-3 glass-strong lg:hidden"
           >
             {NAV.map((n, i) => (
               <motion.div
@@ -115,7 +140,10 @@ function PublicNav() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ ...SPRING.fast, delay: 0.04 * i }}
               >
-                <Link to={n.to} className="flex h-12 items-center rounded-full px-4 text-title-m hover:bg-white/60">
+                <Link
+                  to={n.to}
+                  className="flex h-12 items-center rounded-full px-4 text-title-m hover:bg-white/60"
+                >
                   {n.label}
                 </Link>
               </motion.div>
@@ -143,16 +171,20 @@ export function LanguageSwitch({ light = false }: { light?: boolean }) {
     <ul className="flex items-center gap-2 text-label-m" aria-label="Language">
       {langs.map((l, i) => (
         <li key={l.code} className="flex items-center gap-2">
-          {i > 0 && <span className={light ? "text-white/40" : "text-ink-400"}>·</span>}
+          {i > 0 && (
+            <span className={light ? "text-white/40" : "text-ink-400"}>·</span>
+          )}
           <button
             type="button"
             aria-current={l.code === "en" ? "true" : undefined}
             aria-disabled={!l.enabled}
             title={l.enabled ? undefined : "Coming soon"}
             className={cn(
-              light ? "text-white/75 hover:text-white" : "text-ink-600 hover:text-ink-900",
+              light
+                ? "text-white/75 hover:text-white"
+                : "text-ink-600 hover:text-ink-900",
               l.code === "en" && (light ? "text-white" : "text-ink-900"),
-              !l.enabled && "cursor-default",
+              !l.enabled && "cursor-default"
             )}
           >
             {l.label}
@@ -194,24 +226,34 @@ const FOOTER_COLUMNS = [
 export function PublicFooter() {
   return (
     <footer className="relative overflow-hidden bg-ground text-white">
-      <div className="container-page relative z-10">
+      <div className="relative z-10 container-page">
         <Reveal className="flex flex-col items-start justify-between gap-6 border-b border-white/15 py-12 sm:flex-row sm:items-center lg:py-16">
           <p className="text-headline-l text-white lg:text-display-m">
             Good care starts
             <br />
             with a simple step.
           </p>
-          <ButtonLink to="/app/facilities" variant="light" size="lg" trailing="external">
+          <ButtonLink
+            to="/app/facilities"
+            variant="light"
+            size="lg"
+            trailing="external"
+          >
             Find care near me
           </ButtonLink>
         </Reveal>
 
-        <StaggerContainer className="grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]" stagger={0.08}>
+        <StaggerContainer
+          className="grid gap-10 py-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]"
+          stagger={0.08}
+        >
           <StaggerItem>
             <span className="inline-flex rounded-lg bg-white px-4 py-2">
               <Logo size="lg" />
             </span>
-            <p className="mt-6 text-body-l text-white/80">Health within reach — even offline.</p>
+            <p className="mt-6 text-body-l text-white/80">
+              Health within reach — even offline.
+            </p>
           </StaggerItem>
           {FOOTER_COLUMNS.map((col) => (
             <StaggerItem key={col.title}>
@@ -219,7 +261,10 @@ export function PublicFooter() {
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link to={l.to} className="text-body-m text-white/75 transition-colors hover:text-white">
+                    <Link
+                      to={l.to}
+                      className="text-body-m text-white/75 transition-colors hover:text-white"
+                    >
                       {l.label}
                     </Link>
                   </li>
@@ -260,6 +305,7 @@ export function PublicShell() {
         </AnimatePresence>
       </main>
       <PublicFooter />
+      <Toaster />
     </div>
   )
 }

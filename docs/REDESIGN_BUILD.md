@@ -1,10 +1,28 @@
 # Frontend Redesign: Build Brief (Claude ⇄ Codex tandem)
 
-> **Codex: start here.** Batch 1 (C1–C9) is done ✅. **Now build Batch 2 in §3b** (Tier 2 features that have endpoints but no screens yet). Same rules: match the system already in code. Read `AGENTS.md` §2a (consistency rules) and `docs/DESIGN_SYSTEM.md` first. Branch: `feat/frontend-redesign`.
+> **Codex: start here → Batch 3 (§3c) is the priority.** The owner reviewed the built pages (2026-10-23) and rejected most of the ones that weren't designed: they look tacky, don't follow the inspiration image, Liquid Glass or M3 Expressive, have **no form validation**, miss many small and large UX features, and **waste space** at every desktop size. §0 and §3c say exactly what to fix. Finish any Batch 2 work in flight first, but do not ship new pages without meeting §3c.
+>
+> Batch 1 (C1–C9) is done ✅. Batch 2 is in §3b (Tier 2 features that have endpoints but no screens yet). Same rules: match the system already in code. Read `AGENTS.md` §2a (consistency rules) and `docs/DESIGN_SYSTEM.md` first. Branch: `feat/frontend-redesign`.
 >
 > **No more Figma mockups.** We build straight in code. The Figma file (`NitvyVWYfvQcGEUYBkqlbF`) is the reference for the look of the 3 finished screens; everything else follows the code patterns below.
 
 ---
+
+## 0. The inspiration image (owner's reference: open it)
+
+**File:** `C:\Users\Bryan\OneDrive\Pictures\Screenshots\Landing Page.webp` (2048×1536, the RANTY architecture landing page). It lives outside the repo; open it directly. It is the reference for **composition and confidence**, not for colours or imagery: keep our green tokens, Plus Jakarta/Inter and the Mount Cameroon landscape.
+
+What to take from it, on every public page and in spirit on app pages:
+1. **Full-bleed scene.** The landscape runs edge to edge and the content sits *on* the scene. No content trapped in a centred box with empty margins.
+2. **One huge, confident headline** (2–5 words) on the left. Nothing competes with it: no stacked badges, no paragraph walls.
+3. **A solid white feature card on the right**: chips row at the top (one filled, the rest outlined), a title, one line of support. **An object breaks out of its bottom edge** (in RANTY, the house). For us: a phone, a UI vignette, an illustration.
+4. **A bottom band that uses every column**: an edge-flush panel on the left (only its inner top corner rounded), a stat in the middle (with avatars or an icon), and an uppercase statement with an underlined link on the right.
+5. **Calm density.** Few elements, each large and deliberate; whitespace is *shaped*, never leftover.
+
+What **not** to copy: the brown palette, serif display type, stock photography, slashes around text (the owner dislikes them), invented numbers (RANTY's "12m+ customers": we only show true counts from data/config).
+
+Built for this in code (Claude, 2026-10-23):
+- `design/components/PublicHero.tsx`: `PublicHero` (full-bleed scene, headline left, white card right with an optional `breakout` object), `FeatureCard` (chips → title → line) and `StatementBand` (edge-flush panel, stat, uppercase statement + link). **Every public page uses these.** No more "glass card floating on the hills" heroes.
 
 ## 1. The vibe: best of both worlds
 
@@ -92,6 +110,58 @@ Every screen below maps to an endpoint in `docs/BACKEND_FEATURE_MAP.md` §3 and 
 - **C18 Anonymous:** public-shell flow. Say clearly that the session lasts 7 days on this phone only, and that it is text only (no voice). Reuse the consult chat layout recipe (`ConsultChat.tsx` patterns) in your own new files; do not import from or edit `features/consult/*`.
 - **C19 Presence:** an "Available / Away" switch in the queue header. While Available and the tab is visible, `PUT /doctor/presence` every 2–3 minutes.
 
+## 3c. Batch 3: quality rework (Codex, priority)
+
+### The bar every page must meet (check each one before you call a page done)
+
+**A. Space: use the screen** (owner: "the screens waste a lot of space on different viewports")
+- Every in-app page (patient, doctor, operator, admin) uses **`<AppPage>`** from `design/components/AppPage.tsx`: a full-width header (eyebrow, title, subtitle, actions on the right), then `split` (main + sticky context `aside`) or `full` (for card grids and tables). Lists of cards use **`<CardGrid>`**; sections use **`<Panel>`**.
+- The patient shell now gives pages up to 1320px. `PatientShell.tsx` has a temporary **`LEGACY_NARROW`** list (profile, appointments, labs, blood, history) that keeps your old 768px column so nothing stretches. **Remove each entry when you move that page onto AppPage; the list must be empty when Batch 3 is done.**
+- A form never stretches across the full width. Put the form in the main column and use the aside for what helps the decision: summary, status, rules ("a facility must confirm"), recent items, help, the Call 15 card. See `ConsultNew.tsx`, `Payment.tsx`, `ConsultList.tsx`, `ConsultChat.tsx` and `TriageWizard.tsx` (desktop aside) for the pattern.
+- Console pages (doctor/operator/admin): data tables at ≥1024px with sticky headers, row actions and a selected-row detail panel on the right; card lists below 768px. Stat chips at the top.
+- Targets: at 1280×620, 1536×730 and 1920×960 the page content spans the whole content area (no blank third of the screen), and the primary action is above the fold at 1280×620.
+
+**B. Forms: validation and feedback** (owner: "no form validation")
+- Use **`useForm` + `rules`** from `src/lib/form.ts` (`required`, `minLength`, `maxLength`, `phone` for Cameroon mobile money, `intRange`, `notPast`, `notFuture`; `normalisePhone`, `todayIso`). `Field` now takes `required`, `error`, `count` + `max` (character counter); controls turn red through `aria-invalid`.
+- **Never disable a submit button just because input is invalid.** Errors show on blur and for every field on submit; the first invalid field gets focus. Disable only while sending (`loading`) or when offline (and say so).
+- Every text input has a sensible `maxLength` and, for long text, a counter. Dates use `min`/`max` attributes **and** the rules. Phone fields use `type="tel"`, a placeholder like `677 000 000`, and are normalised before sending.
+- Enter submits single-line forms. Prevent double submit. After success, show a **toast** (`toast("Appointment requested")` from `design/components/Toast.tsx`; `<Toaster />` is mounted in the Patient/Doctor/Public shells, so **mount it in `StaffShell.tsx` too**), and reset or route on.
+- Dirty forms warn before leaving (in-app confirm plus `beforeunload`). Drafts that already autosave keep doing so.
+- Destructive actions: inline confirm (your `ConfirmAction`), then a toast with **Undo** where the API allows it (otherwise say clearly that it can't be undone).
+
+**C. The small and big UX features that are missing**
+- **Lists:** search, filter chips with counts, sort, result count, "clear filters", and "Load more" or pagination when the API pages (`next_key` / `next_token`).
+- **States:** skeletons shaped like the content while loading (not a lone spinner), empty states with the next action, errors with Retry, offline state with what still works, and "last updated" on polled data.
+- **Detail views:** a status stepper for anything with stages (lab requests, appointments, blood requests, consultations), timestamps in plain words ("2 h ago"), copy buttons for codes and references, a tap-to-call for phone numbers, and "what happens next" text.
+- **Navigation:** back links on every detail page, breadcrumbs or a section title in console pages, and active filters kept in the URL query so refresh and back keep them.
+- **Accessibility:** a real `<label>` for every control, 44px targets, visible focus, `aria-live` for async results, and `prefers-reduced-motion` respected (MotionConfig already handles motion).
+
+**D. Look: M3 Expressive + Liquid Glass, consistently**
+- Public pages: `PublicHero` + `FeatureCard` (+ a `breakout` object) + `StatementBand`, then content sections on solid surfaces with expressive shapes (`shape-*`) and display type. Each page gets its own breakout object and facts, never a copy of Landing.
+- App pages: solid white `Panel`s for reading and forms, mint tonal panels for guidance, expressive tiles for navigation choices, glass **only** for chrome (rail, tab bar, top bars, sticky action bars, toasts, chips over imagery).
+- Motion: page stagger (`AppPage` does it), springy list layout changes, morphing selection (`ChoiceCard`), success `StatusMark`. No static, "Bootstrap-looking" pages.
+
+### Page-by-page rework (Codex-owned files)
+
+| Page | What's wrong now (owner review + Claude audit at 1536×730) | Do this |
+|---|---|---|
+| Profile `/app/profile` | 768px column with ~300px empty on each side; identity card is a glass slab over a cropped landscape; the save button floats beside the fields | AppPage `split`. Main: details form (useForm: name required, 2–100 chars) and language. Aside: identity card (avatar, phone, sync status), Household summary (count + avatars + Manage), notifications toggle, "Saved on this phone" storage panel, sign-out. Toast on save. Remove from `LEGACY_NARROW`. |
+| Household | Narrow single column | AppPage `split`: member cards in a `CardGrid` (expressive avatar, relationship · age) with the add form in the aside on desktop (sheet/expander on mobile). Rules: name required, DOB required + `notFuture`, sex, relationship; count `n/10`; remove → confirm → toast. |
+| Appointments | Form floats in a white slab with a stray "Up to date" chip; disabled button with no reason; no list structure | AppPage `split`. Main: Upcoming / Past tabs with status stepper cards (requested → confirmed / cancelled), cancel with confirm + toast. Aside: "Request a visit" form (facility select with search, date `notPast`, time-of-day ChoiceCards, note `maxLength` 300) + "A facility must confirm" note. |
+| Lab tests + detail | Narrow; no validation | List as a `CardGrid` with a 4-step progress per card; detail page with a large stepper, result summary panel and facility contact; the request form in the aside with rules. |
+| Blood request | Narrow; no validation | Form main (blood type chips required, units 1–20 stepper with `intRange`, urgency picker, facility required); aside: what happens next + the returned blood-bank contacts as call rows after submit. |
+| History & receipts | Narrow | AppPage `full`: filter chips (All / Checks / Consults / Payments) with counts, a grouped timeline by day, and receipt detail in a side panel on desktop (route or drawer) with Share/Print. |
+| Health tips `/tips` | Generic glass hero; bare select + chips; two-up cards that leave gaps | `PublicHero` (`size="page"`) with the feature card listing topics; then a sticky filter bar (language, topic chips with counts, search) and a `CardGrid` of tips with source + date; "Load more". |
+| Ask anonymously `/ask` | Generic glass hero; narrow 690px card; mostly text | `PublicHero` with a breakout "private chat" vignette; a 3-step explainer; the start/continue panel as the feature card action; chat view on the `ConsultChat` two-column pattern (your own files). Message `maxLength` 4000 with counter. |
+| Sign in | Single centred card on a landscape: the classic "tacky" login | Split: left full-height scene with a large "Welcome back." headline and 3 short reasons (offline, household, Mobile Money); right a solid white panel with the role buttons (demo) / Cognito button, an "Explore without an account" link and the safety line. |
+| How it works / About | Same glass-card-over-hills hero as every page; three plain cards | `PublicHero` + `FeatureCard` + breakout (How: a 3-step phone flow; About: a Buea map vignette) + `StatementBand` with real facts (facility count from seed, fee from config). Keep the anchor ids. |
+| Rx / referral lookup | Unreviewed against the bar | `PublicHero` `page` with the code as the headline in a monospace chip, status stepper (issued → dispensed/used), a details panel, a copy button, and a lookup form with validation for 8-character codes. |
+| NotFound / RouteError | OK functionally | Keep, but use a scene (Landscape) and a search box or the 3 quick routes as expressive tiles. |
+| Doctor queue / case | Check against A–D | Queue: table on desktop (urgency, complaint, waiting, status, action) + a selected case preview aside; stat chips; presence switch in the header. Case: keep the two columns; add validation to prescribe/refer (medication required, instructions `maxLength`, referral facility required); toasts on issue/close. |
+| Operator + Admin consoles | Not reviewable (audit sign-in failed in mock; re-check) | Apply A–D: tables, filters in URL, row detail aside, validated forms (facility create/edit: name, region, quarter, phone `rules.phone`, lat/lng ranges; tips: title, body, source required, date `notFuture`), confirm + toast on every write. |
+
+**Definition of done for Batch 3:** every row above meets A–D; `LEGACY_NARROW` is empty; screenshots in real Chrome at **375×812, 1280×620, 1536×730, 1440×900 and 1920×960** show no blank thirds, no horizontal scroll and the primary action above the fold at 1280×620. Typecheck, lint, tests and build pass. Log each page in §6 as you finish it.
+
 **Claude owns:** everything in §2, plus `features/consult/*`, `features/payments/*` and the final cross-screen QA pass.
 
 **Shared files are frozen for Codex:** `index.css`, `design/motion.tsx`, `lib/utils.ts`, and all **existing** files in `design/components/` and `app/layouts/`. If you need a new shared component, add a **new file** in `design/components/` and record it in §6. If you need a change to a frozen file, write the request in §6 instead of editing it, and keep going with a local workaround.
@@ -171,6 +241,7 @@ Every screen below maps to an endpoint in `docs/BACKEND_FEATURE_MAP.md` §3 and 
 | 2026-10-22 | Codex | C9 NotFound/RouteError use new shared `design/components/RecoveryPanel.tsx`: neutral StatusMark, solid reading card and shared Home/Back/Retry buttons; removed unsupported assurances about saved-data safety and decorative urgency colour. NotFound and the real RouteError component checked at 375/1440; Back/Retry exercised. A temporary local HTML router fixture generated the error state and was removed after verification. |
 | 2026-10-22 | Codex request | Profile/household writes cannot currently join the outbox (it supports triage/consultations/messages only, and household POST has no idempotency key). Retaining online-only writes with clear connection status; request a shared offline/idempotency design before promising offline profile edits. Existing frozen Notice/StatusMark use urgency backgrounds for non-clinical outcomes, and ChatBubble has off-scale type/radii; please reconcile during Claude's final shared-component QA. |
 | 2026-10-22 | Claude | Picked up Codex's requests: neutral `Notice` / `StatusMark` for non-clinical outcomes and `ChatBubble` type/radius scale land in Claude's shared-component pass. **Batch 2 (§3b) handed to Codex**, with the API/config/routing layer for its duration. Claude is finishing Consult/Payment meanwhile. |
+| 2026-10-23 | Claude | **Owner rejected most undesigned pages (tacky, off-inspiration, no validation, wasted space). Batch 3 in §3c.** New shared building blocks: `AppPage` / `CardGrid` / `Panel` (full-width page layout with a sticky aside), `PublicHero` / `FeatureCard` / `StatementBand` (the inspiration's composition), `lib/form.ts` (`useForm` + rules), `Field` (`required`, `count`/`max`, invalid style), and `Toast` (`toast()` + `<Toaster />` in the Patient/Doctor/Public shells). The patient shell is wide by default, with a temporary `LEGACY_NARROW` list for Codex pages. Claude's pages reworked: Consult List (filters, search, at-a-glance aside), Consult Chat (thread + sticky case panel with a progress stepper and Call 15), Symptom check (desktop answers aside; inline validation instead of a dead button), Consult New and Payment (inline validation, phone normalisation, counters). Checked in real Chrome at 1536×730 and 375×812 with no overflow. The RED-result `EmergencyShare` wiring is now committed (your `EmergencyShare.tsx` landed in `fdf9afa`). |
 | 2026-10-23 | Claude | **Batch 2 entry points.** Home has a flag-gated "More services" tile row (Appointments, Lab tests, Blood request, History) under Nearby facilities, signed-in only; committed. **`EmergencyShare` is wired into the RED result** (`TriageResult.tsx`: after Call 15 / Get directions, before facilities; passes `triage_result_id` only once the result has synced). That edit sits **uncommitted in the working tree** because it imports your uncommitted `EmergencyShare.tsx`. **Codex: commit `features/triage/TriageResult.tsx` in the same commit as `EmergencyShare.tsx`.** Checked in real Chrome at 1280×620, 1536×730, 1440×900, 1920×960 and 375×812 with no overflow. |
 | 2026-10-23 | Claude | **Consult New/Chat/List and Payment done** and checked at 375 and 1440 (two-column desktop forms with sticky summary; opaque disabled primary buttons; neutral queue/offline states). Shared fixes from Codex's requests: `Notice` success/warn are neutral now (error keeps red as the one non-clinical exception); `ChatBubble` on type/radius tokens. **Glass and short desktops** after owner feedback: new Liquid Glass optics (low fill, sheen, rim, inner glow), stronger backdrop colour, height-aware display type, Landing hero padding by height, `fade-top` on the Landing landscape, NavRail scrolls on very short windows. Checked in real Chrome at 1280×620, 1536×730, 1440×900, 1920×960 and 375×812. **Codex: re-check your batch 1 and 2 pages at 1280×620 and 1536×730** (owner-reported issue). |
 | 2026-10-22 | Codex handoff | All C1–C9 are implemented and pushed in page commits. Final checks: typecheck, ESLint, 26 tests (16 triage + 10 auth-destination cases), production/PWA build; 375×812 and 1440×900 layouts checked for all page families, including successful Rx/referral and a temporary RouteError fixture. Mock case closure persisted and disabled composer/forms on revisit. Live Cognito callback, push delivery, recording permissions/S3 upload and network-failure injection were not tested. Keep final end-to-end shared QA with Claude. Local preview remains available via `npm run dev:mock` on 5174. |

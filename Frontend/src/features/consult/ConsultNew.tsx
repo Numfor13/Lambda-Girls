@@ -50,10 +50,21 @@ export default function ConsultNew() {
 
   const memberId = subject.startsWith("member:") ? subject.slice(7) : null
   const member = members.find((m) => m.member_id === memberId)
-  const canSubmit = (complaint.trim().length > 0 || voice) && !saving
+  const [tried, setTried] = useState(false)
+  const describeError =
+    !complaint.trim() && !voice
+      ? "Describe what's wrong in writing, or hold the button to record a voice note."
+      : complaint.trim() && complaint.trim().length < 10 && !voice
+        ? "Add a little more detail: what, since when, how bad."
+        : undefined
 
   const submit = async () => {
-    if (!session) return
+    if (!session || saving) return
+    if (describeError) {
+      setTried(true)
+      document.getElementById("complaint")?.focus()
+      return
+    }
     setSaving(true)
     const local = await createConsultation({
       complaint:
@@ -157,12 +168,19 @@ export default function ConsultNew() {
           className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
         >
           <StepTitle n={2}>What's wrong?</StepTitle>
-          <Field label="Describe it in writing">
-            {(id) => (
+          <Field
+            label="Describe it in writing"
+            hint="What you feel, since when, and anything you've already taken."
+            error={tried ? describeError : undefined}
+            count={complaint.length}
+            max={2000}
+          >
+            {() => (
               <Textarea
-                id={id}
+                id="complaint"
                 value={complaint}
                 maxLength={2000}
+                aria-invalid={tried && describeError ? true : undefined}
                 onChange={(e) => setComplaint(e.target.value)}
                 placeholder="For example: my son has had a fever and cough for 3 days."
               />
@@ -267,7 +285,6 @@ export default function ConsultNew() {
             size="lg"
             full
             trailing="arrow"
-            disabled={!canSubmit}
             loading={saving}
             onClick={submit}
           >

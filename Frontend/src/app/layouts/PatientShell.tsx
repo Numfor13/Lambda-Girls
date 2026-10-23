@@ -12,20 +12,25 @@ import {
 import { OfflineBanner } from "@/design/components/OfflineBanner"
 import { PageTransition } from "@/design/motion"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/design/components/Toast"
 
-/** Screens laid out in two columns on desktop (DESIGN_SYSTEM §4); everything else reads at 3xl. */
-const WIDE = [
-  /^\/app\/?$/,
-  /^\/app\/triage\/[^/]+$/,
-  /^\/app\/facilities\/?$/,
-  /^\/app\/consult\/new$/,
-  /^\/app\/consult\/[^/]+\/pay$/,
+/**
+ * Every page gets the full content width (pages lay themselves out with <AppPage>).
+ * TEMPORARY: routes not yet moved onto AppPage keep the old reading column so they don't
+ * stretch. Remove each entry as its page is reworked (docs/REDESIGN_BUILD.md §3c).
+ */
+const LEGACY_NARROW = [
+  /^\/app\/profile/,
+  /^\/app\/appointments/,
+  /^\/app\/labs/,
+  /^\/app\/blood/,
+  /^\/app\/history/,
 ]
 
 export function PatientShell() {
   const { pathname } = useLocation()
   const outlet = useOutlet()
-  const wide = WIDE.some((r) => r.test(pathname))
+  const narrow = LEGACY_NARROW.some((r) => r.test(pathname))
 
   return (
     <div className="relative min-h-svh">
@@ -64,7 +69,7 @@ export function PatientShell() {
           id="main"
           className={cn(
             "mx-auto w-full px-4 pt-5 pb-32 sm:px-6 lg:px-10 lg:pt-8 lg:pb-16",
-            wide ? "max-w-[1160px]" : "max-w-3xl",
+            narrow ? "max-w-3xl" : "max-w-[1320px] min-[1800px]:max-w-[1560px]"
           )}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -75,6 +80,7 @@ export function PatientShell() {
         </main>
       </div>
       <TabBar dests={PATIENT_DESTS} />
+      <Toaster />
     </div>
   )
 }
