@@ -175,19 +175,19 @@ export default function TriageResultPage() {
         <IconButton
           icon={ArrowLeft}
           label="Back"
-          variant="glass"
+          variant="plain"
           onClick={() => navigate("/app")}
         />
         <h1 className="min-w-0 flex-1 text-title-l lg:text-headline-m">
           Triage result
         </h1>
         {result.sync_state && result.sync_state !== "sent" ? (
-          <span className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-label-m text-brand-900 glass">
+          <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-3 text-label-m text-brand-900 ring-1 ring-ink-900/10">
             <WifiOff className="size-3.5" aria-hidden />
             <SyncChip state={result.sync_state} refId={result.result_id} />
           </span>
         ) : (
-          <span className="hidden h-9 items-center rounded-full px-3 text-label-m text-brand-900 glass sm:inline-flex">
+          <span className="hidden h-9 items-center rounded-full px-3 text-label-m text-ink-600 sm:inline-flex">
             Saved · {formatDateTime(result.created_at)}
           </span>
         )}
@@ -259,7 +259,7 @@ export default function TriageResultPage() {
                     target="_blank"
                     rel="noreferrer"
                     icon={Navigation}
-                    variant="glass"
+                    variant="secondary"
                     size="lg"
                     className="sm:flex-1"
                   >
@@ -283,7 +283,7 @@ export default function TriageResultPage() {
                     target="_blank"
                     rel="noreferrer"
                     icon={Navigation}
-                    variant="glass"
+                    variant="secondary"
                     size="lg"
                     className="sm:flex-1"
                   >

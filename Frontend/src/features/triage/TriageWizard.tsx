@@ -62,6 +62,15 @@ const GROUP_ORDER: SymptomGroup[] = [
   "other",
 ]
 
+const STEP_LABEL: Record<Step, string> = {
+  who: "Who it's for",
+  about: "Age and sex",
+  pregnancy: "Pregnancy",
+  symptoms: "Danger signs",
+  vitals: "Breathing count",
+  review: "Review and get guidance",
+}
+
 function splitAge(months: number) {
   return { years: String(Math.floor(months / 12)), months: String(months % 12) }
 }
@@ -271,26 +280,31 @@ export default function TriageWizard() {
           <IconButton
             icon={ArrowLeft}
             label="Back"
-            variant="glass"
+            variant="plain"
             onClick={back}
           />
+          {/* Segmented progress: one segment per step, so the length of the check is visible. */}
           <div
-            className="h-3 flex-1 overflow-hidden rounded-full bg-white/70 ring-1 ring-line ring-inset"
+            className="flex flex-1 gap-1.5"
             role="progressbar"
             aria-valuemin={1}
             aria-valuemax={steps.length}
             aria-valuenow={stepIndex + 1}
             aria-label={`Step ${stepIndex + 1} of ${steps.length}`}
           >
-            <motion.div
-              className="h-full rounded-full bg-brand-700"
-              initial={false}
-              animate={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
-              transition={SPRING.bouncy}
-            />
+            {steps.map((st, i) => (
+              <span key={st} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-ink-900/10">
+                <motion.span
+                  className="absolute inset-y-0 left-0 rounded-full bg-brand-700"
+                  initial={false}
+                  animate={{ width: i <= stepIndex ? "100%" : "0%" }}
+                  transition={SPRING.default}
+                />
+              </span>
+            ))}
           </div>
-          <span className="inline-flex h-9 items-center rounded-full px-3 text-label-m text-brand-900 tabular-nums glass">
-            {stepIndex + 1}/{steps.length}
+          <span className="text-label-m text-ink-600 tabular-nums">
+            Step {stepIndex + 1} of {steps.length}
           </span>
         </div>
 
@@ -542,7 +556,7 @@ export default function TriageWizard() {
                         <legend className="mb-3 eyebrow text-ink-600">
                           {GROUP_LABELS[group]}
                         </legend>
-                        <ul className="flex flex-col gap-2">
+                        <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 xl:grid-cols-2">
                           {items.map((s) => {
                             const on = selected.has(s.code)
                             return (
@@ -552,17 +566,12 @@ export default function TriageWizard() {
                                   aria-pressed={on}
                                   onClick={() => toggleSymptom(s.code)}
                                   whileTap={{ scale: 0.98 }}
-                                  animate={{
-                                    borderRadius: on
-                                      ? "24px 24px 24px 8px"
-                                      : "16px 16px 16px 16px",
-                                  }}
                                   transition={SPRING.fast}
                                   className={cn(
-                                    "flex min-h-14 w-full items-center gap-3 border-[1.5px] px-4 py-2.5 text-left transition-colors",
+                                    "flex h-full min-h-14 w-full items-center gap-3 rounded-md px-4 py-2.5 text-left transition-[background-color,box-shadow] duration-150",
                                     on
-                                      ? "border-brand-700 bg-mint"
-                                      : "border-line bg-white hover:border-brand-500/50"
+                                      ? "bg-mint shadow-[inset_0_0_0_2px_var(--color-brand-700)]"
+                                      : "bg-white shadow-[var(--shadow-elev-1)] hover:shadow-[inset_0_0_0_1px_var(--color-brand-500),var(--shadow-elev-1)]"
                                   )}
                                 >
                                   <motion.span
@@ -736,40 +745,76 @@ export default function TriageWizard() {
 
       {/* Desktop context: what's been answered so far, and the emergency route. */}
       <aside className="sticky top-6 hidden flex-col gap-4 lg:flex">
+        {/* Vertical stepper with the answer under each finished step (Stripe Checkout pattern). */}
         <section className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
-          <p className="eyebrow">Your answers</p>
-          <dl className="mt-3 flex flex-col gap-3 text-body-m">
-            <div>
-              <dt className="text-ink-600">For</dt>
-              <dd className="text-title-m">
-                {!a.subject
-                  ? "Not chosen yet"
-                  : a.subject === "other"
-                    ? "Someone else"
-                    : subjectLabel}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-ink-600">Age</dt>
-              <dd className="text-title-m">
-                {ageKnown ? describeAge(ageMonths) : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-ink-600">Signs chosen</dt>
-              <dd className="text-title-m">
-                {a.symptoms.length
-                  ? catalogue
-                      .filter((s) => selected.has(s.code))
-                      .map((s) => s.label)
-                      .join(", ")
-                  : "None yet"}
-              </dd>
-            </div>
-          </dl>
+          <p className="eyebrow">Your check</p>
+          <ol className="mt-4 flex flex-col">
+            {steps.map((st, i) => {
+              const done = i < stepIndex
+              const current = i === stepIndex
+              const answer =
+                st === "who"
+                  ? a.subject
+                    ? a.subject === "other"
+                      ? "Someone else"
+                      : subjectLabel
+                    : null
+                  : st === "about"
+                    ? ageKnown
+                      ? `${describeAge(ageMonths)}${a.sex ? `, ${a.sex}` : ""}`
+                      : null
+                    : st === "pregnancy"
+                      ? a.pregnant === null
+                        ? null
+                        : a.pregnant
+                          ? "Pregnant"
+                          : "Not pregnant"
+                      : st === "symptoms"
+                        ? a.symptoms.length
+                          ? catalogue
+                              .filter((x) => selected.has(x.code))
+                              .map((x) => x.label)
+                              .join(", ")
+                          : null
+                        : st === "vitals"
+                          ? a.respRate !== undefined
+                            ? `${a.respRate} breaths a minute`
+                            : null
+                          : null
+              return (
+                <li key={st} className="relative flex gap-3 pb-4 last:pb-0">
+                  {i < steps.length - 1 && (
+                    <span
+                      className={cn(
+                        "absolute top-7 bottom-1 left-[11px] w-px",
+                        done ? "bg-brand-700" : "bg-ink-900/10",
+                      )}
+                      aria-hidden
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "relative flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                      done && "bg-brand-700 text-white",
+                      current && "bg-white text-brand-700 ring-2 ring-brand-700",
+                      !done && !current && "bg-cream text-ink-400 ring-1 ring-ink-900/10",
+                    )}
+                  >
+                    {done ? <Check className="size-3.5" aria-hidden /> : i + 1}
+                  </span>
+                  <span className="min-w-0 pt-0.5">
+                    <span className={cn("block text-label-l", !done && !current && "text-ink-400")}>
+                      {STEP_LABEL[st]}
+                    </span>
+                    {answer && <span className="mt-0.5 block text-body-m text-ink-600">{answer}</span>}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
         </section>
-        <section className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
-          <p className="text-title-m">
+        <section className="flex flex-col gap-3 rounded-xl bg-urgent-red-50 p-5">
+          <p className="text-title-m text-ink-900">
             Someone can't breathe, won't wake, or is bleeding heavily?
           </p>
           <p className="text-body-m text-ink-600">

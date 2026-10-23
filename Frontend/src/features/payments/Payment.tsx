@@ -344,8 +344,8 @@ export default function Payment() {
               <dd className="font-medium">{local?.subject_label ?? "You"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-white/70">Request</dt>
-              <dd className="line-clamp-2 max-w-[60%] text-right font-medium">
+              <dt className="shrink-0 text-white/70">Request</dt>
+              <dd className="line-clamp-3 max-w-[70%] text-right font-medium">
                 {c?.complaint ?? local?.complaint}
               </dd>
             </div>

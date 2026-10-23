@@ -106,6 +106,8 @@ npm run build
 
 ### Next steps: current (supersedes the list below)
 
+- **2026-10-23: design language v2 is in. Read `docs/DESIGN_LANGUAGE.md` before touching any page.** It uses an editorial serif display (Fraunces) with Inter, keeps the colours, puts glass on chrome only, and has no bouncy or asymmetric shapes. Reference pages: Landing, Home, Facilities list and detail, and the Triage wizard. The v1 rules in §2a about "Liquid Glass + M3 Expressive" and "Jakarta for display" are superseded by that doc; the consistency rules otherwise still apply.
+
 - **Codex: Batch 3 first, `docs/REDESIGN_BUILD.md` §0 + §3c.** The owner rejected most undesigned pages as tacky, off-inspiration, missing validation and UX features, and wasting space. Use `AppPage`/`CardGrid`/`Panel`, `PublicHero`/`FeatureCard`/`StatementBand`, `lib/form.ts` + `Field`, and `Toast`. Empty `LEGACY_NARROW` in `PatientShell.tsx` as you go.
 - **Codex: Batch 2, `docs/REDESIGN_BUILD.md` §3b (C10–C19)**: tips, appointments, labs, blood, emergency share, history/receipts, operator and admin consoles, anonymous ask, doctor presence. For this batch you also own `App.tsx`, `config/env.ts`, `config/flags.ts`, the API layer (append only) and demo auth roles. Log "Batch 2 done" in §6 when finished.
 - Codex C1–C9 are complete and pushed. Shared feedback/recovery components are available for reuse.

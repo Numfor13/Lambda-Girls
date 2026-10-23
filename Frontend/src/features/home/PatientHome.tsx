@@ -25,7 +25,6 @@ import { useAuth } from "@/auth/AuthProvider"
 import { flags } from "@/config/flags"
 import { Button, ButtonA, ButtonLink } from "@/design/components/Button"
 import { FacilityRow } from "@/design/components/FacilityRow"
-import { Landscape } from "@/design/components/Landscape"
 import { Avatar, SectionHeader } from "@/design/components/primitives"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
 import { SPRING, popIn, staggerOnMount } from "@/design/motion"
@@ -102,11 +101,8 @@ function HeroBand() {
       className="relative isolate overflow-hidden rounded-2xl bg-brand-900 text-white"
       aria-labelledby="home-hero"
     >
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-[30%] opacity-40" aria-hidden>
-        <Landscape sky={false} viewBox="0 262 1440 584" preserve="none" />
-      </div>
       <div
-        className="absolute -top-24 -right-24 -z-10 size-[420px] rounded-full bg-brand-500/30 blur-[90px]"
+        className="absolute -right-24 -bottom-40 -z-10 size-[460px] rounded-full bg-brand-500/35 blur-[100px]"
         aria-hidden
       />
       <div className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between lg:p-10">

@@ -79,23 +79,14 @@ export function FacilityRow({
       <div className="min-w-0 flex-1">
         <Link
           to={`/app/facilities/${facility.facility_id}`}
-          className="block truncate text-title-m text-ink-900 after:absolute after:inset-0 after:rounded-lg hover:text-brand-700"
+          className="line-clamp-2 text-title-m text-ink-900 after:absolute after:inset-0 after:rounded-lg hover:text-brand-700 sm:line-clamp-1"
         >
           {facility.name}
         </Link>
-        <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-body-m text-ink-600">
-          <span className="truncate">{facility.quarter}</span>
-          {hours && (
-            <>
-              <span className="text-ink-400" aria-hidden>·</span>
-              <span className="truncate">{hours}</span>
-            </>
-          )}
+        <p className="mt-0.5 line-clamp-2 text-body-m text-ink-600">
+          {[facility.quarter, hours].filter(Boolean).join(" · ")}
           {facility.distanceKm !== null && (
-            <>
-              <span className="text-ink-400" aria-hidden>·</span>
-              <span className="font-semibold text-brand-700 tabular">{formatDistance(facility.distanceKm)}</span>
-            </>
+            <span className="font-semibold text-brand-700 tabular"> · {formatDistance(facility.distanceKm)}</span>
           )}
         </p>
         {!compact && (

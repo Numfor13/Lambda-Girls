@@ -1,11 +1,10 @@
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { motion } from "motion/react"
 import { ArrowLeft, Building2, Clock, CreditCard, Navigation, Phone, Wallet, Zap } from "lucide-react"
-import { ButtonA, IconButton } from "@/design/components/Button"
-import { CAPABILITY_ICON, primaryCapability } from "@/design/components/FacilityRow"
-import { Landscape } from "@/design/components/Landscape"
+import { ButtonA } from "@/design/components/Button"
+import { CAPABILITY_ICON, hoursLabel, primaryCapability } from "@/design/components/FacilityRow"
 import { EmptyState, PageSpinner } from "@/design/components/primitives"
-import { SPRING, popIn, staggerOnMount } from "@/design/motion"
+import { popIn, staggerOnMount } from "@/design/motion"
 import { useFacility } from "@/offline/facilities"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { formatDistance, haversineKm } from "@/lib/geo"
@@ -23,7 +22,7 @@ function Fact({
 }) {
   return (
     <motion.div variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
-      <p className="flex items-center gap-2 text-label-m tracking-[0.1em] text-ink-600 uppercase">
+      <p className="flex items-center gap-2 text-label-l text-ink-600">
         <span className="flex size-8 items-center justify-center rounded-full bg-mint">
           <Icon className="size-4 text-brand-700" aria-hidden />
         </span>
@@ -34,13 +33,8 @@ function Fact({
   )
 }
 
-function YesNo({ value }: { value: boolean }) {
-  return <span className={cn(value ? "text-urgent-green" : "text-ink-600")}>{value ? "Yes" : "No"}</span>
-}
-
 export default function FacilityDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const facility = useFacility(id)
   const { coords } = useGeolocation()
   const online = useOnline()
@@ -73,90 +67,155 @@ export default function FacilityDetail() {
         ])
   const CapIcon = CAPABILITY_ICON[primaryCapability(facility.capabilities)]
 
+  const isAllDay = hoursLabel(facility.opening_hours) === "Open 24/7"
+
   return (
-    <motion.div variants={staggerOnMount(0.06)} initial="hidden" animate="show" className="flex flex-col gap-5">
-      <motion.section variants={popIn} className="relative isolate overflow-hidden rounded-xl lg:rounded-2xl">
-        <Landscape className="-z-10" preserve="xMidYMid slice" />
-        <div className="flex min-h-[300px] flex-col justify-between gap-6 p-4 sm:p-6">
-          <IconButton icon={ArrowLeft} label="All facilities" variant="glass" onClick={() => navigate("/app/facilities")} />
-          <motion.div
-            className="glass-strong flex items-start gap-4 p-5 shape-bl"
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ ...SPRING.bouncy, delay: 0.1 }}
-          >
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-md bg-mint">
-              <CapIcon className="size-7 text-brand-700" aria-hidden />
+    <motion.div variants={staggerOnMount(0.06)} initial="hidden" animate="show" className="flex flex-col gap-6 lg:gap-8">
+      {/* Editorial header: back, identity, status, actions (Airbnb/One Medical listing). */}
+      <motion.header variants={popIn} className="flex flex-col gap-5">
+        <Link
+          to="/app/facilities"
+          className="inline-flex h-9 w-fit items-center gap-1.5 rounded-full pr-3 pl-2 text-label-l text-ink-600 hover:bg-ink-900/5 hover:text-ink-900"
+        >
+          <ArrowLeft className="size-4" aria-hidden /> All facilities
+        </Link>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <span
+              className={cn(
+                "flex size-14 shrink-0 items-center justify-center rounded-lg lg:size-16",
+                facility.capabilities.includes("emergency") ? "bg-brand-900 text-white" : "bg-mint text-brand-700",
+              )}
+            >
+              <CapIcon className="size-7" strokeWidth={1.8} aria-hidden />
             </span>
             <div className="min-w-0">
-              <h1 className="text-headline-m lg:text-headline-l">{facility.name}</h1>
-              <p className="mt-1 text-body-l text-ink-900">
-                {facility.address}
-                {distance !== null && <span className="text-label-l text-brand-700"> · {formatDistance(distance)} away</span>}
+              <h1 className="text-headline-l lg:text-display-m">{facility.name}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-l text-ink-600">
+                <span>{facility.address}</span>
+                {distance !== null && (
+                  <>
+                    <span className="text-ink-400" aria-hidden>·</span>
+                    <span className="font-semibold text-brand-700">{formatDistance(distance)} away</span>
+                  </>
+                )}
+              </p>
+              <p className="mt-3 flex flex-wrap gap-2">
+                {isAllDay && (
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-mint px-3 text-label-m text-brand-900">
+                    <Clock className="size-3.5" aria-hidden /> Open 24/7
+                  </span>
+                )}
+                {facility.has_backup_power && (
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-white px-3 text-label-m text-ink-900 ring-1 ring-ink-900/10">
+                    <Zap className="size-3.5 fill-current text-brand-600" aria-hidden /> Backup power
+                  </span>
+                )}
+                {facility.accepts_csu_card && (
+                  <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-white px-3 text-label-m text-ink-900 ring-1 ring-ink-900/10">
+                    <CreditCard className="size-3.5 text-brand-600" aria-hidden /> CSU card
+                  </span>
+                )}
               </p>
             </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row lg:shrink-0">
+            <ButtonA href={telHref(facility.phone)} icon={Phone} size="lg">
+              Call {formatPhone(facility.phone)}
+            </ButtonA>
+            <ButtonA
+              href={directions}
+              target={online ? "_blank" : undefined}
+              rel="noreferrer"
+              icon={Navigation}
+              variant="secondary"
+              size="lg"
+            >
+              Directions
+            </ButtonA>
+          </div>
+        </div>
+      </motion.header>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-7">
+        <div className="flex min-w-0 flex-col gap-5">
+          <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)] lg:p-6">
+            <h2 className="text-headline-s">What they offer</h2>
+            <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
+              {facility.capabilities.map((c) => {
+                const Icon = CAPABILITY_ICON[c]
+                return (
+                  <li key={c} className="flex items-center gap-3 rounded-lg bg-cream p-3">
+                    <span
+                      className={cn(
+                        "flex size-9 items-center justify-center rounded-full",
+                        c === "emergency" ? "bg-brand-900 text-white" : "bg-white text-brand-700",
+                      )}
+                    >
+                      <Icon className="size-[18px]" aria-hidden />
+                    </span>
+                    <span className="text-label-l">{CAPABILITY_LABELS[c] ?? c}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </motion.section>
+
+          <motion.div variants={staggerOnMount(0.05)} className="grid gap-3 sm:grid-cols-2">
+            <Fact icon={Clock} label="Opening hours">
+              <dl className="space-y-1">
+                {hours.map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-4 text-body-l">
+                    <dt className="text-ink-600">{k}</dt>
+                    <dd className="font-semibold tabular">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Fact>
+            <Fact icon={Wallet} label="Consultation fee">
+              {facility.consultation_fee_xaf > 0 ? (
+                <span className="tabular">{formatXaf(facility.consultation_fee_xaf)}</span>
+              ) : (
+                <span className="text-ink-600">Not listed. Ask when you call.</span>
+              )}
+            </Fact>
           </motion.div>
         </div>
-      </motion.section>
 
-      <motion.div variants={popIn} className="grid gap-3 sm:grid-cols-2">
-        <ButtonA href={telHref(facility.phone)} icon={Phone} size="lg" full>
-          Call {formatPhone(facility.phone)}
-        </ButtonA>
-        <ButtonA href={directions} target={online ? "_blank" : undefined} rel="noreferrer" icon={Navigation} variant="glass" size="lg" full>
-          Directions
-        </ButtonA>
-      </motion.div>
-
-      <motion.section variants={popIn}>
-        <h2 className="text-headline-s">What they offer</h2>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {facility.capabilities.map((c, i) => {
-            const Icon = CAPABILITY_ICON[c]
-            return (
-              <motion.li
-                key={c}
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ ...SPRING.bouncy, delay: 0.15 + i * 0.04 }}
-                className={cn(
-                  "inline-flex h-10 items-center gap-2 rounded-full px-4 text-label-l",
-                  c === "emergency" ? "bg-urgent-red-50 text-urgent-red" : "bg-mint text-brand-900",
-                )}
-              >
-                <Icon className="size-4" aria-hidden />
-                {CAPABILITY_LABELS[c] ?? c}
-              </motion.li>
-            )
-          })}
-        </ul>
-      </motion.section>
-
-      <motion.div variants={staggerOnMount(0.05)} className="grid gap-3 sm:grid-cols-2">
-        <Fact icon={Clock} label="Opening hours">
-          <dl className="space-y-1">
-            {hours.map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 text-body-l">
-                <dt className="text-ink-600">{k}</dt>
-                <dd className="font-semibold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </Fact>
-        <Fact icon={Wallet} label="Consultation fee (indicative)">
-          {facility.consultation_fee_xaf > 0 ? formatXaf(facility.consultation_fee_xaf) : "Free"}
-        </Fact>
-        <Fact icon={Zap} label="Backup power">
-          <YesNo value={facility.has_backup_power} />
-        </Fact>
-        <Fact icon={CreditCard} label="Accepts CSU card">
-          <YesNo value={facility.accepts_csu_card} />
-        </Fact>
-      </motion.div>
-
-      <motion.p variants={popIn} className="text-body-m text-ink-600">
-        Details are saved on your phone and work offline. Call ahead to confirm opening times.
-      </motion.p>
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+          <motion.section variants={popIn} className="rounded-xl bg-mint p-5 lg:p-6">
+            <p className="eyebrow">Getting there</p>
+            <p className="mt-2 text-title-l">{facility.quarter}</p>
+            <p className="mt-1 text-body-m text-ink-600">{facility.address}</p>
+            <p className="mt-3 text-code text-ink-600">
+              {facility.latitude.toFixed(4)}, {facility.longitude.toFixed(4)}
+            </p>
+            <ButtonA
+              href={directions}
+              target={online ? "_blank" : undefined}
+              rel="noreferrer"
+              icon={Navigation}
+              variant="light"
+              full
+              className="mt-4"
+            >
+              {online ? "Open directions" : "Open in maps app"}
+            </ButtonA>
+          </motion.section>
+          <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
+            <p className="text-title-m">Not sure this is the right place?</p>
+            <p className="mt-1 text-body-m text-ink-600">
+              A 1-minute check tells you how urgent it is and which kind of care you need.
+            </p>
+            <Link to="/app/triage" className="mt-3 inline-flex items-center gap-1 text-label-l text-brand-700 hover:underline">
+              Check symptoms first →
+            </Link>
+          </motion.section>
+          <p className="px-1 text-body-m text-ink-600">
+            Saved on your phone and available offline. Call ahead to confirm opening times.
+          </p>
+        </aside>
+      </div>
     </motion.div>
   )
 }
