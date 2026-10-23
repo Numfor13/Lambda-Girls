@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react"
 import { motion } from "motion/react"
 import { useAuth } from "@/auth/AuthProvider"
-import { friendlyError } from "@/api/errors"
+import { ApiError, friendlyError } from "@/api/errors"
 import { useOnline } from "@/lib/hooks"
 import { useFacilities } from "@/offline/facilities"
 import { SyncStatus } from "./AppChrome"
@@ -10,6 +10,7 @@ import { Field, Select } from "./Field"
 import { PageHeader } from "./primitives"
 import { popIn, staggerOnMount } from "@/design/motion"
 import { SERVICE_DRAFT_PREFIX } from "@/lib/serviceDrafts"
+import type { Capability } from "@/api/types"
 
 export function ServicePage({
   title,
@@ -66,18 +67,21 @@ export function FacilitySelect({
 }: {
   value: string
   onChange: (id: string) => void
-  capability?: string
+  capability?: Capability
 }) {
   const facilities = useFacilities()
   const available =
     facilities?.filter(
-      (f) =>
-        f.is_active &&
-        (!capability || f.capabilities.includes(capability as never))
+      (f) => f.is_active && (!capability || f.capabilities.includes(capability))
     ) ?? []
   return (
     <Field
       label="Facility"
+      error={
+        value && facilities && !available.some((f) => f.facility_id === value)
+          ? "The saved facility is unavailable. Choose another facility."
+          : undefined
+      }
       hint={
         available.length
           ? undefined
@@ -88,7 +92,7 @@ export function FacilitySelect({
         <Select
           id={id}
           required
-          value={value}
+          value={available.some((f) => f.facility_id === value) ? value : ""}
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">Choose a facility</option>
@@ -114,7 +118,18 @@ export function ConnectionNote() {
   )
 }
 export function ServiceError({ error }: { error: unknown }) {
-  return error ? <Feedback error>{friendlyError(error)} Check the latest saved status before resubmitting a request.</Feedback> : null
+  if (!error) return null
+  const message =
+    error instanceof ApiError && error.status === 0
+      ? "Connection interrupted. Connect and refresh to check the latest status before submitting again."
+      : error instanceof ApiError && error.status === 409
+        ? "The status changed or this request already exists. Refresh before trying again."
+        : error instanceof ApiError && error.status === 400
+          ? error.message
+          : error instanceof ApiError && error.status === 401
+            ? "This session is no longer authorized. Sign in again, or start a new anonymous session."
+            : friendlyError(error)
+  return <Feedback error>{message}</Feedback>
 }
 
 /** Drafts only: the server has no deduplication contract for these POSTs. */

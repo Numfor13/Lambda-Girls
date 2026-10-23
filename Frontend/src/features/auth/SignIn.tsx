@@ -10,6 +10,8 @@ import { Landscape } from "@/design/components/Landscape"
 import { Logo } from "@/design/components/Logo"
 import { popIn, staggerOnMount } from "@/design/motion"
 import { authDestination, safeReturn } from "./destination"
+import type { Role } from "@/auth/session"
+import { flags } from "@/config/flags"
 
 export default function SignIn() {
   const [params] = useSearchParams()
@@ -21,17 +23,8 @@ export default function SignIn() {
   const denied = params.get("denied") === "1"
   if (session && !denied)
     return <Navigate to={authDestination(session, returnTo)} replace />
-  const demo = (role: "Patient" | "Doctor") => {
-    signInDemo(role)
-    const target =
-      returnTo &&
-      (returnTo === "/doctor" || returnTo.startsWith("/doctor/")) ===
-        (role === "Doctor")
-        ? returnTo
-        : role === "Doctor"
-          ? "/doctor"
-          : "/app"
-    navigate(target, { replace: true })
+  const demo = (role: Role) => {
+    navigate(authDestination(signInDemo(role), returnTo), { replace: true })
   }
   return (
     <section className="relative isolate overflow-hidden py-14">
@@ -108,6 +101,26 @@ export default function SignIn() {
                 >
                   Continue as a doctor
                 </Button>
+                {flags.operator_console && (
+                  <>
+                    <Button
+                      full
+                      variant="secondary"
+                      size="lg"
+                      onClick={() => demo("Operator")}
+                    >
+                      Continue as an operator
+                    </Button>
+                    <Button
+                      full
+                      variant="secondary"
+                      size="lg"
+                      onClick={() => demo("Admin")}
+                    >
+                      Continue as an administrator
+                    </Button>
+                  </>
+                )}
               </div>
             </>
           )}

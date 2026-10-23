@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   clearDemoSession,
@@ -10,13 +17,14 @@ import {
   type Session,
 } from "./session"
 import { clearClinicalData } from "@/offline/db"
+import { clearServiceDrafts } from "@/lib/serviceDrafts"
 
 interface AuthState {
   session: Session | null
   isLoading: boolean
   hasRole: (role: Role) => boolean
   signIn: (returnTo?: string) => Promise<void>
-  signInDemo: (role: Role) => void
+  signInDemo: (role: Role) => Session
   signOut: () => Promise<void>
 }
 
@@ -25,6 +33,8 @@ const AuthContext = createContext<AuthState | null>(null)
 export function homeFor(session: Session | null): string {
   if (!session) return "/"
   if (session.groups.includes("Doctor")) return "/doctor"
+  if (session.groups.includes("Operator")) return "/operator"
+  if (session.groups.includes("Admin")) return "/admin"
   return "/app"
 }
 
@@ -42,8 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     const um = getUserManager()
     if (!um) return () => void (active = false)
-    const onLoaded = (user: Parameters<Parameters<typeof um.events.addUserLoaded>[0]>[0]) =>
-      setSession(sessionFromUser(user))
+    const onLoaded = (
+      user: Parameters<Parameters<typeof um.events.addUserLoaded>[0]>[0]
+    ) => setSession(sessionFromUser(user))
     const onUnloaded = () => setSession(null)
     um.events.addUserLoaded(onLoaded)
     um.events.addUserUnloaded(onUnloaded)
@@ -57,19 +68,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (returnTo?: string) => {
     const um = getUserManager()
     if (um) {
-      await um.signinRedirect({ state: { returnTo: returnTo ?? window.location.pathname } })
+      await um.signinRedirect({
+        state: { returnTo: returnTo ?? window.location.pathname },
+      })
     } else {
       const target = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
       window.location.assign(`/sign-in${target}`)
     }
   }, [])
 
-  const signInDemo = useCallback((role: Role) => {
-    setSession(writeDemoSession(role))
-  }, [])
+  const signInDemo = useCallback(
+    (role: Role) => {
+      queryClient.clear()
+      const next = writeDemoSession(role)
+      setSession(next)
+      return next
+    },
+    [queryClient]
+  )
 
   const signOut = useCallback(async () => {
     await clearClinicalData()
+    clearServiceDrafts()
     queryClient.clear()
     const um = getUserManager()
     if (um) {
@@ -91,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInDemo,
       signOut,
     }),
-    [session, isLoading, signIn, signInDemo, signOut],
+    [session, isLoading, signIn, signInDemo, signOut]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

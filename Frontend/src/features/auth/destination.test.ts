@@ -39,4 +39,30 @@ describe("sign-in return destinations", () => {
   it("does not mistake a similarly named public path for a doctor route", () => {
     expect(authDestination(doctor, "/doctor-information")).toBe("/doctor")
   })
+  it("keeps authorized operator and admin deep links", () => {
+    expect(
+      authDestination({ ...patient, groups: ["Operator"] }, "/operator/labs")
+    ).toBe("/operator/labs")
+    expect(
+      authDestination({ ...patient, groups: ["Admin"] }, "/admin/tips")
+    ).toBe("/admin/tips")
+  })
+  it("rejects another staff workspace and protects segment boundaries", () => {
+    expect(authDestination(patient, "/operator")).toBe("/app")
+    expect(
+      authDestination({ ...patient, groups: ["Operator"] }, "/admin")
+    ).toBe("/operator")
+    expect(
+      authDestination({ ...patient, groups: ["Admin"] }, "/operator")
+    ).toBe("/admin")
+    expect(
+      authDestination({ ...patient, groups: ["Admin"] }, "/administrator")
+    ).toBe("/admin")
+    expect(
+      authDestination(
+        { ...patient, groups: ["Doctor", "Admin"] },
+        "/admin/tips"
+      )
+    ).toBe("/admin/tips")
+  })
 })

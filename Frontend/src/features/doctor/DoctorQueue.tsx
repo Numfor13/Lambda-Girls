@@ -26,12 +26,14 @@ import { popIn, SPRING, staggerOnMount } from "@/design/motion"
 import { useNow, useOnline, useVisible } from "@/lib/hooks"
 import { timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { DoctorPresence } from "./DoctorPresence"
 
 const RANK = { RED: 0, AMBER: 1, GREEN: 2 } as const
 const NEW_WINDOW_MS = 2 * 60_000
 export function patientLabel(c: Consultation) {
   if (c.patient_id === "anonymous" || c.patient_id.startsWith("anon#"))
     return "Anonymous"
+  if (c.patient_id.startsWith("anon:")) return "Anonymous"
   return c.on_behalf_member_id ? "Household member" : "Patient"
 }
 function chime() {
@@ -126,6 +128,7 @@ export default function DoctorQueue() {
           </Button>
         }
       />
+      <DoctorPresence />
       <motion.div
         variants={popIn}
         className="flex flex-wrap gap-3"

@@ -34,10 +34,14 @@ export function getUserManager(): UserManager | null {
 
 export function sessionFromUser(user: User): Session {
   const p = user.profile as Record<string, unknown>
-  const groups = Array.isArray(p["cognito:groups"]) ? (p["cognito:groups"] as Role[]) : []
+  const groups = Array.isArray(p["cognito:groups"])
+    ? (p["cognito:groups"] as Role[])
+    : []
   return {
     sub: String(p.sub),
-    name: String(p.name ?? p.given_name ?? p.email ?? p.phone_number ?? "there"),
+    name: String(
+      p.name ?? p.given_name ?? p.email ?? p.phone_number ?? "there"
+    ),
     email: typeof p.email === "string" ? p.email : undefined,
     phone: typeof p.phone_number === "string" ? p.phone_number : undefined,
     groups: groups.length ? groups : ["Patient"],
@@ -57,8 +61,13 @@ export function readDemoSession(): Session | null {
 
 export function writeDemoSession(role: Role): Session {
   const session: Session = {
-    sub: role === "Doctor" ? "demo-doctor-1" : "demo-patient-1",
-    name: role === "Doctor" ? "Dr. Ambe T." : "Ngozi",
+    sub: `demo-${role.toLowerCase()}-1`,
+    name: {
+      Patient: "Ngozi",
+      Doctor: "Dr. Ambe T.",
+      Operator: "Demo operator",
+      Admin: "Demo administrator",
+    }[role],
     phone: "+237677000000",
     groups: [role],
     idToken: `demo.${role}`,

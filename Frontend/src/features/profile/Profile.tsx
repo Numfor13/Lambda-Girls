@@ -37,6 +37,7 @@ import { usePushSubscription } from "@/lib/usePushSubscription"
 import { clearClinicalData, db } from "@/offline/db"
 import { refreshFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 import { useProfile } from "./useProfile"
+import { ServiceLinks } from "@/design/components/ServiceLinks"
 
 function DetailsForm({
   initialName,
@@ -55,71 +56,75 @@ function DetailsForm({
   })
   return (
     <form
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start"
       onSubmit={(event) => {
         event.preventDefault()
         if (online && name.trim()) save.mutate()
       }}
     >
-      <Field label="Display name">
-        {(id) => (
-          <Input
-            id={id}
-            autoComplete="name"
-            value={name}
-            maxLength={100}
-            required
-            onChange={(e) => setName(e.target.value)}
-          />
-        )}
-      </Field>
-      <Field
-        label="Language"
-        hint="French and Pidgin interface translations are not enabled yet."
-      >
-        {(id) => (
-          <Select
-            id={id}
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-          >
-            <option value="en">English</option>
-            <option
-              value="fr"
-              disabled={!flags.i18n_fr && initialLocale !== "fr"}
+      <div className="flex min-w-0 flex-col gap-4">
+        <Field label="Display name">
+          {(id) => (
+            <Input
+              id={id}
+              autoComplete="name"
+              value={name}
+              maxLength={100}
+              required
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
+        </Field>
+        <Field
+          label="Language"
+          hint="French and Pidgin interface translations are not enabled yet."
+        >
+          {(id) => (
+            <Select
+              id={id}
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as Locale)}
             >
-              Français
-            </option>
-            <option
-              value="pid"
-              disabled={!flags.i18n_pid && initialLocale !== "pid"}
-            >
-              Pidgin
-            </option>
-          </Select>
+              <option value="en">English</option>
+              <option
+                value="fr"
+                disabled={!flags.i18n_fr && initialLocale !== "fr"}
+              >
+                Français
+              </option>
+              <option
+                value="pid"
+                disabled={!flags.i18n_pid && initialLocale !== "pid"}
+              >
+                Pidgin
+              </option>
+            </Select>
+          )}
+        </Field>
+      </div>
+      <aside className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-4">
+        {!online && (
+          <Feedback>
+            Your saved profile is available. Connect to save changes to your
+            details.
+          </Feedback>
         )}
-      </Field>
-      {!online && (
-        <Feedback>
-          Your saved profile is available. Connect to save changes to your
-          details.
-        </Feedback>
-      )}
-      {save.isError && <Feedback error>{friendlyError(save.error)}</Feedback>}
-      {save.isSuccess && <Feedback success>Profile saved.</Feedback>}
-      <Button
-        icon={Save}
-        type="submit"
-        className="self-start"
-        loading={save.isPending}
-        disabled={
-          !online ||
-          !name.trim() ||
-          (name.trim() === initialName && locale === initialLocale)
-        }
-      >
-        Save details
-      </Button>
+        {save.isError && <Feedback error>{friendlyError(save.error)}</Feedback>}
+        {save.isSuccess && <Feedback success>Profile saved.</Feedback>}
+        <Button
+          icon={Save}
+          type="submit"
+          className="self-start"
+          loading={save.isPending}
+          disabled={
+            !online ||
+            !name.trim() ||
+            (name.trim() === initialName && locale === initialLocale)
+          }
+        >
+          Save details
+        </Button>
+      </aside>
     </form>
   )
 }
@@ -225,6 +230,7 @@ export default function Profile() {
           </ButtonLink>
         </Card>
       </motion.section>
+      <ServiceLinks />
       <motion.section
         variants={popIn}
         className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"

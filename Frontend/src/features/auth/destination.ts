@@ -21,10 +21,19 @@ export function authDestination(
   raw: string | null | undefined
 ): string {
   const target = safeReturn(raw)
-  const doctorRoute = target?.split(/[?#]/)[0]
-  const isDoctorRoute =
-    doctorRoute === "/doctor" || doctorRoute?.startsWith("/doctor/")
-  return target && Boolean(isDoctorRoute) === session.groups.includes("Doctor")
+  const path = target?.split(/[?#]/)[0]
+  const workspace = (["doctor", "operator", "admin"] as const).find(
+    (area) => path === `/${area}` || path?.startsWith(`/${area}/`)
+  )
+  if (workspace) {
+    const role = { doctor: "Doctor", operator: "Operator", admin: "Admin" }[
+      workspace
+    ]
+    return target && session.groups.some((g) => g === role)
+      ? target
+      : homeFor(session)
+  }
+  return target && session.groups.includes("Patient")
     ? target
     : homeFor(session)
 }
