@@ -108,12 +108,15 @@ export function PublicHero({
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ ...SPRING.slow, delay: 0.25 }}
-            className={cn(
-              "relative w-full max-w-[560px] justify-self-center lg:justify-self-end",
-              breakout && "pb-16"
-            )}
+            className="relative w-full max-w-[560px] justify-self-center lg:justify-self-end"
           >
-            <div className="relative rounded-2xl bg-white p-6 shadow-[var(--shadow-elev-2)] sm:p-8">
+            {/* The card reserves empty space at its bottom; the breakout is pulled up into it. */}
+            <div
+              className={cn(
+                "relative rounded-2xl bg-white p-6 shadow-[var(--shadow-elev-2)] sm:p-8",
+                breakout && "pb-24 sm:pb-28"
+              )}
+            >
               {card}
             </div>
             {breakout && (
@@ -121,7 +124,7 @@ export function PublicHero({
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...SPRING.bouncy, delay: 0.5 }}
-                className="absolute right-6 bottom-0 left-6 sm:right-10 sm:left-auto sm:w-[70%]"
+                className="relative z-10 mx-4 -mt-20 sm:-mt-24 sm:mr-8 sm:ml-auto sm:w-[80%]"
               >
                 {breakout}
               </motion.div>
