@@ -2,6 +2,7 @@ import { ulid } from "ulid"
 import seed from "@/data/facilities.seed.json"
 import { evaluate } from "@/triage-engine/engine"
 import { ApiError } from "./errors"
+import { serviceMockRoutes, type ServiceMockDb } from "./mock-services"
 import type {
   Consultation,
   Facility,
@@ -20,6 +21,7 @@ import type {
 // Response shapes mirror the Lambda handlers exactly so switching over needs no UI changes.
 
 interface MockDb {
+  services?: ServiceMockDb
   profiles: Record<string, Profile>
   triage: (TriageResult & { user_id: string })[]
   consultations: Consultation[]
@@ -131,6 +133,7 @@ function profileFor(data: MockDb, sub: string): Profile {
 }
 
 const routes: [string, RegExp, Handler][] = [
+  ...serviceMockRoutes(facilities, MOCK_TIPS),
   ["GET", /^\/profile$/, ({ user, data }) => profileFor(data, requireUser(user).sub)],
   [
     "PUT",

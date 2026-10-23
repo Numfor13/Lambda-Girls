@@ -14,6 +14,8 @@ export const apiUrls = {
   doctor: pick(e.VITE_API_URL_DOCTOR),
   push: pick(e.VITE_API_URL_PUSH),
   extended: pick(e.VITE_API_URL_EXTENDED),
+  channel: pick(e.VITE_API_URL_CHANNEL),
+  anonymous: pick(e.VITE_API_URL_ANONYMOUS),
 } as const
 
 export type ApiService = keyof typeof apiUrls
