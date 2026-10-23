@@ -2,19 +2,22 @@
 
 import decimal
 import json
+import os
 from typing import Any, Optional
 
 
 def _json_default(obj):
     if isinstance(obj, decimal.Decimal):
         return int(obj) if obj == obj.to_integral_value() else float(obj)
+    if isinstance(obj, (set, frozenset)):  # DynamoDB string/number sets
+        return sorted(obj, key=str)
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 def _headers(extra: Optional[dict]) -> dict:
     headers = {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": os.environ.get("CORS_ALLOW_ORIGIN", "*"),
     }
     if extra:
         headers.update(extra)

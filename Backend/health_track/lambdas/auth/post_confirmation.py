@@ -1,13 +1,17 @@
 import boto3
 import os
 import time
+from botocore.config import Config
+
+# Short timeouts so both calls fit inside the trigger's 10 s function timeout.
+_CONFIG = Config(connect_timeout=2, read_timeout=2, retries={"max_attempts": 1})
 
 
 def handler(event, context):
     if event.get("triggerSource") != "PostConfirmation_ConfirmSignUp":
         return event
 
-    ddb = boto3.client("dynamodb", connect_timeout=5, read_timeout=5)
+    ddb = boto3.client("dynamodb", config=_CONFIG)
     sub   = event["request"]["userAttributes"]["sub"]
     email = event["request"]["userAttributes"].get("email", "")
     phone = event["request"]["userAttributes"].get("phone_number", "")
@@ -30,7 +34,7 @@ def handler(event, context):
     except ddb.exceptions.ConditionalCheckFailedException:
         pass  # profile already exists — idempotent
 
-    boto3.client("cognito-idp").admin_add_user_to_group(
+    boto3.client("cognito-idp", config=_CONFIG).admin_add_user_to_group(
         UserPoolId=event["userPoolId"],
         Username=event["userName"],
         GroupName="Patient",

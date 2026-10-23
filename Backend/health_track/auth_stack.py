@@ -1,128 +1,119 @@
-import aws_cdk as cdk
 from aws_cdk import (
     Stack,
     CfnOutput,
+    Duration,
     RemovalPolicy,
     aws_cognito as cognito,
-    aws_lambda as lambda_,
+    aws_dynamodb as dynamodb,
     aws_iam as iam,
+    aws_kms as kms,
+    aws_lambda as lambda_,
+    aws_logs as logs,
 )
 from constructs import Construct
 from health_track.config import Config
-from health_track.shared_stack import SharedStack
+
+NO_BYTECODE = ["**/__pycache__", "**/*.pyc"]
+
+STAFF_GROUPS = ("Doctor", "Operator", "Admin")
 
 
 class AuthStack(Stack):
-    def __init__(self, scope: Construct, id: str, *, env, config: Config, shared_stack: SharedStack, **kwargs) -> None:
-        super().__init__(scope, id, env=env, **kwargs)
+    def __init__(self, scope: Construct, construct_id: str, *, config: Config,
+                 profiles_table: dynamodb.ITable, key: kms.IKey, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+        removal = RemovalPolicy.RETAIN if config.is_prod else RemovalPolicy.DESTROY
 
-        # I8: RETAIN in prod, DESTROY elsewhere
-        removal_policy = RemovalPolicy.RETAIN if config.env_name == "prod" else RemovalPolicy.DESTROY
-
-        # Cognito User Pool
+        # Email sign-in only: SMS verification would need SNS production access and per-message cost.
         user_pool = cognito.UserPool(self, "UserPool",
             user_pool_name=f"health-track-{config.env_name}",
             self_sign_up_enabled=True,
-            sign_in_aliases=cognito.SignInAliases(email=True, phone=True),
-            auto_verify=cognito.AutoVerifiedAttrs(email=True, phone=True),
+            sign_in_aliases=cognito.SignInAliases(email=True),
+            auto_verify=cognito.AutoVerifiedAttrs(email=True),
             standard_attributes=cognito.StandardAttributes(
                 email=cognito.StandardAttribute(required=True, mutable=True),
                 phone_number=cognito.StandardAttribute(required=False, mutable=True),
             ),
+            # NIST 800-63B: length over composition rules (low-literacy users).
             password_policy=cognito.PasswordPolicy(
-                min_length=8,
-                require_digits=True,
-                require_lowercase=True,
+                min_length=12,
+                require_digits=False,
+                require_lowercase=False,
                 require_uppercase=False,
                 require_symbols=False,
             ),
+            # TOTP only (no SMS cost). Staff groups lose their privileges without it (pre-token trigger).
+            mfa=cognito.Mfa.OPTIONAL,
+            mfa_second_factor=cognito.MfaSecondFactor(sms=False, otp=True),
             account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
-            removal_policy=removal_policy,
+            deletion_protection=config.is_prod,
+            removal_policy=removal,
         )
 
-        # User Pool Groups
-        for group_name in ["Patient", "Doctor", "Operator", "Admin"]:
+        for group_name in ("Patient",) + STAFF_GROUPS:
             cognito.CfnUserPoolGroup(self, f"Group{group_name}",
                 user_pool_id=user_pool.user_pool_id,
                 group_name=group_name,
             )
 
-        # App Client (no secret — SPA/PWA)
         app_client = user_pool.add_client("AppClient",
             user_pool_client_name=f"health-track-app-{config.env_name}",
             auth_flows=cognito.AuthFlow(user_srp=True),
             o_auth=cognito.OAuthSettings(
                 flows=cognito.OAuthFlows(authorization_code_grant=True),
-                scopes=[cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
-                callback_urls=["http://localhost:5173/auth/callback"],
-                logout_urls=["http://localhost:5173/sign-in"],
+                scopes=[cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID,
+                        cognito.OAuthScope.PROFILE, cognito.OAuthScope.PHONE],
+                callback_urls=list(config.callback_urls),
+                logout_urls=list(config.logout_urls),
             ),
+            id_token_validity=Duration.hours(1),
+            access_token_validity=Duration.hours(1),
+            refresh_token_validity=Duration.days(30),
             prevent_user_existence_errors=True,
             generate_secret=False,
         )
 
-        # Cognito Domain
         domain = user_pool.add_domain("Domain",
-            cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"health-track-{config.env_name}",
+            cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"health-track-{config.env_name}"),
+        )
+
+        def trigger(construct_id: str, handler: str) -> lambda_.Function:
+            return lambda_.Function(self, construct_id,
+                runtime=lambda_.Runtime.PYTHON_3_14,
+                architecture=lambda_.Architecture.ARM_64,
+                handler=handler,
+                code=lambda_.Code.from_asset("health_track/lambdas/auth", exclude=NO_BYTECODE),
+                memory_size=256,
+                timeout=Duration.seconds(10),
+                tracing=lambda_.Tracing.ACTIVE,
+                logging_format=lambda_.LoggingFormat.JSON,
+                environment={"ENV_NAME": config.env_name, "PROFILE_TABLE": profiles_table.table_name},
+                log_group=logs.LogGroup(self, f"{construct_id}Logs",
+                    retention=logs.RetentionDays.ONE_MONTH,
+                    encryption_key=key,
+                    removal_policy=removal,
+                ),
             )
-        )
 
-        # Pre-sign-up Lambda trigger
-        pre_signup_fn = lambda_.Function(self, "PreSignupFn",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            handler="pre_signup.handler",
-            code=lambda_.Code.from_asset("health_track/lambdas/auth"),
-            environment={"ENV_NAME": config.env_name},
-        )
-        user_pool.add_trigger(cognito.UserPoolOperation.PRE_SIGN_UP, pre_signup_fn)
-
-        # Reconstruct layer reference from ARN to avoid cross-stack export lock (I3)
-        common_layer = lambda_.LayerVersion.from_layer_version_arn(
-            self, "CommonLayerRef",
-            layer_version_arn=shared_stack.common_layer.layer_version_arn,
-        )
-
-        # Post-confirmation Lambda trigger
-        post_confirmation_fn = lambda_.Function(self, "PostConfirmationFn",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            handler="post_confirmation.handler",
-            code=lambda_.Code.from_asset("health_track/lambdas/auth"),
-            layers=[common_layer],
-            environment={
-                "ENV_NAME": config.env_name,
-                "PROFILE_TABLE": f"HealthTrack-Profiles-{config.env_name}",
-            },
-        )
+        post_confirmation_fn = trigger("PostConfirmationFn", "post_confirmation.handler")
+        pre_token_fn = trigger("PreTokenGenerationFn", "pre_token_generation.handler")
         user_pool.add_trigger(cognito.UserPoolOperation.POST_CONFIRMATION, post_confirmation_fn)
+        user_pool.add_trigger(cognito.UserPoolOperation.PRE_TOKEN_GENERATION, pre_token_fn)
 
-        # I4: Scoped IAM policies
+        profiles_table.grant(post_confirmation_fn, "dynamodb:PutItem")
+        key.grant(post_confirmation_fn, "kms:GenerateDataKey", "kms:Decrypt")
+        # The pool ARN can't be referenced from its own triggers (circular), so scope to this account's pools.
+        pools_in_account = f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/*"
         post_confirmation_fn.add_to_role_policy(iam.PolicyStatement(
-            actions=["dynamodb:PutItem"],
-            resources=[f"arn:aws:dynamodb:{Stack.of(self).region}:{Stack.of(self).account}:table/HealthTrack-Profiles-{config.env_name}"],
-        ))
-        post_confirmation_fn.add_to_role_policy(iam.PolicyStatement(
-            actions=["cognito-idp:AdminAddUserToGroup"],
-            resources=[f"arn:aws:cognito-idp:{Stack.of(self).region}:{Stack.of(self).account}:userpool/*"],
-        ))
+            actions=["cognito-idp:AdminAddUserToGroup"], resources=[pools_in_account]))
+        pre_token_fn.add_to_role_policy(iam.PolicyStatement(
+            actions=["cognito-idp:AdminGetUser"], resources=[pools_in_account]))
 
-        # Expose properties
         self.user_pool = user_pool
         self.app_client = app_client
-        self.domain = domain
-        self.pre_signup_fn = pre_signup_fn
-        self.post_confirmation_fn = post_confirmation_fn
 
-        # CloudFormation Outputs
-        CfnOutput(self, "UserPoolId",
-            value=user_pool.user_pool_id,
-            export_name=f"HealthTrack-UserPoolId-{config.env_name}",
-        )
-        CfnOutput(self, "AppClientId",
-            value=app_client.user_pool_client_id,
-            export_name=f"HealthTrack-AppClientId-{config.env_name}",
-        )
-        CfnOutput(self, "HostedUiDomain",
-            value=domain.domain_name,
-            export_name=f"HealthTrack-HostedUiDomain-{config.env_name}",
-        )
+        CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
+        CfnOutput(self, "AppClientId", value=app_client.user_pool_client_id)
+        CfnOutput(self, "HostedUiDomain", value=domain.base_url())
+        CfnOutput(self, "CognitoAuthority",
+                  value=f"https://cognito-idp.{self.region}.amazonaws.com/{user_pool.user_pool_id}")

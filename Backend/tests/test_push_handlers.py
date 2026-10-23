@@ -1,4 +1,4 @@
-import json, os, sys, time
+import json, os, sys, time, types
 import pytest
 import boto3
 from decimal import Decimal
@@ -9,10 +9,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lambda_layers"
 
 _TEST_ENV = {
     "PUSH_SUBSCRIPTION_TABLE": "test-push-subscriptions",
-    "VAPID_PUBLIC_KEY":        "test-vapid-public-key",
-    "VAPID_PRIVATE_KEY":       "test-vapid-private-key",
-    "VAPID_SECRET_ARN":        "arn:aws:secretsmanager:us-east-1:123456789012:secret:test",
+    "VAPID_PUBLIC_KEY_PARAM":  "/health-track/dev/vapid-public-key",
+    "VAPID_PRIVATE_KEY_PARAM": "/health-track/dev/vapid-private-key",
+    "VAPID_SUBJECT":           "mailto:ops@example.org",
     "ENV_NAME":                "dev",
+    "AWS_DEFAULT_REGION":      "us-east-1",
 }
 
 _saved = {k: os.environ.get(k) for k in _TEST_ENV}
@@ -22,6 +23,7 @@ from health_track.lambdas.push.get_vapid_public_key import handler as get_vapid_
 from health_track.lambdas.push.post_subscribe import handler as post_subscribe
 from health_track.lambdas.push.delete_subscribe import handler as delete_subscribe
 from health_track.lambdas.push.post_send import handler as post_send
+from health_track_common import params
 
 
 def _auth_event(sub="u1", method="GET", body=None):
@@ -46,9 +48,15 @@ def _public_event(method="GET"):
     }
 
 
+def _put_param(name, value, type_="SecureString"):
+    boto3.client("ssm", region_name="us-east-1").put_parameter(
+        Name=_TEST_ENV[name], Value=value, Type=type_, Overwrite=True)
+
+
 @pytest.fixture(autouse=True)
 def aws_resources():
     os.environ.update(_TEST_ENV)
+    params._cache.clear()
     with mock_aws():
         ddb = boto3.resource("dynamodb", region_name="us-east-1")
         ddb.create_table(
@@ -57,13 +65,22 @@ def aws_resources():
             AttributeDefinitions=[{"AttributeName": "user_id", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
+        _put_param("VAPID_PUBLIC_KEY_PARAM", "test-vapid-public-key", "String")
+        _put_param("VAPID_PRIVATE_KEY_PARAM", "test-vapid-private-key")
         yield
+    params._cache.clear()
 
 
 def test_get_vapid_public_key():
     resp = get_vapid_public_key(_public_event(), None)
     assert resp["statusCode"] == 200
-    assert json.loads(resp["body"])["vapid_public_key"] == "test-vapid-public-key"
+    assert json.loads(resp["body"]) == {"public_key": "test-vapid-public-key",
+                                        "vapid_public_key": "test-vapid-public-key"}
+
+
+def test_get_vapid_public_key_unset_503():
+    _put_param("VAPID_PUBLIC_KEY_PARAM", "UNSET", "String")
+    assert get_vapid_public_key(_public_event(), None)["statusCode"] == 503
 
 
 def test_post_subscribe_ok():
@@ -72,7 +89,39 @@ def test_post_subscribe_ok():
         "keys": {"p256dh": "key1", "auth": "auth1"},
     }), None)
     assert resp["statusCode"] == 200
-    assert json.loads(resp["body"])["subscribed"] is True
+    assert json.loads(resp["body"]) == {"subscribed": True, "ok": True}
+
+
+def test_post_subscribe_frontend_shape():
+    resp = post_subscribe(_auth_event(method="POST", body={"subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/abc",
+        "expirationTime": None,
+        "keys": {"p256dh": "key1", "auth": "auth1"},
+    }}), None)
+    assert resp["statusCode"] == 200
+    item = boto3.resource("dynamodb", region_name="us-east-1").Table(
+        "test-push-subscriptions").get_item(Key={"user_id": "u1"})["Item"]
+    assert item["subscription_json"] == {"endpoint": "https://fcm.googleapis.com/fcm/send/abc",
+                                         "keys": {"p256dh": "key1", "auth": "auth1"}}
+
+
+@pytest.mark.parametrize("endpoint", [
+    "http://push.example.com/sub",
+    "https://127.0.0.1/sub",
+    "https://[::1]/sub",
+    "https://169.254.169.254/latest/meta-data",
+    "https://2130706433/",
+    "https://localhost/sub",
+    "https://api.localhost/sub",
+    "https://intranet/sub",
+    "file:///etc/passwd",
+    "https://push.example.com/" + "a" * 1024,
+])
+def test_post_subscribe_rejects_unsafe_endpoint(endpoint):
+    resp = post_subscribe(_auth_event(method="POST", body={
+        "endpoint": endpoint, "keys": {"p256dh": "k", "auth": "a"},
+    }), None)
+    assert resp["statusCode"] == 400
 
 
 def test_post_subscribe_missing_fields():
@@ -97,7 +146,7 @@ def test_delete_subscribe_ok():
     }), None)
     resp = delete_subscribe(_auth_event(method="DELETE"), None)
     assert resp["statusCode"] == 200
-    assert json.loads(resp["body"])["unsubscribed"] is True
+    assert json.loads(resp["body"]) == {"unsubscribed": True, "ok": True}
 
 
 def test_delete_subscribe_nonexistent_ok():
@@ -107,10 +156,12 @@ def test_delete_subscribe_nonexistent_ok():
 
 
 def test_post_send_no_subscription():
-    resp = post_send({"user_id": "nobody", "payload": {"title": "Hi"}}, None)
-    body = json.loads(resp["body"])
-    assert body["sent"] is False
-    assert body["reason"] == "no_subscription"
+    assert post_send({"user_id": "nobody", "payload": {"title": "Hi"}}, None) == {
+        "sent": False, "reason": "no_subscription"}
+
+
+def test_post_send_missing_user_id_returns_normally():
+    assert post_send({"detail": {"payload": {"title": "Hi"}}}, None)["sent"] is False
 
 
 def test_post_send_with_subscription_success():
@@ -122,7 +173,7 @@ def test_post_send_with_subscription_success():
     import health_track.lambdas.push.post_send as ps_module
     with patch.object(ps_module, "_send_push", return_value=True):
         resp = post_send({"user_id": "u1", "payload": {"title": "Doctor replied"}}, None)
-    assert json.loads(resp["body"])["sent"] is True
+    assert resp == {"sent": True}
 
 
 def test_post_send_subscription_expired_deletes():
@@ -133,9 +184,7 @@ def test_post_send_subscription_expired_deletes():
     import health_track.lambdas.push.post_send as ps_module
     with patch.object(ps_module, "_send_push", return_value=False):
         resp = post_send({"user_id": "u1", "payload": {"title": "Hi"}}, None)
-    body = json.loads(resp["body"])
-    assert body["sent"] is False
-    assert body["reason"] == "subscription_expired"
+    assert resp == {"sent": False, "reason": "subscription_expired"}
     # Subscription should be deleted
     ddb = boto3.resource("dynamodb", region_name="us-east-1")
     item = ddb.Table("test-push-subscriptions").get_item(Key={"user_id": "u1"}).get("Item")
@@ -152,7 +201,7 @@ def test_post_send_eventbridge_envelope():
         resp = post_send({
             "detail": {"user_id": "u1", "payload": {"title": "Payment confirmed"}},
         }, None)
-    assert json.loads(resp["body"])["sent"] is True
+    assert resp == {"sent": True}
 
 
 def test_post_subscribe_unauthorized():
@@ -167,5 +216,70 @@ def test_post_subscribe_unauthorized():
 def test_post_send_anonymous_user_no_subscription():
     """Phase 10: message events for anon#<hash> patients have no subscription -> clean no-op."""
     resp = post_send({"detail": {"user_id": "anon#" + "cd" * 32, "payload": {"title": "t"}}}, None)
-    assert resp["statusCode"] == 200
-    assert json.loads(resp["body"]) == {"sent": False, "reason": "no_subscription"}
+    assert resp == {"sent": False, "reason": "no_subscription"}
+
+
+# -- Real _send_push against a fake pywebpush (the layer is not installed locally) --
+
+def _fake_pywebpush(monkeypatch, status=None):
+    """Install a stand-in pywebpush; status=None succeeds, otherwise webpush raises with that HTTP status."""
+    class WebPushException(Exception):
+        def __init__(self, message, response=None):
+            super().__init__(message)
+            self.response = response
+
+    calls = []
+
+    def webpush(**kwargs):
+        calls.append(kwargs)
+        if status is not None:
+            raise WebPushException(f"Push failed: {status}", response=types.SimpleNamespace(status_code=status))
+
+    monkeypatch.setitem(sys.modules, "pywebpush",
+                        types.SimpleNamespace(webpush=webpush, WebPushException=WebPushException))
+    return calls
+
+
+def _subscribe_u1():
+    post_subscribe(_auth_event(method="POST", body={
+        "endpoint": "https://push.example.com/u1", "keys": {"p256dh": "k", "auth": "a"},
+    }), None)
+
+
+def _stored_u1():
+    return boto3.resource("dynamodb", region_name="us-east-1").Table(
+        "test-push-subscriptions").get_item(Key={"user_id": "u1"}).get("Item")
+
+
+def test_post_send_uses_ssm_key_and_subject(monkeypatch):
+    calls = _fake_pywebpush(monkeypatch)
+    _subscribe_u1()
+    assert post_send({"detail": {"user_id": "u1", "payload": {"title": "t"}}}, None) == {"sent": True}
+    assert calls[0]["vapid_private_key"] == "test-vapid-private-key"
+    assert calls[0]["vapid_claims"]["sub"] == "mailto:ops@example.org"
+    assert calls[0]["subscription_info"]["endpoint"] == "https://push.example.com/u1"
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_post_send_gone_deletes_subscription(monkeypatch, status):
+    _fake_pywebpush(monkeypatch, status)
+    _subscribe_u1()
+    resp = post_send({"detail": {"user_id": "u1", "payload": {"title": "t"}}}, None)
+    assert resp == {"sent": False, "reason": "subscription_expired"}
+    assert _stored_u1() is None
+
+
+def test_post_send_server_error_raises_and_keeps_subscription(monkeypatch):
+    _fake_pywebpush(monkeypatch, 500)
+    _subscribe_u1()
+    with pytest.raises(Exception, match="500"):
+        post_send({"detail": {"user_id": "u1", "payload": {"title": "t"}}}, None)
+    assert _stored_u1() is not None
+
+
+def test_post_send_unset_private_key_raises(monkeypatch):
+    _fake_pywebpush(monkeypatch)
+    _subscribe_u1()
+    _put_param("VAPID_PRIVATE_KEY_PARAM", "UNSET")
+    with pytest.raises(RuntimeError):
+        post_send({"detail": {"user_id": "u1", "payload": {"title": "t"}}}, None)

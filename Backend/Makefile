@@ -1,25 +1,47 @@
 PYTHON ?= python
 ENV    ?= dev
+REGION := us-east-1
+# CLI pinned to match aws-cdk-lib in requirements.txt (cloud assembly schema compatibility).
+CDK    := npx --yes aws-cdk@2.1146.0
 
-.PHONY: install deploy-dev diff destroy-dev synth test bootstrap
+.PHONY: install bootstrap synth nag audit diff deploy params seed test destroy
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt -r requirements-dev.txt
 
 bootstrap:
-	cdk bootstrap aws://$(shell aws sts get-caller-identity --query Account --output text)/af-south-1 -c env=$(ENV)
+	$(CDK) bootstrap aws://$(shell aws sts get-caller-identity --query Account --output text)/$(REGION) -c env=$(ENV)
 
 synth:
-	cdk synth -c env=$(ENV)
+	$(CDK) synth -c env=$(ENV)
 
-deploy-dev:
-	cdk deploy --all -c env=dev --require-approval never
+# AWS Solutions (Well-Architected-aligned) rule pack; fails on any unsuppressed finding.
+nag:
+	$(CDK) synth -c env=$(ENV) -c nag=true --quiet
+
+# Known-vulnerability scan of every dependency shipped to Lambda (layers are built by `make synth`).
+audit:
+	$(PYTHON) -m pip_audit -r requirements.txt
+	$(PYTHON) -m pip_audit --path build/push-deps/python --path build/xray-deps/python
 
 diff:
-	cdk diff --all -c env=$(ENV)
+	$(CDK) diff --all -c env=$(ENV)
 
-destroy-dev:
-	cdk destroy --all -c env=dev --force
+# Data first, then runtime parameters (encrypted with the Data stack's key), then everything else.
+deploy:
+	$(CDK) deploy HealthTrack-Data-$(ENV) -c env=$(ENV) --require-approval never
+	$(PYTHON) scripts/bootstrap_params.py --env $(ENV)
+	$(CDK) deploy --all -c env=$(ENV) --require-approval never
+
+params:
+	$(PYTHON) scripts/bootstrap_params.py --env $(ENV)
+
+seed:
+	$(PYTHON) scripts/seed_facilities.py --env $(ENV) --region $(REGION)
+	$(PYTHON) scripts/seed_i18n.py --region $(REGION) --bucket health-track-i18n-$(shell aws sts get-caller-identity --query Account --output text)-$(ENV)
 
 test:
-	$(PYTHON) -m pytest tests/ -v --tb=short
+	$(PYTHON) -m pytest tests/ -q
+
+destroy:
+	$(CDK) destroy --all -c env=$(ENV) --force

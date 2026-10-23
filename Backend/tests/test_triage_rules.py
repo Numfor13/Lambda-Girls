@@ -1,7 +1,7 @@
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "health_track", "lambdas", "triage"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lambda_layers", "common", "python"))
 
-from rules import child_under_5, obstetric, adult_red_flags, rule_engine
+from health_track_common.rules import child_under_5, obstetric, adult_red_flags, rule_engine
 
 
 # --- child_under_5 ---

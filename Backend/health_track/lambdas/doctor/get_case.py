@@ -1,5 +1,6 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
+from health_track_common.auth import require_group
 from health_track_common.response import ok, err
 from health_track_common.anonymous import (
     is_anonymous_id, redact_for_doctor, redact_message_for_doctor,
@@ -9,21 +10,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def _require_doctor(event) -> tuple:
-    """Returns (user_id, None) if Doctor, or (None, error_response) if not."""
-    claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-    user_id = claims.get("sub")
-    if not user_id:
-        return None, err(401, "Unauthorized")
-    groups = claims.get("cognito:groups", "")
-    if "Doctor" not in (groups if isinstance(groups, list) else groups.split(",")):
-        return None, err(403, "Doctor group required")
-    return user_id, None
-
-
 def handler(event, context):
     try:
-        user_id, error = _require_doctor(event)
+        user_id, error = require_group(event, "Doctor")
         if error:
             return error
 
@@ -53,13 +42,7 @@ def handler(event, context):
         triage_result_id = consultation.get("triage_result_id")
         is_anonymous = is_anonymous_id(consultation.get("patient_id"))
         if triage_result_id and not is_anonymous:
-            t_resp = triage_table.query(
-                KeyConditionExpression=Key("result_id").eq(triage_result_id),
-                Limit=1,
-            )
-            items = t_resp.get("Items", [])
-            if items:
-                triage_result = items[0]
+            triage_result = triage_table.get_item(Key={"result_id": triage_result_id}).get("Item")
 
         if is_anonymous:
             consultation = redact_for_doctor(consultation)

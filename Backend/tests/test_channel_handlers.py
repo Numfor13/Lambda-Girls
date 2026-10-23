@@ -9,8 +9,11 @@ _TEST_ENV = {
     "SESSION_TABLE":      "test-sessions",
     "CALLBACK_TABLE":     "test-callbacks",
     "DISPATCH_LOG_TABLE": "test-dispatch-logs",
+    "GATEWAY_TOKEN_PARAM": "/health-track/dev/gateway-token",
     "ENV_NAME":           "dev",
+    "AWS_DEFAULT_REGION": "us-east-1",
 }
+_GATEWAY_TOKEN = "s3cret-gateway-token"
 _saved = {k: os.environ.get(k) for k in _TEST_ENV}
 os.environ.update(_TEST_ENV)
 
@@ -19,6 +22,7 @@ from health_track.lambdas.channel.post_ussd import handler as post_ussd
 from health_track.lambdas.channel.get_callbacks import handler as get_callbacks
 from health_track.lambdas.channel.put_callback_handle import handler as put_callback_handle
 from health_track.lambdas.channel.post_dispatch_log import handler as post_dispatch_log
+from health_track_common import params
 
 
 def _op_event(sub="op1", method="GET", body=None, path_params=None):
@@ -37,7 +41,10 @@ def _op_event(sub="op1", method="GET", body=None, path_params=None):
 @pytest.fixture(autouse=True)
 def aws_resources():
     os.environ.update(_TEST_ENV)
+    params._cache.clear()
     with mock_aws():
+        boto3.client("ssm", region_name="us-east-1").put_parameter(
+            Name=_TEST_ENV["GATEWAY_TOKEN_PARAM"], Value=_GATEWAY_TOKEN, Type="SecureString")
         ddb = boto3.resource("dynamodb", region_name="us-east-1")
 
         # SessionTable
@@ -77,15 +84,17 @@ def aws_resources():
         )
 
         yield
+    params._cache.clear()
 
 
 def _sms_event(phone="+237612345678", text="1"):
-    return {"requestContext": {}, "body": json.dumps({"from": phone, "text": text}), "headers": {}}
+    return {"requestContext": {}, "body": json.dumps({"from": phone, "text": text}),
+            "headers": {"X-Gateway-Token": _GATEWAY_TOKEN}}
 
 def _ussd_event(phone="+237612345678", text=""):
     return {"requestContext": {}, "body": json.dumps({
         "phoneNumber": phone, "sessionId": "ussd-sess-1", "text": text,
-    }), "headers": {}}
+    }), "headers": {"X-Gateway-Token": _GATEWAY_TOKEN}}
 
 
 # -- Session engine unit tests -----------------------------------------------
@@ -141,6 +150,58 @@ def test_ussd_final_states():
     resp = post_ussd(_ussd_event(text="ok"), None)
     body = json.loads(resp["body"])
     assert body["is_final"] is True or body["state"] == "FIRST_AID"
+
+
+# -- Telco gateway authentication -------------------------------------------
+
+@pytest.mark.parametrize("handler,make_event", [(post_sms, _sms_event), (post_ussd, _ussd_event)])
+def test_gateway_token_missing_or_wrong_is_401(handler, make_event):
+    event = make_event(text="HELLO")
+    event["headers"] = {}
+    assert handler(event, None)["statusCode"] == 401
+    event["headers"] = {"X-Gateway-Token": "wrong"}
+    assert handler(event, None)["statusCode"] == 401
+    event["headers"] = None
+    event["queryStringParameters"] = {"token": "wrong"}
+    assert handler(event, None)["statusCode"] == 401
+
+
+@pytest.mark.parametrize("handler,make_event", [(post_sms, _sms_event), (post_ussd, _ussd_event)])
+def test_gateway_token_right_is_200(handler, make_event):
+    event = make_event(text="HELLO")
+    event["headers"] = {"x-gateway-token": _GATEWAY_TOKEN}  # header lookup is case-insensitive
+    assert handler(event, None)["statusCode"] == 200
+    event["headers"] = {}
+    event["queryStringParameters"] = {"token": _GATEWAY_TOKEN}
+    assert handler(event, None)["statusCode"] == 200
+
+
+def test_gateway_token_unset_param_is_401():
+    boto3.client("ssm", region_name="us-east-1").put_parameter(
+        Name=_TEST_ENV["GATEWAY_TOKEN_PARAM"], Value="UNSET", Type="SecureString", Overwrite=True)
+    assert post_sms(_sms_event(text="HELLO"), None)["statusCode"] == 401
+    event = _sms_event(text="HELLO")
+    event["headers"] = {"X-Gateway-Token": "UNSET"}
+    assert post_sms(event, None)["statusCode"] == 401
+
+
+def test_sms_second_callback_in_same_session_is_recorded():
+    for text in ("MENU", "4", "YES", "MENU", "4", "YES"):
+        post_sms(_sms_event(text=text), None)
+    ddb = boto3.resource("dynamodb", region_name="us-east-1")
+    assert len(ddb.Table("test-callbacks").scan()["Items"]) == 2
+    session = ddb.Table("test-sessions").get_item(Key={"session_id": "+237612345678#sms"})["Item"]
+    assert "callback_requested" not in session["context"]
+
+
+def test_channel_logs_do_not_contain_phone_or_text(caplog):
+    caplog.set_level("INFO")
+    post_sms(_sms_event(text="MENU"), None)
+    post_sms(_sms_event(text="4"), None)
+    post_ussd(_ussd_event(text=""), None)
+    assert "MENU ->" in caplog.text or "-> MENU" in caplog.text
+    assert "+237612345678" not in caplog.text
+    assert "nurse callback" not in caplog.text.lower()
 
 
 # -- Operator console tests ---------------------------------------------------

@@ -4,7 +4,7 @@ Seed script: upload the base translation files to the i18n bucket as i18n/{local
 Idempotent: an object whose content is unchanged (same MD5/ETag) is skipped.
 
 Usage:
-    python scripts/seed_i18n.py --bucket health-track-i18n-<account>-dev --region af-south-1
+    python scripts/seed_i18n.py --bucket health-track-i18n-<account>-dev --region us-east-1
     (or set I18N_BUCKET instead of --bucket)
 """
 
@@ -62,7 +62,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Seed Health Track translation files (en/fr/pid)")
     parser.add_argument("--bucket", default=os.environ.get("I18N_BUCKET"),
                         help="i18n bucket name (default: $I18N_BUCKET)")
-    parser.add_argument("--region", default="af-south-1", help="AWS region")
+    parser.add_argument("--region", default="us-east-1", help="AWS region")
     args = parser.parse_args(argv)
     if not args.bucket:
         parser.error("--bucket or I18N_BUCKET is required")

@@ -1,5 +1,6 @@
 import boto3, json, logging, os, time, uuid
 from decimal import Decimal
+from health_track_common import events
 from health_track_common.auth import require_group
 from health_track_common.response import ok, err
 from extended_util import parse_body, is_number
@@ -7,7 +8,7 @@ from extended_util import parse_body, is_number
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-_TTL_SECONDS = 24 * 3600
+_TTL_SECONDS = 365 * 24 * 3600  # emergency records are retained for a year (CLD-18)
 
 
 def handler(event, context):
@@ -45,6 +46,7 @@ def handler(event, context):
             "ttl":       int(now_s) + _TTL_SECONDS,
         }
         boto3.resource("dynamodb").Table(os.environ["EMERGENCY_TABLE"]).put_item(Item=item)
+        events.record("emergency.shared")
 
         # The stored record is the source of truth; a failed alert must not fail the request.
         alert_sent = False

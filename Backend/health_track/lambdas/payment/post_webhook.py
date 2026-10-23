@@ -1,103 +1,65 @@
-import boto3, hashlib, hmac, json, logging, os, time
-from botocore.exceptions import ClientError
+import boto3, json, logging, os, urllib.error
 from health_track_common.response import ok, err
+from health_track_common import fapshi
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
-def _get_secret(secret_arn: str) -> str:
-    sm = boto3.client("secretsmanager")
-    resp = sm.get_secret_value(SecretId=secret_arn)
-    return resp.get("SecretString", "")
-
-
-def _verify_signature(body: bytes, signature: str, secret: str) -> bool:
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+MAX_TRANS_ID_CHARS = 128
 
 
 def handler(event, context):
+    """Public Fapshi webhook. The body is never trusted: only transId is read from it,
+    and the status, amount and externalId (our payment_id) come from Fapshi's API.
+
+    Forged or mismatched calls are acknowledged with 200 so Fapshi does not retry them.
+    """
     try:
-        ddb = boto3.resource("dynamodb")
-        payment_table = ddb.Table(os.environ["PAYMENT_TABLE"])
-        consultation_table = ddb.Table(os.environ["CONSULTATION_TABLE"])
+        try:
+            body = json.loads((event or {}).get("body") or "{}")
+        except (ValueError, TypeError):
+            return err(400, "Invalid JSON")
+        trans_id = body.get("transId") if isinstance(body, dict) else None
+        if not isinstance(trans_id, str) or not 0 < len(trans_id) <= MAX_TRANS_ID_CHARS:
+            return err(400, "transId is required")
 
-        # Signature verification
-        raw_body = (event.get("body") or "").encode()
-        signature = (event.get("headers") or {}).get("x-fapshi-signature", "")
-
-        env_name = os.environ.get("ENV_NAME", "dev")
-        if env_name != "dev":
-            webhook_secret = _get_secret(os.environ["FAPSHI_WEBHOOK_SECRET_ARN"])
-            if not signature or not _verify_signature(raw_body, signature, webhook_secret):
-                logger.warning("Invalid webhook signature")
-                return err(401, "Invalid signature")
+        if fapshi.simulation_enabled():
+            return ok({"acknowledged": True, "ignored": "simulation"})
 
         try:
-            payload = json.loads(raw_body)
-        except (json.JSONDecodeError, ValueError):
-            return err(400, "Invalid JSON")
-
-        fapshi_ref = payload.get("transId") or payload.get("fapshi_ref")
-        status = payload.get("status", "").lower()
-
-        if status != "successful":
-            # Not a success event — acknowledge but do nothing
+            verified = fapshi.payment_status(trans_id)
+        except urllib.error.HTTPError as e:
+            if e.code >= 500:
+                raise
+            logger.warning("Fapshi rejected payment-status for transId %s (%s)", trans_id, e.code)
             return ok({"acknowledged": True})
 
-        # Find payment by fapshi_ref using scan (no GSI on fapshi_ref — acceptable for webhook volume)
-        scan_resp = payment_table.scan(
-            FilterExpression="fapshi_ref = :ref",
-            ExpressionAttributeValues={":ref": fapshi_ref},
-            Limit=1,
-        )
-        items = scan_resp.get("Items", [])
-        if not items:
-            logger.warning("Payment not found for fapshi_ref: %s", fapshi_ref)
-            return ok({"acknowledged": True})  # Return 200 to stop Fapshi retries
+        if verified.get("status") != "SUCCESSFUL":
+            return ok({"acknowledged": True})
 
-        payment = items[0]
-        payment_id = payment["payment_id"]
-        consultation_id = payment["consultation_id"]
-        now = int(time.time() * 1000)
-
-        receipt_data = {
-            "reference":  fapshi_ref,
-            "amount":     payload.get("amount"),
-            "timestamp":  now,
-            "payer_phone": payload.get("payer", {}).get("phone", ""),
-        }
-
-        # Idempotent update — only if not already confirmed
+        payment_id = verified.get("externalId")
+        payment = None
+        if isinstance(payment_id, str) and 0 < len(payment_id) <= MAX_TRANS_ID_CHARS:
+            payment_table = boto3.resource("dynamodb").Table(os.environ["PAYMENT_TABLE"])
+            payment = payment_table.get_item(Key={"payment_id": payment_id}).get("Item")
         try:
-            payment_table.update_item(
-                Key={"payment_id": payment_id},
-                UpdateExpression="SET #s = :confirmed, confirmed_at = :ts, receipt_data = :rd",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={
-                    ":confirmed": "confirmed",
-                    ":ts": now,
-                    ":rd": receipt_data,
-                },
-                ConditionExpression="attribute_not_exists(confirmed_at)",
-            )
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                logger.info("Webhook replay for payment %s — already confirmed", payment_id)
-                return ok({"acknowledged": True})
-            raise
+            amount_paid = int(verified.get("amount"))
+        except (TypeError, ValueError):
+            amount_paid = -1
+        if not payment or payment.get("fapshi_ref") != trans_id or amount_paid < int(payment["amount_xaf"]):
+            logger.warning("Webhook transId %s does not match a payment (or underpaid); ignored", trans_id)
+            return ok({"acknowledged": True})
 
-        # Update consultation status to 'paid'
-        consultation_table.update_item(
-            Key={"consultation_id": consultation_id},
-            UpdateExpression="SET #s = :paid, updated_at = :ts",
-            ExpressionAttributeNames={"#s": "status"},
-            ExpressionAttributeValues={":paid": "paid", ":ts": now},
-        )
+        result = fapshi.confirm_payment(payment, amount_paid, {
+            "reference":          trans_id,
+            "medium":             verified.get("medium"),
+            "financial_trans_id": verified.get("financialTransId"),
+            "date_confirmed":     verified.get("dateConfirmed"),
+        })
+        return ok({"acknowledged": True, "payment_id": payment_id, "result": result})
 
-        return ok({"acknowledged": True, "payment_id": payment_id})
-
+    except fapshi.PaymentsNotConfigured:
+        return err(503, "Payments are not configured")
     except Exception as e:
         logger.error("Unhandled error in post_webhook: %s", str(e))
         return err(500, "Internal server error")

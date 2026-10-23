@@ -1,26 +1,15 @@
 import boto3, logging, os, time
 from botocore.exceptions import ClientError
+from health_track_common.auth import require_group
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def _require_doctor(event) -> tuple:
-    """Returns (user_id, None) if Doctor, or (None, error_response) if not."""
-    claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-    user_id = claims.get("sub")
-    if not user_id:
-        return None, err(401, "Unauthorized")
-    groups = claims.get("cognito:groups", "")
-    if "Doctor" not in (groups if isinstance(groups, list) else groups.split(",")):
-        return None, err(403, "Doctor group required")
-    return user_id, None
-
-
 def handler(event, context):
     try:
-        user_id, error = _require_doctor(event)
+        user_id, error = require_group(event, "Doctor")
         if error:
             return error
 
@@ -28,6 +17,14 @@ def handler(event, context):
         consultation_id = (event.get("pathParameters") or {}).get("consultation_id")
         if not consultation_id:
             return err(400, "consultation_id is required")
+
+        consultation = consultation_table.get_item(Key={"consultation_id": consultation_id}).get("Item")
+        if not consultation:
+            return err(404, "Consultation not found")
+        if consultation.get("status") != "open":
+            return err(409, "Consultation is not in 'open' status")
+        if consultation.get("doctor_id") != user_id:
+            return err(403, "Only the assigned doctor can close this consultation")
 
         now = int(time.time() * 1000)
         try:
@@ -39,12 +36,13 @@ def handler(event, context):
                     ":closed": "closed",
                     ":ts": now,
                     ":open": "open",
+                    ":me": user_id,
                 },
-                ConditionExpression="#s = :open AND attribute_exists(consultation_id)",
+                ConditionExpression="#s = :open AND doctor_id = :me",
             )
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                return err(409, "Consultation is not in 'open' status or does not exist")
+                return err(409, "Consultation is not in 'open' status")
             raise
 
         return ok({"consultation_id": consultation_id, "status": "closed"})

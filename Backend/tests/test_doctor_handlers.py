@@ -112,17 +112,11 @@ def aws_resources():
             BillingMode="PAY_PER_REQUEST",
         )
 
-        # TriageTable
+        # TriageTable: partition key result_id only
         ddb.create_table(
             TableName="test-doctor-triage",
-            KeySchema=[
-                {"AttributeName": "result_id", "KeyType": "HASH"},
-                {"AttributeName": "user_id", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "result_id", "AttributeType": "S"},
-                {"AttributeName": "user_id", "AttributeType": "S"},
-            ],
+            KeySchema=[{"AttributeName": "result_id", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "result_id", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
 
@@ -396,3 +390,60 @@ def test_get_case_registered_patient_unchanged(aws_resources):
     c = json.loads(resp["body"])["consultation"]
     assert c["patient_id"] == "p1"
     assert "is_anonymous" not in c
+
+
+# -- Only the assigned doctor may act on an open consultation -----------------
+
+def test_get_case_returns_linked_triage(aws_resources):
+    ddb = boto3.resource("dynamodb", region_name="us-east-1")
+    ddb.Table("test-doctor-triage").put_item(Item={"result_id": "tr-9", "user_id": "p2", "urgency": "RED"})
+    ddb.Table("test-doctor-consultations").update_item(
+        Key={"consultation_id": "c-open"}, UpdateExpression="SET triage_result_id = :t",
+        ExpressionAttributeValues={":t": "tr-9"})
+    body = json.loads(get_case(_doctor_event(path_params={"consultation_id": "c-open"}), None)["body"])
+    assert body["triage_result"]["result_id"] == "tr-9"
+
+
+def test_unassigned_doctor_cannot_close_prescribe_or_refer(aws_resources):
+    ev = lambda body=None: _doctor_event(sub="doc2", method="POST", body=body,
+                                         path_params={"consultation_id": "c-open"})
+    assert close_consultation(ev(), None)["statusCode"] == 403
+    assert post_prescription(ev({"medication_details": "x"}), None)["statusCode"] == 403
+    assert post_referral(ev({"target_facility_id": "fac-1"}), None)["statusCode"] == 403
+
+
+def test_prescribe_requires_open(aws_resources):
+    resp = post_prescription(_doctor_event(method="POST", path_params={"consultation_id": "c-paid"},
+                                           body={"medication_details": "x"}), None)
+    assert resp["statusCode"] == 409
+    close_consultation(_doctor_event(path_params={"consultation_id": "c-open"}), None)
+    resp = post_referral(_doctor_event(method="POST", path_params={"consultation_id": "c-open"},
+                                       body={"target_facility_id": "fac-1"}), None)
+    assert resp["statusCode"] == 409
+
+
+def test_patient_cannot_prescribe(aws_resources):
+    resp = post_prescription(_patient_event(sub="p2", method="POST", path_params={"consultation_id": "c-open"},
+                                            body={"medication_details": "x"}), None)
+    assert resp["statusCode"] == 403
+
+
+def test_public_lookups_omit_identifiers(aws_resources):
+    code = json.loads(post_prescription(_doctor_event(
+        method="POST", path_params={"consultation_id": "c-open"},
+        body={"medication_details": "Amoxicillin 250mg", "instructions": "tid"}), None)["body"])["code"]
+    body = json.loads(get_prescription({"pathParameters": {"code": code}, "requestContext": {}, "headers": {}},
+                                       None)["body"])
+    assert body["medication_details"] == "Amoxicillin 250mg"
+    assert body["status"] == "active"
+    for k in ("patient_id", "doctor_id", "consultation_id"):
+        assert k not in body
+
+    code = json.loads(post_referral(_doctor_event(
+        method="POST", path_params={"consultation_id": "c-open"},
+        body={"target_facility_id": "fac-9", "reason": "xray"}), None)["body"])["code"]
+    body = json.loads(get_referral({"pathParameters": {"code": code}, "requestContext": {}, "headers": {}},
+                                   None)["body"])
+    assert body["target_facility_id"] == "fac-9"
+    for k in ("patient_id", "doctor_id", "consultation_id"):
+        assert k not in body
