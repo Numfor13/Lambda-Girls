@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { motion } from "motion/react"
-import { ChevronRight, Info, LoaderCircle } from "lucide-react"
+import { ChevronRight, Inbox, Info, LoaderCircle } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { SPRING, popIn } from "@/design/motion"
 import { cn } from "@/lib/utils"
@@ -160,11 +160,12 @@ export function StatusMark({
 }
 
 export function EmptyState({
-  icon: Icon,
+  icon: Icon = Inbox,
   title,
   action,
 }: {
-  icon: LucideIcon
+  /** Defaults to an inbox: an empty state must never crash for want of an icon. */
+  icon?: LucideIcon
   title: string
   action?: React.ReactNode
 }) {
