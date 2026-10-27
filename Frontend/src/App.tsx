@@ -122,10 +122,16 @@ const router = createBrowserRouter([
             : []),
           { path: "sign-in", element: <SignIn /> },
           ...(flags.prescriptions
-            ? [{ path: "rx/:code", element: <CodeLookup kind="rx" /> }]
+            ? [
+                { path: "rx", element: <CodeLookup kind="rx" /> },
+                { path: "rx/:code", element: <CodeLookup kind="rx" /> },
+              ]
             : []),
           ...(flags.referrals
-            ? [{ path: "ref/:code", element: <CodeLookup kind="ref" /> }]
+            ? [
+                { path: "ref", element: <CodeLookup kind="ref" /> },
+                { path: "ref/:code", element: <CodeLookup kind="ref" /> },
+              ]
             : []),
           { path: "*", element: <NotFound /> },
         ],

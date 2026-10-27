@@ -24,7 +24,7 @@ What to take from it, on every public page and in spirit on app pages:
 What **not** to copy: the brown palette, serif display type, stock photography, slashes around text (the owner dislikes them), invented numbers (RANTY's "12m+ customers": we only show true counts from data/config).
 
 Built for this in code (Claude, 2026-10-23):
-- `design/components/PublicHero.tsx`: `PublicHero` (full-bleed scene, headline left, white card right with an optional `breakout` object), `FeatureCard` (chips → title → line) and `StatementBand` (edge-flush panel, stat, uppercase statement + link). **Every public page uses these.** No more "glass card floating on the hills" heroes.
+- ~~`design/components/PublicHero.tsx`~~ **Removed 2026-10-27** (QA P1: every page looked the same). Public pages now use `design/components/PublicPage.tsx` (`PublicIntro`, `PublicSection`); see `docs/DESIGN_LANGUAGE.md` §5.
 
 ## 1. The vibe: best of both worlds
 
@@ -139,7 +139,7 @@ Every screen below maps to an endpoint in `docs/BACKEND_FEATURE_MAP.md` §3 and 
 - **Accessibility:** a real `<label>` for every control, 44px targets, visible focus, `aria-live` for async results, and `prefers-reduced-motion` respected (MotionConfig already handles motion).
 
 **D. Look: M3 Expressive + Liquid Glass, consistently**
-- Public pages: `PublicHero` + `FeatureCard` (+ a `breakout` object) + `StatementBand`, then content sections on solid surfaces with expressive shapes (`shape-*`) and display type. Each page gets its own breakout object and facts, never a copy of Landing.
+- Public pages (superseded 2026-10-27, see `PublicPage.tsx`): `PublicHero` + `FeatureCard` (+ a `breakout` object) + `StatementBand`, then content sections on solid surfaces with expressive shapes (`shape-*`) and display type. Each page gets its own breakout object and facts, never a copy of Landing.
 - App pages: solid white `Panel`s for reading and forms, mint tonal panels for guidance, expressive tiles for navigation choices, glass **only** for chrome (rail, tab bar, top bars, sticky action bars, toasts, chips over imagery).
 - Motion: page stagger (`AppPage` does it), springy list layout changes, morphing selection (`ChoiceCard`), success `StatusMark`. No static, "Bootstrap-looking" pages.
 

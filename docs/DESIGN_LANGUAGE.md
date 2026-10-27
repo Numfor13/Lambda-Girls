@@ -103,6 +103,11 @@ Practo, Doctolib, Airbnb, Magic UI, Motion): motion should **show real state cha
 | Inbox list: status + time, two-line title, inline primary action (Pay) | `features/consult/ConsultList.tsx` |
 | Request form + record list: form main, records aside (records first on phones when they exist) | `features/services/Appointments.tsx`, `Labs.tsx` |
 | Activity feed: tabs, day groups, one card per day, ticket-style receipt | `features/services/History.tsx` |
+| Public content page: `PublicIntro` (serif headline + a *working* product fragment), then `PublicSection`s; one dark section at most | `features/public/HowItWorks.tsx`, `About.tsx` |
+| Split sign-in: form half + a dark preview half that follows the chosen role | `features/auth/SignIn.tsx` |
+| Public tool page: header + the tool first, help in the aside (no hero) | `features/services/HealthTips.tsx`, `features/anonymous/AnonymousAsk.tsx`, `features/public/CodeLookup.tsx` |
+| Code entry: one real input over 8 visible boxes; the answer as a ticket | `features/public/CodeLookup.tsx` |
+| Not found / error: `RecoveryScene` (signpost picture, one sentence, one way back, three familiar places) | `design/components/RecoveryScene.tsx` |
 
 ## 6. Don'ts
 

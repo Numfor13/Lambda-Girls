@@ -175,6 +175,7 @@ export function LanguageSwitch({ light = false }: { light?: boolean }) {
             aria-disabled={!l.enabled}
             title={l.enabled ? undefined : "Coming soon"}
             className={cn(
+              "inline-flex min-h-10 min-w-10 items-center justify-center lg:min-h-0 lg:min-w-0",
               light
                 ? "text-white/75 hover:text-white"
                 : "text-ink-600 hover:text-ink-900",
@@ -250,7 +251,7 @@ export function PublicFooter() {
           </StaggerItem>
           {FOOTER_COLUMNS.map((col) => (
             <StaggerItem key={col.title}>
-              <p className="text-label-m tracking-[0.08em] text-white/50 uppercase">{col.title}</p>
+              <p className="text-label-m tracking-[0.08em] text-white/65 uppercase">{col.title}</p>
               {/* 40px rows on phones (thumb targets); tighter with a mouse. */}
               <ul className="mt-2 flex flex-col lg:mt-3">
                 {col.links.map((l) => (
