@@ -4,6 +4,9 @@ from health_track_common.response import ok, err
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Public lookup by code (pharmacy/facility): never expose patient, doctor or consultation ids.
+PUBLIC_FIELDS = ("code", "status", "issued_at", "target_facility_id", "reason")
+
 
 def handler(event, context):
     try:
@@ -17,7 +20,7 @@ def handler(event, context):
         if not item:
             return err(404, "Referral not found")
 
-        return ok(item)
+        return ok({k: item[k] for k in PUBLIC_FIELDS if k in item})
 
     except Exception as e:
         logger.error("Unhandled error in get_referral: %s", str(e))

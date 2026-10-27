@@ -147,6 +147,68 @@ export interface CaseDetail {
   triage_result: TriageResult | null
 }
 
+export const SPECIALTIES = [
+  { value: "general_practice", label: "General Practice / Family Medicine" },
+  { value: "internal_medicine", label: "Internal Medicine" },
+  { value: "pediatrics", label: "Pediatrics" },
+  { value: "surgery", label: "Surgery (General)" },
+  { value: "obstetrics_gynecology", label: "Obstetrics & Gynecology" },
+  { value: "cardiology", label: "Cardiology" },
+  { value: "dermatology", label: "Dermatology" },
+  { value: "psychiatry", label: "Psychiatry / Mental Health" },
+  { value: "orthopedics", label: "Orthopedics" },
+  { value: "ent", label: "ENT (Ear, Nose & Throat)" },
+  { value: "ophthalmology", label: "Ophthalmology" },
+  { value: "neurology", label: "Neurology" },
+  { value: "emergency_medicine", label: "Emergency Medicine" },
+  { value: "infectious_disease", label: "Infectious Disease" },
+  { value: "urology", label: "Urology" },
+  { value: "oncology", label: "Oncology" },
+  { value: "radiology", label: "Radiology" },
+  { value: "anesthesiology", label: "Anesthesiology" },
+  { value: "endocrinology", label: "Endocrinology" },
+  { value: "nephrology", label: "Nephrology" },
+  { value: "pulmonology", label: "Pulmonology" },
+] as const
+
+export type Specialty = typeof SPECIALTIES[number]["value"]
+
+export interface HospitalEntry {
+  name: string
+  city: string
+  role: string
+  from_year: number
+  to_year: number | null
+}
+
+export interface RecommendingHospital {
+  name: string
+  contact_person: string
+  phone: string
+  email: string
+}
+
+export interface DoctorApplication {
+  application_id: string
+  full_name: string
+  email: string
+  phone: string
+  specialty: Specialty
+  medical_school: string
+  graduation_year: number
+  years_experience: number
+  hospitals_worked: HospitalEntry[]
+  recommending_hospital: RecommendingHospital
+  document_s3_key: string
+  status: "pending" | "under_review" | "approved" | "rejected"
+  admin_notes?: string
+  called_hospital?: boolean
+  submitted_at: string
+  reviewed_at?: string | null
+  rejection_reason?: string
+  document_url?: string
+}
+
 export interface SyncResponse {
   synced: boolean
   has_red_triage: boolean

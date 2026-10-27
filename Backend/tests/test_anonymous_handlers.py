@@ -14,7 +14,10 @@ _TEST_ENV = {
     "CONSULTATION_TABLE":        "test-anon-consultations",
     "MESSAGE_TABLE":             "test-anon-messages",
     "PAYMENT_TABLE":             "test-anon-payments",
-    "FAPSHI_API_KEY_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:fake",
+    "CONSULTATION_FEE_XAF":       "2000",
+    "FAPSHI_BASE_URL":            "https://sandbox.fapshi.com",
+    "FAPSHI_CREDENTIALS_PARAM":   "/test/anon/fapshi/credentials",
+    "PAYMENT_SIMULATION_ALLOWED": "true",
     "ENV_NAME":                  "dev",
     "AWS_DEFAULT_REGION":        "us-east-1",
 }
@@ -28,6 +31,13 @@ from health_track.lambdas.anonymous.get_consultation import handler as get_consu
 from health_track.lambdas.anonymous.post_message import handler as post_message
 from health_track.lambdas.anonymous.post_payment_initiate import handler as post_payment_initiate
 from health_track_common.anonymous import hash_session_token
+from health_track_common import params
+
+
+def _set_fapshi_credentials(value):
+    boto3.client("ssm", region_name="us-east-1").put_parameter(
+        Name=_TEST_ENV["FAPSHI_CREDENTIALS_PARAM"], Value=value, Type="SecureString", Overwrite=True)
+    params._cache.clear()
 
 
 def _event(token=None, body=None, path_params=None, headers=None, raw_body=None, header_name="X-Anonymous-Session"):
@@ -100,7 +110,9 @@ def aws_resources():
             AttributeDefinitions=[{"AttributeName": "payment_id", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
+        _set_fapshi_credentials(params.UNSET)  # default: simulation mode
         yield ddb
+    params._cache.clear()
     for k, v in _saved.items():
         if v is None:
             os.environ.pop(k, None)
@@ -350,10 +362,13 @@ def test_post_message_validation(aws_resources, body):
 def test_payment_initiate_uses_hashed_payer(aws_resources):
     token = _mint()
     cid = _create(token)["consultation_id"]
-    resp = post_payment_initiate(_event(token, body={"consultation_id": cid, "amount_xaf": 2000}), None)
+    resp = post_payment_initiate(_event(token, body={"consultation_id": cid}), None)
     assert resp["statusCode"] == 201
     body = _body(resp)
-    assert "sandbox" in body["fapshi_ref"]
+    assert body["fapshi_ref"].startswith("sim-")
+    assert body["simulated"] is True
+    assert body["payment_url"] is None
+    assert body["amount_xaf"] == 2000
     item = aws_resources.Table("test-anon-payments").get_item(Key={"payment_id": body["payment_id"]})["Item"]
     anon_id = hash_session_token(token)
     assert item["payer_id"] == anon_id
@@ -380,18 +395,37 @@ def test_payment_initiate_wrong_status_400(aws_resources):
     assert resp["statusCode"] == 400
 
 
-@pytest.mark.parametrize("body", [{}, {"consultation_id": 5}, {"consultation_id": "c", "amount_xaf": "abc"},
-                                  {"consultation_id": "c", "amount_xaf": 0}])
+@pytest.mark.parametrize("body", [{}, {"consultation_id": 5}, {"consultation_id": "c", "phone": 6},
+                                  {"consultation_id": "c", "redirect_url": None}])
 def test_payment_initiate_validation(aws_resources, body):
     resp = post_payment_initiate(_event(_mint(), body=body), None)
     assert resp["statusCode"] == 400
 
 
-def test_payment_initiate_live_fapshi_payer_reference_is_hashed(aws_resources, monkeypatch):
-    sm = boto3.client("secretsmanager", region_name="us-east-1")
-    arn = sm.create_secret(Name="fapshi-key", SecretString="apiuser1:apikey1")["ARN"]
-    monkeypatch.setenv("ENV_NAME", "staging")
-    monkeypatch.setenv("FAPSHI_API_KEY_SECRET_ARN", arn)
+@pytest.mark.parametrize("amount", [1, 0, "abc", 10_000_000])
+def test_payment_initiate_ignores_client_amount(aws_resources, amount):
+    token = _mint()
+    cid = _create(token)["consultation_id"]
+    resp = post_payment_initiate(_event(token, body={"consultation_id": cid, "amount_xaf": amount}), None)
+    assert resp["statusCode"] == 201
+    body = _body(resp)
+    assert body["amount_xaf"] == 2000
+    item = aws_resources.Table("test-anon-payments").get_item(Key={"payment_id": body["payment_id"]})["Item"]
+    assert int(item["amount_xaf"]) == 2000
+
+
+def test_payment_initiate_not_configured_503(aws_resources, monkeypatch):
+    monkeypatch.setenv("PAYMENT_SIMULATION_ALLOWED", "false")
+    token = _mint()
+    cid = _create(token)["consultation_id"]
+    resp = post_payment_initiate(_event(token, body={"consultation_id": cid}), None)
+    assert resp["statusCode"] == 503
+    assert _body(resp) == {"error": "Payments are not configured"}
+    assert aws_resources.Table("test-anon-payments").scan()["Items"] == []
+
+
+def test_payment_initiate_live_fapshi_payer_reference_is_hashed(aws_resources):
+    _set_fapshi_credentials("apiuser1:apikey1")
     token = _mint()
     cid = _create(token)["consultation_id"]
 
@@ -405,14 +439,19 @@ def test_payment_initiate_live_fapshi_payer_reference_is_hashed(aws_resources, m
             return False
 
     def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
         captured["payload"] = json.loads(req.data)
         captured["headers"] = dict(req.headers)
         return _Resp(json.dumps({"transId": "T-1", "link": "https://pay.example/T-1"}).encode())
 
     with patch("urllib.request.urlopen", fake_urlopen):
-        resp = post_payment_initiate(_event(token, body={"consultation_id": cid, "phone": "670000000"}), None)
+        resp = post_payment_initiate(_event(token, body={"consultation_id": cid, "phone": "670000000",
+                                                         "amount_xaf": 5}), None)
     assert resp["statusCode"] == 201
     assert _body(resp)["fapshi_ref"] == "T-1"
+    assert _body(resp)["simulated"] is False
+    assert captured["url"] == "https://sandbox.fapshi.com/initiate-pay"
+    assert captured["payload"]["amount"] == 2000
     digest = hashlib.sha256(token.encode()).hexdigest()
     assert captured["payload"]["userId"] == digest
     assert token not in json.dumps(captured["payload"])

@@ -1,10 +1,13 @@
 import boto3, json, logging, os, time, uuid
+from decimal import Decimal
 from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
+from health_track_common import access, events
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+MAX_TEXT_CHARS = 4000
 
 
 def handler(event, context):
@@ -13,8 +16,7 @@ def handler(event, context):
         message_table = ddb.Table(os.environ["MESSAGE_TABLE"])
         consultation_table = ddb.Table(os.environ["CONSULTATION_TABLE"])
 
-        claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-        user_id = claims.get("sub")
+        user_id = access.claims_of(event).get("sub")
         if not user_id:
             return err(401, "Unauthorized")
 
@@ -23,7 +25,7 @@ def handler(event, context):
             return err(400, "consultation_id is required")
 
         try:
-            body = json.loads(event.get("body") or "{}")
+            body = json.loads(event.get("body") or "{}", parse_float=Decimal)  # DynamoDB rejects floats
             if not isinstance(body, dict):
                 return err(400, "Request body must be a JSON object")
         except (json.JSONDecodeError, ValueError):
@@ -33,8 +35,26 @@ def handler(event, context):
         if content_type not in ("text", "voice_note"):
             return err(400, "content_type must be 'text' or 'voice_note'")
 
-        if content_type == "text" and not body.get("text_body", "").strip():
+        text_body = body.get("text_body")
+        if text_body is not None and (not isinstance(text_body, str) or len(text_body) > MAX_TEXT_CHARS):
+            return err(400, f"text_body must be a string of at most {MAX_TEXT_CHARS} characters")
+        if content_type == "text" and not (text_body or "").strip():
             return err(400, "text_body is required for text messages")
+
+        if not access.voice_note_key_ok(consultation_id, body.get("voice_note_key")):
+            return err(400, "voice_note_key does not belong to this consultation")
+
+        c_resp = consultation_table.get_item(Key={"consultation_id": consultation_id})
+        consultation = c_resp.get("Item")
+        if not consultation:
+            return err(404, "Consultation not found")
+
+        # Role is derived from who the caller is to this consultation, never from the body.
+        sender_role = access.writer_role(event, consultation, user_id)
+        if not sender_role:
+            return err(403, "Access denied")
+        if sender_role == "doctor" and consultation.get("status") != "open":
+            return err(409, "Consultation is not in 'open' status")
 
         client_message_id = body.get("client_message_id") or str(uuid.uuid4())
 
@@ -45,16 +65,11 @@ def handler(event, context):
             Limit=1,
         )
         if existing.get("Items"):
-            return ok(existing["Items"][0])
-
-        # Verify consultation exists
-        c_resp = consultation_table.get_item(Key={"consultation_id": consultation_id})
-        if not c_resp.get("Item"):
-            return err(404, "Consultation not found")
-
-        groups = claims.get("cognito:groups", "")
-        is_doctor = "Doctor" in (groups if isinstance(groups, list) else groups.split(","))
-        sender_role = "doctor" if is_doctor else "patient"
+            prior = existing["Items"][0]
+            # Never hand back someone else's message for a guessed client_message_id.
+            if prior.get("consultation_id") != consultation_id or prior.get("sender_id") != user_id:
+                return err(409, "client_message_id already used")
+            return ok(prior)
 
         message_id = str(uuid.uuid4())
         now = int(time.time() * 1000)
@@ -65,7 +80,7 @@ def handler(event, context):
             "sender_id":         user_id,
             "sender_role":       sender_role,
             "content_type":      content_type,
-            "text_body":         body.get("text_body"),
+            "text_body":         text_body,
             "voice_note_key":    body.get("voice_note_key"),
             "duration_seconds":  body.get("duration_seconds"),
             "client_message_id": client_message_id,
@@ -73,6 +88,13 @@ def handler(event, context):
         }
 
         message_table.put_item(Item=message)
+
+        if sender_role == "doctor":
+            events.publish("message.sent", {
+                "user_id": consultation["phone_owner_id"],
+                "payload": {"title": "CareBridge", "body": "Your doctor replied."},
+            })
+
         return ok(message, status_code=201)
 
     except Exception as e:

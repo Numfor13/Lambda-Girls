@@ -166,7 +166,7 @@ def test_seed_placeholders_match_across_locales():
 
 
 def _triage_symptom_codes():
-    rules = os.path.join(_BACKEND, "health_track", "lambdas", "triage", "rules")
+    rules = os.path.join(_BACKEND, "lambda_layers", "common", "python", "health_track_common", "rules")
     codes = set()
     for name in ("adult_red_flags.py", "child_under_5.py", "obstetric.py"):
         with open(os.path.join(rules, name), encoding="utf-8") as f:

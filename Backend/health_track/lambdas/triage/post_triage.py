@@ -1,4 +1,6 @@
 import boto3, json, logging, os, time, uuid
+from decimal import Decimal
+from health_track_common import events
 from health_track_common.response import ok, err
 from health_track_common.rules.rule_engine import evaluate
 
@@ -19,24 +21,31 @@ def handler(event, context):
             return err(401, "Unauthorized")
 
         try:
-            body = json.loads(event.get("body") or "{}")
+            body = json.loads(event.get("body") or "{}", parse_float=Decimal)
             if not isinstance(body, dict):
                 return err(400, "Request body must be a JSON object")
         except (json.JSONDecodeError, ValueError):
             return err(400, "Invalid JSON in request body")
 
-        # Validate required fields
-        if "symptoms" not in body or not isinstance(body["symptoms"], list):
-            return err(400, "symptoms (list) is required")
-        age_months = body.get("age_months")
-        if age_months is not None and not isinstance(age_months, (int, float)):
-            return err(400, "age_months must be a number")
+        # Validate required fields. bool is an int subclass, and floats parse as Decimal: both rejected.
+        symptoms = body.get("symptoms")
+        if not isinstance(symptoms, list) or not all(isinstance(x, str) for x in symptoms):
+            return err(400, "symptoms (list of strings) is required")
+        age_months = body.get("age_months", 999)
+        if isinstance(age_months, bool) or not isinstance(age_months, int):
+            return err(400, "age_months must be an integer")
+        is_pregnant = body.get("is_pregnant", False)
+        if not isinstance(is_pregnant, bool):
+            return err(400, "is_pregnant must be a boolean")
+        vitals = body.get("vitals", {})
+        if not isinstance(vitals, dict):
+            return err(400, "vitals must be an object")
 
         payload = {
-            "age_months":  body.get("age_months", 999),
-            "is_pregnant": body.get("is_pregnant", False),
-            "symptoms":    body["symptoms"],
-            "vitals":      body.get("vitals", {}),
+            "age_months":  age_months,
+            "is_pregnant": is_pregnant,
+            "symptoms":    symptoms,
+            "vitals":      vitals,
         }
 
         urgency, rules_fired, recommendation, facility_type_needed = evaluate(payload)
@@ -44,6 +53,8 @@ def handler(event, context):
         result_id = str(uuid.uuid4())
         # Allow offline clients to supply their original timestamp
         created_at = body.get("queued_at") or int(time.time() * 1000)
+        if isinstance(created_at, bool) or not isinstance(created_at, int):
+            return err(400, "queued_at must be an integer timestamp")
 
         item = {
             "result_id":            result_id,
@@ -59,6 +70,7 @@ def handler(event, context):
         }
 
         table.put_item(Item=item)
+        events.record(f"triage.{urgency}")
 
         return ok(item, status_code=201)
 

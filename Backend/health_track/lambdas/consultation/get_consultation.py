@@ -1,5 +1,6 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
+from health_track_common import access
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
@@ -12,8 +13,7 @@ def handler(event, context):
         consultation_table = ddb.Table(os.environ["CONSULTATION_TABLE"])
         message_table = ddb.Table(os.environ["MESSAGE_TABLE"])
 
-        claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-        user_id = claims.get("sub")
+        user_id = access.claims_of(event).get("sub")
         if not user_id:
             return err(401, "Unauthorized")
 
@@ -26,11 +26,8 @@ def handler(event, context):
         if not consultation:
             return err(404, "Consultation not found")
 
-        groups = claims.get("cognito:groups", "")
-        is_doctor = "Doctor" in (groups if isinstance(groups, list) else groups.split(","))
-
         # Access control: patient must own the consultation; doctors can see all
-        if not is_doctor and consultation.get("phone_owner_id") != user_id and consultation.get("patient_id") != user_id:
+        if not access.can_read(event, consultation, user_id):
             return err(403, "Access denied")
 
         # Fetch messages

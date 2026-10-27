@@ -444,7 +444,7 @@ def test_post_emergency_writes_record_and_publishes_sns():
     assert stored["latitude"] == Decimal("4.1527")
     assert stored["longitude"] == Decimal("9.241")
     assert stored["triage_result_id"] == "tri-1"
-    assert before + 86400 <= int(stored["ttl"]) <= int(time.time()) + 86400
+    assert before + 365 * 86400 <= int(stored["ttl"]) <= int(time.time()) + 365 * 86400
     assert "timestamp" in stored
 
     msgs = sqs.receive_message(QueueUrl=url, MaxNumberOfMessages=10).get("Messages", [])

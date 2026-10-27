@@ -16,6 +16,8 @@ export const apiUrls = {
   extended: pick(e.VITE_API_URL_EXTENDED),
   channel: pick(e.VITE_API_URL_CHANNEL),
   anonymous: pick(e.VITE_API_URL_ANONYMOUS),
+  // No backend routes yet; only the unrouted doctor-application screens use it.
+  doctorApplication: pick(e.VITE_API_URL_DOCTOR_APPLICATION),
 } as const
 
 export type ApiService = keyof typeof apiUrls
@@ -31,6 +33,15 @@ export const env = {
   },
   consultationFeeXaf: Number(e.VITE_CONSULTATION_FEE_XAF ?? 2000),
   osmTileUrl: e.VITE_OSM_TILE_URL ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  // Used only by the unrouted rides, call and doctor-profile screens; the backend
+  // charges one server-side fee (consultationFeeXaf).
+  consultationFees: {
+    general: 2500,
+    specialist: 5000,
+    lab: 2000,
+  },
+  operatorPhone: "673107072",
+  rideBaseRateXafPerKm: 200,
 }
 
 export const authConfigured = Boolean(env.cognito.authority && env.cognito.clientId)

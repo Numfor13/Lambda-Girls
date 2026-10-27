@@ -28,7 +28,6 @@ import { ageInMonths, describeAge } from "@/lib/format"
 import { humanize } from "@/lib/labels"
 import { useNow } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
-import { triageApi } from "@/api/endpoints"
 import { db } from "@/offline/db"
 import { enqueue } from "@/offline/outbox"
 import { evaluate } from "@/triage-engine/engine"
@@ -233,27 +232,9 @@ export default function TriageWizard() {
       subject_label: subjectLabel,
     })
     localStorage.setItem(CONSENT_KEY, "1")
+    // Sent through /sync (right away when online) so the server keeps this result_id,
+    // which consultations refer to; the sync then takes the server's result.
     await enqueue("triage", resultId)
-    if (navigator.onLine) {
-      triageApi
-        .submit({
-          ...payload,
-          on_behalf_member_id: a.subject === "member" ? a.memberId : null,
-        })
-        .then(async (serverResult) => {
-          await db.triage_results.update(resultId, {
-            urgency: serverResult.urgency,
-            recommendation: serverResult.recommendation,
-            facility_type_needed: serverResult.facility_type_needed,
-            rules_fired: serverResult.rules_fired,
-            sync_state: "sent",
-          })
-          await db.outbox.where("ref").equals(resultId).delete()
-        })
-        .catch(() => {
-          // Falls back to offline sync; the outbox item is already enqueued.
-        })
-    }
     navigate(`/app/triage/${resultId}`, { replace: true })
   }
 

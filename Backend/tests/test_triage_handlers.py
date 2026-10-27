@@ -28,14 +28,14 @@ def _event(sub, method="POST", body=None, path_params=None):
 
 @pytest.fixture(autouse=True)
 def ddb_table():
+    # Other test modules set TRIAGE_TABLE at import time; pin ours for each test.
+    saved = os.environ.get("TRIAGE_TABLE")
+    os.environ["TRIAGE_TABLE"] = "test-triage"
     with mock_aws():
         ddb = boto3.resource("dynamodb", region_name="us-east-1")
         table = ddb.create_table(
             TableName="test-triage",
-            KeySchema=[
-                {"AttributeName": "result_id", "KeyType": "HASH"},
-                {"AttributeName": "user_id", "KeyType": "RANGE"},
-            ],
+            KeySchema=[{"AttributeName": "result_id", "KeyType": "HASH"}],
             AttributeDefinitions=[
                 {"AttributeName": "result_id", "AttributeType": "S"},
                 {"AttributeName": "user_id", "AttributeType": "S"},
@@ -52,6 +52,10 @@ def ddb_table():
             BillingMode="PAY_PER_REQUEST",
         )
         yield table
+    if saved is None:
+        os.environ.pop("TRIAGE_TABLE", None)
+    else:
+        os.environ["TRIAGE_TABLE"] = saved
 
 
 def test_post_triage_green(ddb_table):
@@ -112,3 +116,23 @@ def test_list_triage_results_returns_own(ddb_table):
     resp = list_results(_event("u4"), None)
     assert resp["statusCode"] == 200
     assert json.loads(resp["body"])["count"] == 1
+
+
+@pytest.mark.parametrize("bad", [
+    {"symptoms": [], "age_months": 12.5},
+    {"symptoms": [], "age_months": None},
+    {"symptoms": [], "age_months": True},
+    {"symptoms": [], "age_months": "12"},
+    {"symptoms": [], "is_pregnant": "yes"},
+    {"symptoms": [1, 2]},
+    {"symptoms": "fever"},
+    {"symptoms": [], "vitals": []},
+    {"symptoms": [], "queued_at": "yesterday"},
+])
+def test_post_triage_invalid_input_is_400(ddb_table, bad):
+    assert post_triage(_event("u1", body=bad), None)["statusCode"] == 400
+
+
+def test_post_triage_float_vitals_ok(ddb_table):
+    resp = post_triage(_event("u1", body={"symptoms": [], "age_months": 6, "vitals": {"temp_c": 38.5}}), None)
+    assert resp["statusCode"] == 201

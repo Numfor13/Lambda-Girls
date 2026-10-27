@@ -1,4 +1,5 @@
-import boto3, json, logging, os, random, string, time
+import boto3, json, logging, os, secrets, string, time
+from health_track_common.auth import require_group
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
@@ -8,24 +9,12 @@ BASE62 = string.ascii_letters + string.digits
 
 
 def _gen_code(length=8):
-    return "".join(random.choices(BASE62, k=length))
-
-
-def _require_doctor(event) -> tuple:
-    """Returns (user_id, None) if Doctor, or (None, error_response) if not."""
-    claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-    user_id = claims.get("sub")
-    if not user_id:
-        return None, err(401, "Unauthorized")
-    groups = claims.get("cognito:groups", "")
-    if "Doctor" not in (groups if isinstance(groups, list) else groups.split(",")):
-        return None, err(403, "Doctor group required")
-    return user_id, None
+    return "".join(secrets.choice(BASE62) for _ in range(length))
 
 
 def handler(event, context):
     try:
-        user_id, error = _require_doctor(event)
+        user_id, error = require_group(event, "Doctor")
         if error:
             return error
 
@@ -44,7 +33,8 @@ def handler(event, context):
         except (json.JSONDecodeError, ValueError):
             return err(400, "Invalid JSON in request body")
 
-        medication_details = body.get("medication_details", "").strip()
+        medication_details = body.get("medication_details")
+        medication_details = medication_details.strip() if isinstance(medication_details, str) else ""
         if not medication_details:
             return err(400, "medication_details is required")
 
@@ -53,6 +43,10 @@ def handler(event, context):
         consultation = c_resp.get("Item")
         if not consultation:
             return err(404, "Consultation not found")
+        if consultation.get("status") != "open":
+            return err(409, "Consultation is not in 'open' status")
+        if consultation.get("doctor_id") != user_id:
+            return err(403, "Only the assigned doctor can act on this consultation")
 
         # Generate unique code (retry on collision — extremely unlikely)
         for _ in range(5):

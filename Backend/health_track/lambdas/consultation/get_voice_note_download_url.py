@@ -1,5 +1,7 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
+from botocore.config import Config
+from health_track_common import access
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
@@ -8,13 +10,14 @@ logger.setLevel(logging.INFO)
 
 def handler(event, context):
     try:
-        s3 = boto3.client("s3")
+        # The bucket is SSE-KMS encrypted, so presigned URLs must be SigV4.
+        s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"),
+                          config=Config(signature_version="s3v4"))
         ddb = boto3.resource("dynamodb")
         message_table = ddb.Table(os.environ["MESSAGE_TABLE"])
         consultation_table = ddb.Table(os.environ["CONSULTATION_TABLE"])
 
-        claims = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {})
-        user_id = claims.get("sub")
+        user_id = access.claims_of(event).get("sub")
         if not user_id:
             return err(401, "Unauthorized")
 
@@ -29,10 +32,7 @@ def handler(event, context):
         consultation = c_resp.get("Item")
         if not consultation:
             return err(404, "Consultation not found")
-
-        groups = claims.get("cognito:groups", "")
-        is_doctor = "Doctor" in (groups if isinstance(groups, list) else groups.split(","))
-        if not is_doctor and consultation.get("phone_owner_id") != user_id and consultation.get("patient_id") != user_id:
+        if not access.can_read(event, consultation, user_id):
             return err(403, "Access denied")
 
         # Fetch message
@@ -48,6 +48,8 @@ def handler(event, context):
         voice_note_key = message.get("voice_note_key")
         if not voice_note_key:
             return err(400, "Message has no voice note")
+        if not access.voice_note_key_ok(consultation_id, voice_note_key):
+            return err(400, "Invalid voice note key")
 
         url = s3.generate_presigned_url(
             "get_object",

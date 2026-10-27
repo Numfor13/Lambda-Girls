@@ -2,13 +2,14 @@
 Seed script: populate FacilityTable with 40 Buea/SW Cameroon health facilities.
 
 Usage:
-    python scripts/seed_facilities.py --env dev --region af-south-1
+    python scripts/seed_facilities.py --env dev --region us-east-1
 """
 
 import argparse
 import boto3
 import time
 import uuid
+from decimal import Decimal
 from botocore.exceptions import ClientError
 
 FACILITIES = [
@@ -655,6 +656,17 @@ FACILITIES = [
 ]
 
 
+def to_decimal(value):
+    """boto3 rejects float; convert floats (recursively) to Decimal via str to keep the written precision."""
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {k: to_decimal(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [to_decimal(v) for v in value]
+    return value
+
+
 def make_facility_id(name: str) -> str:
     # Deterministic ID derived from facility name — ensures idempotent re-runs.
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
@@ -669,7 +681,7 @@ def seed(env: str, aws_region: str):
     skipped = 0
 
     for facility in FACILITIES:
-        item = dict(facility)
+        item = to_decimal(facility)
         item["facility_id"] = make_facility_id(facility["name"])
         item["created_at"] = int(time.time() * 1000)
         # Ensure capabilities is a set for DynamoDB StringSet
@@ -695,6 +707,6 @@ def seed(env: str, aws_region: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed Buea/SW Cameroon health facilities")
     parser.add_argument("--env", default="dev", help="Environment name (dev/staging/prod)")
-    parser.add_argument("--region", default="af-south-1", help="AWS region")
+    parser.add_argument("--region", default="us-east-1", help="AWS region")
     args = parser.parse_args()
     seed(args.env, args.region)

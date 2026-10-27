@@ -4,14 +4,18 @@ import type {
   HealthTip,
   CaseDetail,
   Consultation,
+  DoctorApplication,
   Facility,
+  HospitalEntry,
   HouseholdMember,
   Message,
   Payment,
   Prescription,
   Profile,
   PushSubscriptionJSON,
+  RecommendingHospital,
   Referral,
+  Specialty,
   SymptomPayload,
   SyncResponse,
   TriageResult,
@@ -105,7 +109,8 @@ export const consultApi = {
 
 export const paymentApi = {
   initiate: (body: { consultation_id: string; phone: string; redirect_url: string }) =>
-    request<{ payment_id: string; payment_url: string; fapshi_ref: string }>(
+    // amount_xaf is the server-side fee; simulated is true when Fapshi isn't configured (demo).
+    request<{ payment_id: string; payment_url: string; fapshi_ref: string; amount_xaf: number; simulated: boolean }>(
       "payment",
       "/payments/initiate",
       { method: "POST", body },
@@ -163,4 +168,65 @@ export const extendedApi = {
       auth: false,
       query,
     }),
+}
+
+// Doctor applications: the backend on main has no routes for these yet, so the
+// screens that use this client are not routed (see App.tsx).
+export interface NewDoctorApplication {
+  full_name: string
+  email: string
+  phone: string
+  specialty: Specialty
+  medical_school: string
+  graduation_year: number
+  years_experience: number
+  hospitals_worked: HospitalEntry[]
+  recommending_hospital: RecommendingHospital
+  document_s3_key: string
+}
+
+export const doctorApplicationApi = {
+  getUploadUrl: (contentType = "application/pdf") =>
+    request<{ upload_url: string; key: string }>(
+      "doctorApplication",
+      `/upload-url?content_type=${encodeURIComponent(contentType)}`,
+      { auth: false },
+    ),
+  submit: (body: NewDoctorApplication) =>
+    request<{ application_id: string; status: string }>(
+      "doctorApplication",
+      "/applications",
+      { method: "POST", body, auth: false },
+    ),
+  getStatus: (applicationId: string) =>
+    request<Pick<DoctorApplication, "application_id" | "full_name" | "specialty" | "status" | "submitted_at" | "reviewed_at" | "rejection_reason">>(
+      "doctorApplication",
+      `/applications/${applicationId}`,
+      { auth: false },
+    ),
+  // Admin endpoints
+  adminList: (status?: string) =>
+    request<{ applications: DoctorApplication[]; count: number }>(
+      "doctorApplication",
+      `/admin/applications${status ? `?status=${status}` : ""}`,
+    ),
+  adminGet: (id: string) =>
+    request<DoctorApplication>("doctorApplication", `/admin/applications/${id}`),
+  adminUpdateNotes: (id: string, body: { admin_notes?: string; called_hospital?: boolean }) =>
+    request<{ updated: string }>("doctorApplication", `/admin/applications/${id}`, {
+      method: "PUT",
+      body,
+    }),
+  adminApprove: (id: string) =>
+    request<{ approved: string; email: string }>(
+      "doctorApplication",
+      `/admin/applications/${id}/approve`,
+      { method: "POST", body: {} },
+    ),
+  adminReject: (id: string, reason: string) =>
+    request<{ rejected: string }>(
+      "doctorApplication",
+      `/admin/applications/${id}/reject`,
+      { method: "POST", body: { reason } },
+    ),
 }

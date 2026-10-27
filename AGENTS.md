@@ -83,7 +83,7 @@ npm run build
 ```
 
 - **Mock mode** (`src/api/mock.ts`) mirrors the Lambda response shapes and stores data in the browser. Pick Patient or Doctor on `/sign-in` to play the whole flow. **When you change an endpoint shape, change the mock too.** The mock currently hides one real bug (push, see below).
-- **Real backend:** fill `VITE_API_URL_*` and `VITE_COGNITO_*` in `Frontend/.env.local` from the CDK stack outputs. Each service has its own URL.
+- **Real backend:** fill `VITE_API_BASE_URL` and `VITE_COGNITO_*` in `Frontend/.env.local` from the CDK outputs (`HealthTrack-Api-<env>` → ApiUrl, `HealthTrack-Auth-<env>`). Since the backend rebuild (2026-10-23) there is one API Gateway for every service; the per-service `VITE_API_URL_*` keys still work as overrides.
 - Backend tests: `cd Backend && make install && make test`.
 
 ## 6. Status log (update this)
@@ -110,6 +110,14 @@ npm run build
 - **Testing:** UX harness at five sizes with seeded data; every staff job walked end to end in mock mode.
 
 **Waiting for the owner's review.** |
+| 2026-10-27 | Claude Code | **Merged `origin/main` (the rebuilt backend) into `feat/frontend-redesign`.**
+- **Backend:** taken whole from main: one API Gateway, routers per domain, and the audit reports. The triage rules moved to the common layer unchanged, so the TS engine is still in step.
+- **Pages:** the redesigned pages stay.
+- **API layer:** every frontend call has a backend route. The mock now matches the new rules: a consult's urgency comes only from the caller's stored triage result (400 if it isn't on the server), and payment initiate returns `amount_xaf` and `simulated`.
+- **Triage sync fix:** the wizard sends results through `/sync` only, so the server keeps the phone's `result_id`, then takes the server's answer with `GET /triage/{id}`. The old `POST /triage` gave a new id, which broke consult creation on the new backend.
+- **Kept but not routed (owner's decision):** main's doctor-application, admin applications, rides/driver, doctor profiles, call-a-doctor and Leaflet map screens. The backend has no routes for applications or rides, the doctor profiles are hard-coded, and the per-type fees don't match the single server-side fee.
+- **Env:** `Frontend/.env` is placeholders only again (one-API layout); real values are in `.env.local`.
+- **Checks:** build, lint and 35 tests pass; patient and staff flows walked in mock mode. |
 
 **Claude continuation:** Use the new editable file above. Pages: Foundations `0:1`, Mobile `7:657`, Desktop `7:658`. The six screen IDs in `docs/DESIGN_SYSTEM.md` §4 survived duplication. New tab-bar set `2004:162`, variants Home `2004:118` / Triage `2004:148`, screen instances Home `2005:347` / RED Result `2005:376`; old standalone bar `2:366` was replaced. Final frame sizes: mobile Landing 390×1562, Home 390×1776, RED 390×1350; desktop Landing 1440×1200, Home 1440×1112, RED 1440×900. Landing auto-layout wrapper `2005:346`. New component properties use existing variables/styles. Glass effects do not support variable bindings in Figma; their containing fill/stroke colours do.
 

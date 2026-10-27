@@ -15,7 +15,7 @@ def handler(event, context):
         table = boto3.resource("dynamodb").Table(os.environ["PUSH_SUBSCRIPTION_TABLE"])
         table.delete_item(Key={"user_id": user_id})
 
-        return ok({"unsubscribed": True})
+        return ok({"unsubscribed": True, "ok": True})
 
     except Exception as e:
         logger.error("Unhandled error in delete_subscribe: %s", str(e))

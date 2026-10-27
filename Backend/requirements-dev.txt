@@ -1,3 +1,5 @@
 pytest>=7.0.0
 moto[all]>=5.0.0
 pytest-cov>=4.0.0
+cdk-nag>=2.37,<3
+pip-audit>=2.7

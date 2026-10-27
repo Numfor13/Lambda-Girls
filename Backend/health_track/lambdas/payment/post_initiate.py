@@ -1,7 +1,6 @@
-import boto3, hashlib, hmac, json, logging, os, time, uuid
-from botocore.exceptions import ClientError
+import boto3, json, logging, os, time, uuid
 from health_track_common.response import ok, err
-from health_track_common.fapshi import fapshi_initiate
+from health_track_common import fapshi
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -26,8 +25,13 @@ def handler(event, context):
             return err(400, "Invalid JSON in request body")
 
         consultation_id = body.get("consultation_id")
-        if not consultation_id:
+        if not isinstance(consultation_id, str) or not consultation_id:
             return err(400, "consultation_id is required")
+
+        phone = body.get("phone", "")  # payer's mobile money phone: sent to Fapshi, never stored
+        redirect_url = body.get("redirect_url", "")
+        if not isinstance(phone, str) or not isinstance(redirect_url, str):
+            return err(400, "phone and redirect_url must be strings")
 
         # Verify consultation exists
         c_resp = consultation_table.get_item(Key={"consultation_id": consultation_id})
@@ -41,26 +45,21 @@ def handler(event, context):
         # payer_id is always the caller (pay-for-someone-else supported)
         payer_id = user_id
         patient_id = consultation.get("patient_id", user_id)
-        amount_xaf = int(body.get("amount_xaf", 2000))  # default 2000 XAF
-        phone = body.get("phone", "")  # payer's mobile money phone
+        amount_xaf = fapshi.consultation_fee()  # server-side fee; any client amount_xaf is ignored
 
         payment_id = str(uuid.uuid4())
         now = int(time.time() * 1000)
 
-        # In sandbox/dev: skip real Fapshi call, generate fake ref
-        env_name = os.environ.get("ENV_NAME", "dev")
-        if env_name == "dev":
-            fapshi_ref = f"sandbox-{payment_id[:8]}"
-            payment_url = f"https://fapshi.com/pay/sandbox/{fapshi_ref}"
-        else:
-            fapshi_ref, payment_url = fapshi_initiate(
-                api_key_secret_arn=os.environ["FAPSHI_API_KEY_SECRET_ARN"],
+        try:
+            fapshi_ref, payment_url, simulated = fapshi.start_payment(
+                payment_id=payment_id,
                 amount=amount_xaf,
                 phone=phone,
-                external_id=payment_id,
-                redirect_url=body.get("redirect_url", ""),
+                redirect_url=redirect_url,
                 message=f"Health Track consultation {consultation_id[:8]}",
             )
+        except fapshi.PaymentsNotConfigured:
+            return err(503, "Payments are not configured")
 
         item = {
             "payment_id":      payment_id,
@@ -75,7 +74,8 @@ def handler(event, context):
         }
         payment_table.put_item(Item=item)
 
-        return ok({"payment_id": payment_id, "payment_url": payment_url, "fapshi_ref": fapshi_ref}, status_code=201)
+        return ok({"payment_id": payment_id, "payment_url": payment_url, "fapshi_ref": fapshi_ref,
+                   "amount_xaf": amount_xaf, "simulated": simulated}, status_code=201)
 
     except Exception as e:
         logger.error("Unhandled error in post_initiate: %s", str(e))

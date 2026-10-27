@@ -1,5 +1,4 @@
 import boto3, logging, os
-from boto3.dynamodb.conditions import Key
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
@@ -22,12 +21,7 @@ def handler(event, context):
         if not result_id:
             return err(400, "result_id is required")
 
-        resp = table.query(
-            KeyConditionExpression=Key("result_id").eq(result_id),
-            Limit=1,
-        )
-        items = resp.get("Items", [])
-        item = items[0] if items else None
+        item = table.get_item(Key={"result_id": result_id}).get("Item")
         if not item:
             return err(404, "Triage result not found")
 

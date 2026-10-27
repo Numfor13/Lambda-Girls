@@ -1,18 +1,20 @@
-import boto3, json, logging, os, uuid
+import boto3, logging, os, uuid
+from botocore.config import Config
+from health_track_common import access
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-MAX_VOICE_NOTE_BYTES = 500 * 1024  # 500 KB
-
 
 def handler(event, context):
     try:
-        s3 = boto3.client("s3")
+        # The bucket is SSE-KMS encrypted, so presigned URLs must be SigV4.
+        s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"),
+                          config=Config(signature_version="s3v4"))
         consultation_table = boto3.resource("dynamodb").Table(os.environ["CONSULTATION_TABLE"])
 
-        user_id = (event.get("requestContext") or {}).get("authorizer", {}).get("claims", {}).get("sub")
+        user_id = access.claims_of(event).get("sub")
         if not user_id:
             return err(401, "Unauthorized")
 
@@ -20,10 +22,12 @@ def handler(event, context):
         if not consultation_id:
             return err(400, "consultation_id is required")
 
-        # Verify consultation exists
         c_resp = consultation_table.get_item(Key={"consultation_id": consultation_id})
-        if not c_resp.get("Item"):
+        consultation = c_resp.get("Item")
+        if not consultation:
             return err(404, "Consultation not found")
+        if not access.writer_role(event, consultation, user_id):
+            return err(403, "Access denied")
 
         key = f"voice-notes/{consultation_id}/{uuid.uuid4()}.opus"
         bucket = os.environ["VOICE_NOTES_BUCKET"]
@@ -34,7 +38,6 @@ def handler(event, context):
                 "Bucket": bucket,
                 "Key": key,
                 "ContentType": "audio/opus",
-                "ContentLength": MAX_VOICE_NOTE_BYTES,
             },
             ExpiresIn=300,  # 5 minutes
         )

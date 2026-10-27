@@ -296,16 +296,21 @@ const routes: [string, RegExp, Handler][] = [
       const sub = requireUser(user).sub
       const complaint = String(body.complaint ?? "").trim()
       if (!complaint) throw new ApiError(400, "complaint is required")
+      // Like the backend: urgency comes only from the caller's own stored triage result.
+      const triageId = (body.triage_result_id as string) || null
+      const triage = triageId ? data.triage.find((t) => t.result_id === triageId) : undefined
+      if (triageId && (!triage || triage.user_id !== sub)) throw new ApiError(400, "triage_result_id not found")
+      const memberId = (body.on_behalf_member_id as string) || null
       const now = Date.now()
       const item: Consultation = {
         consultation_id: crypto.randomUUID(),
-        patient_id: (body.patient_id as string) || sub,
+        patient_id: memberId ? `${sub}#${memberId}` : sub,
         phone_owner_id: sub,
-        on_behalf_member_id: (body.on_behalf_member_id as string) ?? null,
-        triage_result_id: (body.triage_result_id as string) ?? null,
+        on_behalf_member_id: memberId,
+        triage_result_id: triageId,
         complaint,
         status: "pending_payment",
-        urgency: (body.urgency as Urgency) ?? null,
+        urgency: triage?.urgency ?? null,
         doctor_id: null,
         created_at: now,
         updated_at: now,
@@ -444,6 +449,8 @@ const routes: [string, RegExp, Handler][] = [
         payment_id: payment.payment_id,
         payment_url: String(body.redirect_url),
         fapshi_ref: payment.fapshi_ref,
+        amount_xaf: payment.amount_xaf,
+        simulated: true,
       }
     },
   ],
