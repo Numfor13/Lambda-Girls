@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useQuery } from "@tanstack/react-query"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import {
   Check,
   Clock,
@@ -22,9 +22,11 @@ import { ButtonA, ButtonLink, IconRouterLink } from "@/design/components/Button"
 import { SPRING } from "@/design/motion"
 import { ChatBubble, type ChatItem } from "@/design/components/ChatBubble"
 import { HoldToRecord } from "@/design/components/HoldToRecord"
+import { PulseDot } from "@/design/components/Lively"
 import { EmptyState, Notice, PageSpinner } from "@/design/components/primitives"
 import { SyncChip } from "@/design/components/SyncChip"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { formatDate } from "@/lib/format"
 import { useVisible } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
 import { db } from "@/offline/db"
@@ -105,6 +107,7 @@ export default function ConsultChat() {
   const status = consultation?.status ?? local?.status ?? "pending_payment"
   const urgency = consultation?.urgency ?? local?.urgency ?? null
   const complaint = consultation?.complaint ?? local?.complaint
+  const openedAt = consultation?.created_at ?? local?.created_at
 
   const items: ChatItem[] = useMemo(() => {
     const server = query.data?.messages ?? []
@@ -214,34 +217,20 @@ export default function ConsultChat() {
               <Stethoscope className="size-5 text-brand-700" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-title-m">
+              <h1 className="truncate text-title-m">
                 {consultation?.doctor_id
                   ? "Your doctor"
                   : "Doctor consultation"}
-              </p>
-              <p className="flex items-center gap-1.5 text-label-m text-ink-600">
-                <motion.span
-                  animate={closed ? { scale: 1 } : { scale: [1, 1.4, 1] }}
-                  transition={{
-                    duration: status === "open" ? 1.6 : 2.4,
-                    repeat: closed ? 0 : Infinity,
-                  }}
-                  className={cn(
-                    "size-2 rounded-full",
-                    status === "open"
-                      ? "bg-brand-500"
-                      : closed
-                        ? "bg-ink-400"
-                        : "bg-brand-500/45"
-                  )}
-                />
+              </h1>
+              <p className="flex min-w-0 items-center gap-1.5 truncate text-label-m text-ink-600">
+                <PulseDot live={!closed && status !== "pending_payment"} tone={closed ? "muted" : "brand"} />
                 {STATUS_LABEL[status]}
                 {local?.subject_label &&
                   local.subject_label !== "You" &&
                   ` · for ${local.subject_label}`}
               </p>
             </div>
-            {urgency && <UrgencyBadge urgency={urgency} size="sm" />}
+            {urgency && <UrgencyBadge urgency={urgency} size="sm" className="max-sm:hidden" />}
           </div>
         </header>
 
@@ -250,16 +239,48 @@ export default function ConsultChat() {
           aria-label="Messages"
           aria-live="polite"
         >
-          {items.length === 0 && (
-            <li className="mx-auto my-8 max-w-sm text-center text-body-m text-ink-600">
-              {status === "pending_payment"
-                ? "Messages open once the fee is paid. You can still add details now."
-                : "No messages yet. Add anything that helps the doctor: when it started, medicines taken, temperature."}
+          {openedAt && (
+            <li className="my-2 flex items-center gap-3 text-label-m text-ink-600" aria-hidden>
+              <span className="h-px flex-1 bg-ink-900/8" />
+              {formatDate(openedAt)}
+              <span className="h-px flex-1 bg-ink-900/8" />
             </li>
+          )}
+          {complaint && (
+            <motion.li
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={SPRING.default}
+              className="ml-auto w-full max-w-[85%] rounded-xl rounded-br-md bg-white p-4 shadow-[var(--shadow-elev-1)] sm:max-w-[70%]"
+            >
+              <p className="flex items-center gap-2 eyebrow">
+                Your request
+                {local?.subject_label && local.subject_label !== "You" && (
+                  <span className="normal-case tracking-normal text-ink-600">· for {local.subject_label}</span>
+                )}
+              </p>
+              <p className="mt-1.5 text-body-l">{complaint}</p>
+              {urgency && <UrgencyBadge urgency={urgency} size="sm" className="mt-3 sm:hidden" />}
+            </motion.li>
           )}
           {items.map((item) => (
             <ChatBubble key={item.key} item={item} />
           ))}
+          {!items.some((i) => !i.mine) && !closed && (
+            <motion.li
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...SPRING.default, delay: 0.2 }}
+              className="mr-auto flex max-w-[85%] items-center gap-3 rounded-xl rounded-bl-md bg-mint px-4 py-3 sm:max-w-[70%]"
+            >
+              <TypingDots />
+              <span className="text-body-m text-brand-900">
+                {status === "pending_payment"
+                  ? "A doctor sees your case once the fee is paid. You can add details now."
+                  : "Waiting for a doctor. Urgent cases are seen first. Add anything that helps: when it started, medicines, temperature."}
+              </span>
+            </motion.li>
+          )}
         </ol>
         <div ref={bottom} className="order-3" />
 
@@ -293,7 +314,7 @@ export default function ConsultChat() {
                 }}
                 placeholder="Type a message…"
                 aria-describedby="composer-hint"
-                className="field-sizing-content max-h-40 min-h-12 flex-1 resize-none rounded-lg border-[1.5px] border-transparent bg-white/90 px-4 py-3 text-body-l transition-colors focus:border-brand-500 focus:outline-none"
+                className="field-sizing-content max-h-40 min-h-12 flex-1 resize-none rounded-lg border border-transparent bg-white/90 px-4 py-3 text-body-l transition-colors focus:border-brand-500 focus:outline-none"
               />
               <AnimatePresence mode="popLayout" initial={false}>
                 {text.trim() ? (
@@ -301,11 +322,11 @@ export default function ConsultChat() {
                     key="send"
                     type="submit"
                     aria-label="Send message"
-                    initial={{ scale: 0, rotate: -45 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0, rotate: 45 }}
-                    whileTap={{ scale: 0.85 }}
-                    transition={SPRING.bouncy}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={SPRING.fast}
                     className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white"
                   >
                     <SendHorizontal className="size-5" aria-hidden />
@@ -313,10 +334,10 @@ export default function ConsultChat() {
                 ) : (
                   <motion.div
                     key="mic"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    transition={SPRING.bouncy}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    transition={SPRING.fast}
                   >
                     <HoldToRecord
                       size="md"
@@ -384,7 +405,7 @@ export default function ConsultChat() {
           </div>
         )}
         {status === "paid" && (
-          <div className="flex items-center gap-3 shape-bl bg-mint p-4">
+          <div className="flex items-center gap-3 rounded-xl bg-mint p-4 max-lg:hidden">
             <StatusMarkMini />
             <p className="text-body-m text-brand-900">
               <strong className="text-title-m">You're in the queue.</strong> A
@@ -397,18 +418,9 @@ export default function ConsultChat() {
         {flags.referrals &&
           codes.ref.map((c) => <CodeCard key={c} kind="ref" code={c} />)}
 
-        <section className="rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] lg:p-5">
-          {complaint && (
-            <p className="text-body-m text-ink-600">
-              <span className="font-semibold text-ink-900">Your request: </span>
-              {complaint}
-            </p>
-          )}
-          <ProgressSteps
-            className="mt-4 max-lg:hidden"
-            sent={Boolean(serverId)}
-            status={status}
-          />
+        <section className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)] max-lg:hidden">
+          <p className="eyebrow">Progress</p>
+          <ProgressSteps className="mt-4" sent={Boolean(serverId)} status={status} />
         </section>
 
         <div className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] max-lg:hidden">
@@ -460,8 +472,8 @@ function ProgressSteps({
             <div className="flex flex-col items-center">
               <motion.span
                 initial={false}
-                animate={{ scale: current ? [1, 1.15, 1] : 1 }}
-                transition={{ duration: 1.8, repeat: current ? Infinity : 0 }}
+                animate={{ scale: current ? [1, 1.08, 1] : 1 }}
+                transition={{ duration: 2.2, repeat: current ? Infinity : 0 }}
                 className={cn(
                   "flex size-6 items-center justify-center rounded-full",
                   done
@@ -485,7 +497,7 @@ function ProgressSteps({
             <p
               className={cn(
                 "pb-4 text-label-l",
-                done || current ? "text-ink-900" : "text-ink-400"
+                done || current ? "text-ink-900" : "text-ink-600"
               )}
             >
               {step.label}
@@ -500,19 +512,36 @@ function ProgressSteps({
   )
 }
 
-/** Small morphing "waiting" shape, the same M3 loading language as StatusMark at chip size. */
+/** Small "waiting" mark: a still clock with a ring breathing out of it (StatusMark's language). */
 function StatusMarkMini() {
+  const reduce = useReducedMotion()
   return (
-    <motion.span
-      className="flex size-10 shrink-0 items-center justify-center bg-white"
-      animate={{
-        rotate: [0, 180, 360],
-        borderRadius: ["40% 60% 40% 60%", "50%", "40% 60% 40% 60%"],
-      }}
-      transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-      aria-hidden
-    >
-      <Clock className="size-5 text-brand-700" />
-    </motion.span>
+    <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-white" aria-hidden>
+      {!reduce && (
+        <motion.span
+          className="absolute inset-0 rounded-full bg-brand-500/25"
+          animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+        />
+      )}
+      <Clock className="relative size-5 text-brand-700" />
+    </span>
+  )
+}
+
+/** Three dots rising in turn: someone is on the other side of this conversation. */
+function TypingDots() {
+  const reduce = useReducedMotion()
+  return (
+    <span className="flex shrink-0 items-center gap-1" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="size-1.5 rounded-full bg-brand-600"
+          animate={reduce ? undefined : { y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.16, ease: "easeInOut" }}
+        />
+      ))}
+    </span>
   )
 }

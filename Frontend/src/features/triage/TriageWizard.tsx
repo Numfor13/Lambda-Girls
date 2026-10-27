@@ -1,17 +1,21 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { ulid } from "ulid"
 import { AnimatePresence, motion } from "motion/react"
 import {
   ArrowLeft,
   Baby,
   Check,
+  Clock,
   Phone,
   Search,
+  ShieldCheck,
   Siren,
   User,
   UserPlus,
   Users,
+  WifiOff,
+  X,
 } from "lucide-react"
 import type { Sex, SymptomPayload } from "@/api/types"
 import { useAuth } from "@/auth/AuthProvider"
@@ -21,6 +25,7 @@ import { ChoiceCard, Field, Input, Select } from "@/design/components/Field"
 import { AdvisoryNote, Notice } from "@/design/components/primitives"
 import { useProfile } from "@/features/profile/useProfile"
 import { ageInMonths, describeAge } from "@/lib/format"
+import { humanize } from "@/lib/labels"
 import { useNow } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
 import { triageApi } from "@/api/endpoints"
@@ -151,6 +156,15 @@ export default function TriageWizard() {
     else setStepIndex((i) => i - 1)
   }
 
+  const goTo = (target: Step) => {
+    const i = steps.indexOf(target)
+    if (i < 0) return
+    setDir(i < stepIndex ? -1 : 1)
+    setTried(false)
+    setStepIndex(i)
+  }
+  const nextLabel = steps[stepIndex + 1] ? STEP_LABEL[steps[stepIndex + 1]!] : null
+
   const chooseSubject = (subject: Subject, memberId: string | null = null) => {
     const patch: Partial<Answers> = { subject, memberId }
     if (subject === "member") {
@@ -170,6 +184,23 @@ export default function TriageWizard() {
     }
     update({ ...patch, symptoms: [], respRate: undefined, pregnant: null })
     next()
+  }
+
+  // Home's "Checking for someone?" links here with ?for=me|other|<member id>: answer the
+  // first question for them once the profile (ages, sex) has loaded. Adjusted during render
+  // (React's "storing information from previous renders" pattern), not in an effect.
+  const [params] = useSearchParams()
+  const preset = params.get("for")
+  const [presetDone, setPresetDone] = useState(false)
+  if (preset && !presetDone && stepIndex === 0) {
+    if (preset === "other") {
+      setPresetDone(true)
+      chooseSubject("other")
+    } else if (session && profile.data) {
+      setPresetDone(true)
+      if (preset === "me") chooseSubject("me")
+      else if (members.some((m) => m.member_id === preset)) chooseSubject("member", preset)
+    }
   }
 
   const toggleSymptom = (code: string) =>
@@ -307,6 +338,7 @@ export default function TriageWizard() {
             Step {stepIndex + 1} of {steps.length}
           </span>
         </div>
+        <p className="mt-2 pl-[52px] text-label-m text-brand-700 lg:hidden">{STEP_LABEL[step]}</p>
 
         <div className="relative mt-6 flex-1">
           <AnimatePresence mode="wait" initial={false} custom={dir}>
@@ -331,6 +363,17 @@ export default function TriageWizard() {
                   <p className="mt-2 text-body-l text-ink-600">
                     We'll ask about the person who feels unwell.
                   </p>
+                  <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-label-l text-ink-600">
+                    <li className="inline-flex items-center gap-1.5">
+                      <Clock className="size-4 text-brand-600" aria-hidden /> About 1 minute
+                    </li>
+                    <li className="inline-flex items-center gap-1.5">
+                      <WifiOff className="size-4 text-brand-600" aria-hidden /> Works without network
+                    </li>
+                    <li className="inline-flex items-center gap-1.5">
+                      <ShieldCheck className="size-4 text-brand-600" aria-hidden /> Advice, not a diagnosis
+                    </li>
+                  </ul>
                   <div className="mt-6 flex flex-col gap-3">
                     <ChoiceCard
                       title="Me"
@@ -342,7 +385,7 @@ export default function TriageWizard() {
                       <ChoiceCard
                         key={m.member_id}
                         title={m.name}
-                        description={`${m.relationship} · ${describeAge(ageInMonths(m.dob, now))}`}
+                        description={`${humanize(m.relationship)} · ${describeAge(ageInMonths(m.dob, now))}`}
                         icon={<Users className="size-5" />}
                         selected={
                           a.subject === "member" && a.memberId === m.member_id
@@ -517,23 +560,19 @@ export default function TriageWizard() {
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search signs"
                       aria-label="Search signs"
-                      className="h-12 w-full rounded-full border-[1.5px] border-line bg-white pr-4 pl-12 text-body-l transition-shadow focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
+                      className="h-12 w-full rounded-full border border-ink-900/15 bg-white pr-4 pl-12 text-body-l transition-shadow focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
                     />
                   </div>
 
                   <AnimatePresence>
                     {dangerSelected && (
                       <motion.div
-                        initial={{ opacity: 0, y: -12, scale: 0.95 }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                          scale: 1,
-                          x: [0, -6, 6, -3, 0],
-                        }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={SPRING.bouncy}
-                        className="mt-4 flex flex-col gap-3 shape-bl bg-urgent-red p-4 text-white sm:flex-row sm:items-center"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={SPRING.default}
+                        role="alert"
+                        className="mt-4 flex flex-col gap-3 rounded-xl bg-urgent-red p-4 text-white sm:flex-row sm:items-center"
                       >
                         <Siren className="size-6 shrink-0" aria-hidden />
                         <p className="flex-1 text-title-m">
@@ -550,7 +589,39 @@ export default function TriageWizard() {
                     )}
                   </AnimatePresence>
 
+                  {a.symptoms.length > 0 && (
+                    <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
+                      <span className="text-label-m text-ink-600">{a.symptoms.length} chosen:</span>
+                      <AnimatePresence initial={false}>
+                        {catalogue
+                          .filter((x) => selected.has(x.code))
+                          .map((x) => (
+                            <motion.button
+                              key={x.code}
+                              type="button"
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={SPRING.fast}
+                              onClick={() => toggleSymptom(x.code)}
+                              aria-label={`Remove ${x.label}`}
+                              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-900 pr-2.5 pl-3.5 text-label-l text-white hover:bg-brand-800"
+                            >
+                              {x.label}
+                              <X className="size-4 text-white/70" aria-hidden />
+                            </motion.button>
+                          ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
                   <div className="mt-5 flex flex-col gap-6">
+                    {grouped.length === 0 && (
+                      <p className="rounded-xl bg-white p-5 text-body-l text-ink-600 shadow-[var(--shadow-elev-1)]">
+                        No sign matches “{search}”. Try another word, or continue if none fit.
+                      </p>
+                    )}
                     {grouped.map(({ group, items }) => (
                       <fieldset key={group}>
                         <legend className="mb-3 eyebrow text-ink-600">
@@ -575,13 +646,10 @@ export default function TriageWizard() {
                                   )}
                                 >
                                   <motion.span
-                                    animate={{
-                                      scale: on ? [1, 1.25, 1] : 1,
-                                      borderRadius: on ? "50%" : "8px",
-                                    }}
-                                    transition={SPRING.bouncy}
+                                    animate={{ scale: on ? [1, 1.15, 1] : 1 }}
+                                    transition={{ duration: 0.25 }}
                                     className={cn(
-                                      "flex size-6 shrink-0 items-center justify-center border-2",
+                                      "flex size-6 shrink-0 items-center justify-center rounded-md border-2",
                                       on
                                         ? "border-brand-700 bg-brand-700 text-white"
                                         : "border-ink-400"
@@ -593,7 +661,7 @@ export default function TriageWizard() {
                                           initial={{ scale: 0 }}
                                           animate={{ scale: 1 }}
                                           exit={{ scale: 0 }}
-                                          transition={SPRING.bouncy}
+                                          transition={SPRING.fast}
                                         >
                                           <Check
                                             className="size-4"
@@ -654,31 +722,46 @@ export default function TriageWizard() {
                   <h1 className="text-headline-l lg:text-display-m">
                     Check your answers
                   </h1>
+                  <p className="mt-2 text-body-l text-ink-600">
+                    Change anything that isn't right, then get guidance.
+                  </p>
                   <dl className="mt-6 divide-y divide-line overflow-hidden rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
-                    {[
-                      ["For", subjectLabel],
-                      ["Age", describeAge(ageMonths)],
-                      ...(askPregnancy
-                        ? [["Pregnant", isPregnant ? "Yes" : "No"]]
-                        : []),
+                    {(
                       [
-                        "Signs",
-                        a.symptoms.length
-                          ? catalogue
-                              .filter((s) => selected.has(s.code))
-                              .map((s) => s.label)
-                              .join(", ")
-                          : "None chosen",
-                      ],
-                      ...(isChild && a.respRate
-                        ? [["Breathing", `${a.respRate} per minute`]]
-                        : []),
-                    ].map(([k, v]) => (
-                      <div key={k} className="flex gap-4 px-5 py-4">
-                        <dt className="w-24 shrink-0 text-body-m text-ink-600">
+                        ["For", a.subject === "other" ? "Someone else" : subjectLabel, "who"],
+                        ["Age", `${describeAge(ageMonths)}${a.sex ? `, ${a.sex}` : ""}`, "about"],
+                        ...(askPregnancy
+                          ? [["Pregnant", isPregnant ? "Yes" : "No", "pregnancy"]]
+                          : []),
+                        [
+                          "Signs",
+                          a.symptoms.length
+                            ? catalogue
+                                .filter((s) => selected.has(s.code))
+                                .map((s) => s.label)
+                                .join(", ")
+                            : "None chosen",
+                          "symptoms",
+                        ],
+                        ...(isChild
+                          ? [["Breathing", a.respRate ? `${a.respRate} per minute` : "Not counted", "vitals"]]
+                          : []),
+                      ] as [string, string, Step][]
+                    ).map(([k, v, target]) => (
+                      <div key={k} className="flex items-start gap-4 px-5 py-3.5">
+                        <dt className="w-24 shrink-0 pt-0.5 text-body-m text-ink-600">
                           {k}
                         </dt>
-                        <dd className="text-title-m">{v}</dd>
+                        <dd className="min-w-0 flex-1 pt-0.5 text-title-m">{v}</dd>
+                        <dd className="shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => goTo(target)}
+                            className="-my-1 inline-flex h-10 items-center rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
+                          >
+                            Change<span className="sr-only"> {k.toLowerCase()}</span>
+                          </button>
+                        </dd>
                       </div>
                     ))}
                   </dl>
@@ -735,8 +818,10 @@ export default function TriageWizard() {
                 trailing="arrow"
               >
                 {step === "vitals" && a.respRate === undefined
-                  ? "Skip"
-                  : "Continue"}
+                  ? "Skip this step"
+                  : nextLabel
+                    ? `Next: ${nextLabel}`
+                    : "Continue"}
               </Button>
             )}
           </div>
@@ -803,7 +888,7 @@ export default function TriageWizard() {
                     {done ? <Check className="size-3.5" aria-hidden /> : i + 1}
                   </span>
                   <span className="min-w-0 pt-0.5">
-                    <span className={cn("block text-label-l", !done && !current && "text-ink-400")}>
+                    <span className={cn("block text-label-l", !done && !current && "text-ink-600")}>
                       {STEP_LABEL[st]}
                     </span>
                     {answer && <span className="mt-0.5 block text-body-m text-ink-600">{answer}</span>}

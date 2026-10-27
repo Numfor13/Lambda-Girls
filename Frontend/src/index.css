@@ -4,6 +4,11 @@
 @import "@fontsource-variable/fraunces/opsz.css";
 @import "@fontsource-variable/fraunces/opsz-italic.css";
 
+/* Desktop width but laptop height: a 1080p laptop at 125%/150% scaling gives the browser
+   about 1536x730 or 1280x620. Pages tighten vertical rhythm there so the first screen still
+   shows the thing people came for. Usage: short:pt-5, short:min-h-12 … */
+@custom-variant short (@media (min-width: 64rem) and (max-height: 50rem));
+
 /*
  * CareBridge design tokens, v2 "Clinical editorial" (docs/DESIGN_LANGUAGE.md).
  * Colours are unchanged from v1; type, shape, elevation, glass and motion were re-derived
@@ -36,6 +41,8 @@
   --color-urgent-amber-ink: #7a5300;
   --color-urgent-green: #2e7d32;
   --color-urgent-green-50: #e8f3e9;
+  /* Text on green-50 (the base green is 4.5:1 there, too close to the AA line). */
+  --color-urgent-green-ink: #1e5b22;
 
   /* Illustration + "ground" band only */
   --color-land-haze: #f3efe4;
@@ -126,7 +133,7 @@
 @utility text-display-m {
   font-family: var(--font-display);
   font-weight: 440;
-  font-size: clamp(32px, 3.3vw, 48px);
+  font-size: clamp(30px, min(3.3vw, 6.2svh), 48px);
   line-height: 1.06;
   letter-spacing: -0.02em;
 }
@@ -360,6 +367,26 @@
 }
 @utility animate-marquee {
   animation: marquee 40s linear infinite;
+}
+/* Loading skeleton: a cream block with a light sweep (content-shaped, not a spinner). */
+@keyframes sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+@utility skeleton {
+  background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgb(255 255 255 / 0.7) 50%,
+      transparent 70%
+    )
+    var(--color-cream);
+  background-size: 200% 100%;
+  animation: sweep 1.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

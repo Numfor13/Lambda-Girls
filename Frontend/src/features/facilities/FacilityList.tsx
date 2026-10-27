@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { AnimatePresence, motion } from "motion/react"
-import { LocateFixed, MapPin, Phone, RefreshCw, Search, SearchX } from "lucide-react"
+import { List, LocateFixed, Map as MapIcon, MapPin, Phone, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
+import { FacilityMap } from "@/design/components/FacilityMap"
 import { FacilityRow, hoursLabel } from "@/design/components/FacilityRow"
+import { NumberTicker } from "@/design/components/Lively"
 import { Chip } from "@/design/components/Field"
 import { AppPage, Panel } from "@/design/components/AppPage"
 import { buttonClass } from "@/design/components/Button"
@@ -37,6 +39,8 @@ export default function FacilityList() {
   const [query, setQuery] = useState("")
   const [quarter, setQuarter] = useState("")
   const [refreshing, setRefreshing] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [view, setView] = useState<"list" | "map">("list")
   const [filters, setFilters] = useState<Set<FilterKey>>(() => {
     const cap = params.get("capability") as FilterKey | null
     return new Set(cap && FILTERS.some((f) => f.key === cap) ? [cap] : [])
@@ -97,6 +101,14 @@ export default function FacilityList() {
       subtitle="Every health facility in and around Buea, saved on your phone so it works without a network."
       aside={
         <>
+          <FacilityMap
+            all={facilities}
+            shown={visible}
+            highlight={hovered}
+            origin={origin ?? null}
+            onHover={setHovered}
+            className="hidden shadow-[var(--shadow-elev-1)] lg:block"
+          />
           <Panel tone="mint" className="hidden lg:block">
             <p className="eyebrow">By service</p>
             <ul className="mt-3 flex flex-col">
@@ -112,7 +124,7 @@ export default function FacilityList() {
                     )}
                   >
                     {c.label}
-                    <span className={cn("tabular", filters.has(c.key) ? "text-white/80" : "text-ink-600")}>{c.n}</span>
+                    <NumberTicker value={c.n} className={filters.has(c.key) ? "text-white/80" : "text-ink-600"} />
                   </button>
                 </li>
               ))}
@@ -151,7 +163,8 @@ export default function FacilityList() {
       }
     >
       {/* Search bar: one solid surface with three segments (Airbnb pattern). */}
-      <div className="flex flex-col gap-2 rounded-xl bg-white p-2 shadow-[var(--shadow-elev-2)] md:flex-row md:items-center md:gap-0 md:rounded-full">
+      <div className="@container">
+      <div className="flex flex-col gap-2 rounded-xl bg-white p-2 shadow-[var(--shadow-elev-2)] @2xl:flex-row @2xl:items-center @2xl:gap-0 @2xl:rounded-full">
         <label className="relative flex min-w-0 flex-1 items-center">
           <Search className="pointer-events-none absolute left-4 size-5 text-ink-400" aria-hidden />
           <span className="sr-only">Search facilities</span>
@@ -163,8 +176,10 @@ export default function FacilityList() {
             className="h-12 w-full rounded-full bg-transparent pr-4 pl-12 text-body-l placeholder:text-ink-400 hover:bg-cream focus:bg-cream focus:outline-none"
           />
         </label>
-        <span className="mx-1 hidden h-8 w-px bg-line md:block" aria-hidden />
-        <label className="relative flex items-center md:w-56">
+        <span className="mx-1 hidden h-8 w-px bg-line @2xl:block" aria-hidden />
+        {/* Narrow column: quarter and "Near me" share the second row; wide: one pill row. */}
+        <div className="flex items-center gap-2 @2xl:contents">
+        <label className="relative flex min-w-0 flex-1 items-center @2xl:w-56 @2xl:flex-none">
           <MapPin className="pointer-events-none absolute left-4 size-[18px] text-ink-400" aria-hidden />
           <span className="sr-only">Sort by distance from a quarter</span>
           <select
@@ -184,12 +199,14 @@ export default function FacilityList() {
           <button
             type="button"
             onClick={locate}
-            className={buttonClass({ variant: coords && !quarter ? "tonal" : "primary", className: "md:ml-1" })}
+            className={buttonClass({ variant: coords && !quarter ? "tonal" : "primary", className: "shrink-0 @2xl:ml-1" })}
           >
             <LocateFixed className="size-[18px]" aria-hidden />
             {status === "locating" ? "Finding you…" : coords && !quarter ? "Nearest first" : "Near me"}
           </button>
         )}
+        </div>
+      </div>
       </div>
 
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filters">
@@ -218,19 +235,55 @@ export default function FacilityList() {
             </span>
           </motion.p>
         </AnimatePresence>
-        {(filters.size > 0 || query) && (
-          <button
-            type="button"
-            onClick={() => {
-              setFilters(new Set())
-              setQuery("")
-            }}
-            className="text-label-l text-brand-700 underline-offset-4 hover:underline"
-          >
-            Clear all
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {(filters.size > 0 || query) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilters(new Set())
+                setQuery("")
+              }}
+              className="inline-flex h-10 items-center rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
+            >
+              Clear all
+            </button>
+          )}
+          {/* Phones: switch between the list and the schematic map (desktop shows both). */}
+          <div className="flex rounded-full bg-white p-1 shadow-[var(--shadow-elev-1)] lg:hidden" role="group" aria-label="View">
+            {(
+              [
+                ["list", List, "List"],
+                ["map", MapIcon, "Map"],
+              ] as const
+            ).map(([key, Icon, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={view === key}
+                onClick={() => setView(key)}
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-label-l transition-colors",
+                  view === key ? "bg-brand-900 text-white" : "text-ink-600 hover:text-ink-900",
+                )}
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {view === "map" && (
+        <FacilityMap
+          all={facilities}
+          shown={visible}
+          highlight={hovered}
+          origin={origin ?? null}
+          onHover={setHovered}
+          className="shadow-[var(--shadow-elev-1)] lg:hidden"
+        />
+      )}
 
       {visible.length === 0 ? (
         <EmptyState icon={SearchX} title="No facilities match your search or filters." />
@@ -243,7 +296,7 @@ export default function FacilityList() {
           animate="show"
         >
           {visible.map((f) => (
-            <FacilityRow key={f.facility_id} facility={f} />
+            <FacilityRow key={f.facility_id} facility={f} onHover={setHovered} />
           ))}
         </motion.ul>
       )}

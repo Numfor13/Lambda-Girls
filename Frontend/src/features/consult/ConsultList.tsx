@@ -19,9 +19,12 @@ import { ButtonA, ButtonLink } from "@/design/components/Button"
 import { AppPage, Panel } from "@/design/components/AppPage"
 import { Chip } from "@/design/components/Field"
 import { EmptyState, PageSpinner } from "@/design/components/primitives"
+import { NumberTicker, PulseDot, StepTrack } from "@/design/components/Lively"
 import { SyncChip } from "@/design/components/SyncChip"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
-import { formatDateTime } from "@/lib/format"
+import { env } from "@/config/env"
+import { formatXaf, timeAgo } from "@/lib/format"
+import { useNow } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
 import { db, type SyncState } from "@/offline/db"
 import { STATUS_LABEL, reconcileStatus } from "./actions"
@@ -48,6 +51,7 @@ export default function ConsultList() {
   }, [remote.data])
   const [show, setShow] = useState<"active" | "closed">("active")
   const [q, setQ] = useState("")
+  const now = useNow(60_000)
 
   if (local === undefined || (remote.isPending && !local.length))
     return <PageSpinner />
@@ -119,7 +123,9 @@ export default function ConsultList() {
                   className="flex flex-col-reverse rounded-lg bg-cream px-2 py-3"
                 >
                   <dt className="text-label-m text-ink-600">{s.l}</dt>
-                  <dd className="text-headline-m text-ink-900">{s.n}</dd>
+                  <dd className="text-headline-m text-ink-900">
+                    <NumberTicker value={s.n} />
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -183,7 +189,7 @@ export default function ConsultList() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by symptom or person"
-                className="h-12 w-full rounded-full border-[1.5px] border-line bg-white pr-4 pl-12 text-body-l transition-shadow focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
+                className="h-12 w-full rounded-full border border-ink-900/15 bg-white pr-4 pl-12 text-body-l transition-shadow focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none"
               />
             </label>
           </motion.div>
@@ -206,53 +212,62 @@ export default function ConsultList() {
                     key={r.key}
                     variants={popIn}
                     layout
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    whileHover={{ y: -2 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
                     transition={SPRING.fast}
+                    className="group relative flex flex-col gap-4 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] transition-shadow hover:shadow-[var(--shadow-elev-2)] sm:flex-row sm:items-center sm:p-5"
                   >
-                    <Link
-                      to={r.href}
-                      className="group flex items-center gap-4 rounded-xl bg-white p-4 shadow-[var(--shadow-elev-1)] transition-shadow hover:shadow-[var(--shadow-elev-2)]"
+                    <span
+                      className={cn(
+                        "hidden size-12 shrink-0 items-center justify-center rounded-lg sm:flex",
+                        r.status === "closed"
+                          ? "bg-cream text-ink-400"
+                          : "bg-mint text-brand-700"
+                      )}
                     >
-                      <span
-                        className={cn(
-                          "flex size-12 shrink-0 items-center justify-center shape-bl transition-[border-radius] group-hover:rounded-full",
-                          r.status === "closed"
-                            ? "bg-cream text-ink-400"
-                            : "bg-mint text-brand-700"
-                        )}
+                      <Stethoscope className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-2 text-label-m text-ink-600">
+                        <PulseDot
+                          live={r.status === "paid" || r.status === "open"}
+                          tone={r.status === "closed" ? "muted" : "brand"}
+                        />
+                        {r.status === "open" ? "A doctor is on your case" : STATUS_LABEL[r.status]}
+                        <span className="text-ink-400" aria-hidden>·</span>
+                        {timeAgo(r.created_at, now)}
+                      </p>
+                      {/* The whole card opens the chat; the Pay button sits above this link. */}
+                      <Link
+                        to={r.href}
+                        className="mt-1 block line-clamp-2 text-title-m after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-4 focus-visible:after:ring-brand-500/30"
                       >
-                        <Stethoscope className="size-5" aria-hidden />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-title-m">{r.complaint}</p>
-                        <p className="mt-0.5 text-body-m text-ink-600">
-                          {r.subject} · {formatDateTime(r.created_at)}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded-full px-2.5 py-0.5 text-label-m font-semibold",
-                              r.status === "closed"
-                                ? "bg-cream text-ink-600"
-                                : "bg-mint text-brand-900"
-                            )}
-                          >
-                            {STATUS_LABEL[r.status]}
-                          </span>
-                          {r.urgency && (
-                            <UrgencyBadge urgency={r.urgency} size="sm" />
-                          )}
-                          {r.sync_state && (
-                            <SyncChip state={r.sync_state} refId={r.key} />
-                          )}
-                        </div>
+                        {r.complaint}
+                      </Link>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-body-m text-ink-600">
+                        <span>For {r.subject === "You" ? "you" : r.subject}</span>
+                        {r.urgency && <UrgencyBadge urgency={r.urgency} size="sm" />}
+                        {r.sync_state && <SyncChip state={r.sync_state} refId={r.key} />}
                       </div>
+                      {r.status !== "closed" && (
+                        <div className="mt-3 max-w-md">
+                          <StepTrack
+                            steps={["Paid", "In queue", "With doctor"]}
+                            at={{ pending_payment: 0, paid: 1, open: 2, closed: 3 }[r.status]}
+                            label="Consultation progress"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {r.status === "pending_payment" ? (
+                      <ButtonLink to={`${r.href}/pay`} className="relative z-10 shrink-0">
+                        Pay {formatXaf(env.consultationFeeXaf)}
+                      </ButtonLink>
+                    ) : (
                       <ChevronRight
-                        className="size-5 shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5"
+                        className="hidden size-5 shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5 sm:block"
                         aria-hidden
                       />
-                    </Link>
+                    )}
                   </motion.li>
                 ))}
               </AnimatePresence>

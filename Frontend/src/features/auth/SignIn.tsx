@@ -1,137 +1,25 @@
 import { useState } from "react"
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom"
-import { motion } from "motion/react"
-import { ArrowRight, LogIn, Stethoscope, User } from "lucide-react"
+import { ArrowRight, Headphones, LogIn, ShieldCheck, Smartphone, Stethoscope, User, Users, WifiOff } from "lucide-react"
 import { useAuth } from "@/auth/AuthProvider"
 import { authConfigured } from "@/config/env"
-import { Button, ButtonLink } from "@/design/components/Button"
-import { Feedback } from "@/design/components/Feedback"
-import { Landscape } from "@/design/components/Landscape"
-import { Logo } from "@/design/components/Logo"
-import { popIn, staggerOnMount } from "@/design/motion"
-import { authDestination, safeReturn } from "./destination"
-import type { Role } from "@/auth/session"
 import { flags } from "@/config/flags"
+import type { Role } from "@/auth/session"
+import { Button, ButtonLink } from "@/design/components/Button"
+import { ContentSkeleton } from "@/design/components/ContentSkeleton"
+import { Feedback } from "@/design/components/Feedback"
+import { Logo } from "@/design/components/Logo"
+import { PublicHero, FeatureCard } from "@/design/components/PublicHero"
+import { authDestination, safeReturn } from "./destination"
 
 export default function SignIn() {
-  const [params] = useSearchParams()
-  const { session, signIn, signInDemo } = useAuth()
-  const navigate = useNavigate()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(false)
-  const returnTo = safeReturn(params.get("returnTo"))
-  const denied = params.get("denied") === "1"
-  if (session && !denied)
-    return <Navigate to={authDestination(session, returnTo)} replace />
-  const demo = (role: Role) => {
-    navigate(authDestination(signInDemo(role), returnTo), { replace: true })
-  }
-  return (
-    <section className="relative isolate overflow-hidden py-14">
-      <Landscape className="-z-10" preserve="xMidYMid slice" />
-      <motion.div
-        variants={staggerOnMount()}
-        initial="hidden"
-        animate="show"
-        className="container-page flex justify-center"
-      >
-        <motion.div
-          variants={popIn}
-          className="flex w-full max-w-xl flex-col items-start gap-5 shape-bl p-6 glass-strong sm:p-10"
-        >
-          <Logo size="lg" />
-          <div>
-            <p className="eyebrow">Health within reach</p>
-            <h1 className="mt-3 text-headline-l lg:text-display-m">
-              Welcome to CareBridge
-            </h1>
-            <p className="mt-4 text-body-l text-ink-900">
-              Sign in to message a doctor and keep track of your care, for you
-              or your household.
-            </p>
-          </div>
-          {denied && (
-            <Feedback>
-              This account cannot open that area. Choose another account or
-              return to your home.
-            </Feedback>
-          )}
-          {error && (
-            <Feedback error>Could not open sign-in. Please try again.</Feedback>
-          )}
-          {authConfigured ? (
-            <Button
-              full
-              icon={LogIn}
-              size="lg"
-              loading={busy}
-              onClick={async () => {
-                setBusy(true)
-                setError(false)
-                try {
-                  await signIn(returnTo ?? "/app")
-                } catch {
-                  setError(true)
-                  setBusy(false)
-                }
-              }}
-            >
-              Sign in or create account
-            </Button>
-          ) : (
-            <>
-              <Feedback>
-                Demo mode. Choose a role to try the app with demo data.
-              </Feedback>
-              <div className="flex w-full flex-col gap-3">
-                <Button
-                  full
-                  icon={User}
-                  size="lg"
-                  onClick={() => demo("Patient")}
-                >
-                  Continue as a patient
-                </Button>
-                <Button
-                  full
-                  icon={Stethoscope}
-                  variant="secondary"
-                  size="lg"
-                  onClick={() => demo("Doctor")}
-                >
-                  Continue as a doctor
-                </Button>
-                {flags.operator_console && (
-                  <>
-                    <Button
-                      full
-                      variant="secondary"
-                      size="lg"
-                      onClick={() => demo("Operator")}
-                    >
-                      Continue as an operator
-                    </Button>
-                    <Button
-                      full
-                      variant="secondary"
-                      size="lg"
-                      onClick={() => demo("Admin")}
-                    >
-                      Continue as an administrator
-                    </Button>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-          <p className="text-body-m text-ink-900">
-            Finding facilities and checking symptoms work without an account.
-          </p>
-          <ButtonLink to="/app/facilities" icon={ArrowRight} variant="glass">
-            Browse facilities
-          </ButtonLink>
-        </motion.div>
-      </motion.div>
-    </section>
-  )
+  const [params]=useSearchParams(), {session,isLoading,signIn,signInDemo}=useAuth(), navigate=useNavigate()
+  const [busy,setBusy]=useState(false),[error,setError]=useState(false)
+  const returnTo=safeReturn(params.get("returnTo")),denied=params.get("denied")==="1"
+  if(session&&!denied)return <Navigate to={authDestination(session,returnTo)} replace/>
+  const demo=(role:Role)=>{try{const next=signInDemo(role);navigate(authDestination(next,returnTo),{replace:true})}catch{setError(true)}}
+  const roles=[{role:"Patient" as const,label:"Continue as a patient",icon:User},{role:"Doctor" as const,label:"Continue as a doctor",icon:Stethoscope},...(flags.operator_console?[{role:"Operator" as const,label:"Continue as an operator",icon:Headphones},{role:"Admin" as const,label:"Continue as an administrator",icon:ShieldCheck}]:[])]
+  const panel=<FeatureCard title={authConfigured?"Your care, together.":"Try CareBridge."} line={authConfigured?"Sign in securely to keep track of your care.":"Choose a role to explore the app with demo data."}><div className="flex flex-col gap-4"><Logo size="lg"/>{denied&&<Feedback>This account cannot open that workspace. Choose the appropriate demo role or sign in with another account.</Feedback>}{error&&<Feedback error>Could not open sign-in. Please try again.</Feedback>}{isLoading?<ContentSkeleton rows={1}/>:authConfigured?<Button full size="lg" icon={LogIn} loading={busy} onClick={async()=>{setBusy(true);setError(false);try{await signIn(returnTo??"/app")}catch{setBusy(false);setError(true)}}}>Sign in or create account</Button>:roles.map((item,i)=><Button key={item.role} full icon={item.icon} variant={i===0?"primary":"secondary"} onClick={()=>demo(item.role)}>{item.label}</Button>)}<ButtonLink to="/app/facilities" icon={ArrowRight} variant="ghost">Explore without an account</ButtonLink><p className="text-label-m text-ink-600">Advisory, not a diagnosis. For urgent help, call 15.</p></div></FeatureCard>
+  return <PublicHero eyebrow="Health within reach" title={"Welcome\nback."} lede="Care for you and your household." body={<ul className="flex flex-col gap-5">{[{icon:WifiOff,title:"Keep care within reach",text:"Find saved facilities and check danger signs even offline."},{icon:Users,title:"Bring your household",text:"Ask for someone who does not have their own phone."},{icon:Smartphone,title:"Pay with Mobile Money",text:"Consultation payments are handled through Fapshi."}].map(r=><li key={r.title} className="flex items-start gap-4"><span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-white text-brand-700"><r.icon className="size-5" aria-hidden/></span><div><p className="text-title-l">{r.title}</p><p className="mt-1 text-body-m text-ink-600">{r.text}</p></div></li>)}</ul>} card={panel}/>
 }
+

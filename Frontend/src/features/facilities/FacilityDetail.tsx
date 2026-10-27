@@ -5,7 +5,8 @@ import { ButtonA } from "@/design/components/Button"
 import { CAPABILITY_ICON, hoursLabel, primaryCapability } from "@/design/components/FacilityRow"
 import { EmptyState, PageSpinner } from "@/design/components/primitives"
 import { popIn, staggerOnMount } from "@/design/motion"
-import { useFacility } from "@/offline/facilities"
+import { useFacilities, useFacility } from "@/offline/facilities"
+import { FacilityMap } from "@/design/components/FacilityMap"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { formatDistance, haversineKm } from "@/lib/geo"
 import { CAPABILITY_LABELS, formatPhone, formatXaf, telHref } from "@/lib/format"
@@ -36,6 +37,7 @@ function Fact({
 export default function FacilityDetail() {
   const { id } = useParams()
   const facility = useFacility(id)
+  const all = useFacilities()
   const { coords } = useGeolocation()
   const online = useOnline()
 
@@ -75,7 +77,7 @@ export default function FacilityDetail() {
       <motion.header variants={popIn} className="flex flex-col gap-5">
         <Link
           to="/app/facilities"
-          className="inline-flex h-9 w-fit items-center gap-1.5 rounded-full pr-3 pl-2 text-label-l text-ink-600 hover:bg-ink-900/5 hover:text-ink-900"
+          className="inline-flex h-10 w-fit items-center gap-1.5 rounded-full pr-3 pl-2 text-label-l text-ink-600 hover:bg-ink-900/5 hover:text-ink-900"
         >
           <ArrowLeft className="size-4" aria-hidden /> All facilities
         </Link>
@@ -183,6 +185,17 @@ export default function FacilityDetail() {
         </div>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+          {all && facility && (
+            <motion.div variants={popIn}>
+              <FacilityMap
+                all={all}
+                shown={[facility]}
+                highlight={facility.facility_id}
+                origin={coords ?? null}
+                className="shadow-[var(--shadow-elev-1)]"
+              />
+            </motion.div>
+          )}
           <motion.section variants={popIn} className="rounded-xl bg-mint p-5 lg:p-6">
             <p className="eyebrow">Getting there</p>
             <p className="mt-2 text-title-l">{facility.quarter}</p>
@@ -207,7 +220,7 @@ export default function FacilityDetail() {
             <p className="mt-1 text-body-m text-ink-600">
               A 1-minute check tells you how urgent it is and which kind of care you need.
             </p>
-            <Link to="/app/triage" className="mt-3 inline-flex items-center gap-1 text-label-l text-brand-700 hover:underline">
+            <Link to="/app/triage" className="mt-2 inline-flex min-h-10 items-center gap-1 text-label-l text-brand-700 hover:underline">
               Check symptoms first →
             </Link>
           </motion.section>

@@ -13,6 +13,7 @@ import {
 import { IconButton } from "@/design/components/Button"
 import { Avatar } from "@/design/components/primitives"
 import { PageTransition } from "@/design/motion"
+import { Toaster } from "@/design/components/Toast"
 
 export function StaffShell({
   dests,
@@ -63,6 +64,7 @@ export function StaffShell({
         </AnimatePresence>
       </main>
       <TabBar dests={dests} />
+      <Toaster />
     </div>
   )
 }

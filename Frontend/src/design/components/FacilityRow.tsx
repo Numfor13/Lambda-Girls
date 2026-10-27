@@ -51,10 +51,13 @@ export function FacilityRow({
   facility,
   compact = false,
   focus,
+  onHover,
 }: {
   facility: RankedFacility
   compact?: boolean
   focus?: Capability
+  /** Lets a map beside the list follow the row under the pointer or keyboard focus. */
+  onHover?: (id: string | null) => void
 }) {
   const cap = focus && facility.capabilities.includes(focus) ? focus : primaryCapability(facility.capabilities)
   const Icon = CAPABILITY_ICON[cap]
@@ -66,6 +69,9 @@ export function FacilityRow({
       variants={popIn}
       layout
       className="group/row relative flex items-start gap-3 rounded-lg bg-white p-3 shadow-[var(--shadow-elev-1)] transition-shadow duration-200 hover:shadow-[var(--shadow-elev-2)] sm:p-4"
+      onMouseEnter={onHover ? () => onHover(facility.facility_id) : undefined}
+      onMouseLeave={onHover ? () => onHover(null) : undefined}
+      onFocus={onHover ? () => onHover(facility.facility_id) : undefined}
     >
       <span
         className={

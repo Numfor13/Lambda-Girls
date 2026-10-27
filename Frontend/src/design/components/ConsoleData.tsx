@@ -63,7 +63,7 @@ export function ConsoleTable({
   caption: string
 }) {
   return (
-    <div className="min-w-0 overflow-x-auto rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
+    <div className="max-h-[min(70svh,720px)] min-w-0 overflow-auto rounded-xl bg-white shadow-[var(--shadow-elev-1)]">
       <table className="w-full text-left text-body-m">
         <caption className="sr-only">{caption}</caption>
         <thead className="sticky top-0 bg-cream text-label-l text-ink-600">

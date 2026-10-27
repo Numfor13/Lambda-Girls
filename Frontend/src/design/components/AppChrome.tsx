@@ -164,7 +164,7 @@ export function NavRail({
           {fab.label}
         </ButtonLink>
       )}
-      <p className="px-3 pb-1 text-label-m text-ink-400">Menu</p>
+      <p className="px-3 pb-1 text-label-m text-ink-600">Menu</p>
       <LayoutGroup id="rail">
         <nav aria-label="App" className="flex flex-col gap-0.5">
           {dests.map((d) => {
@@ -303,7 +303,7 @@ export function AccountButton() {
   const { pathname } = useLocation()
   if (session) {
     return (
-      <Link to="/app/profile" aria-label="Your profile" className="rounded-full">
+      <Link to="/app/profile" aria-label="Your profile" className="flex size-10 items-center justify-center rounded-full">
         <Avatar name={session.name} size="sm" />
       </Link>
     )

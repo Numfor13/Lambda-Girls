@@ -59,7 +59,7 @@ computed CSS (fonts, sizes, radii, shadows, easing, widths). Six were blocked by
 - **Button**: heights 40/48/52. `primary` has a subtle inner highlight. `secondary` is white with an ink hairline. Use `tonal` (mint) for secondary actions on cards. Use `glass` only over imagery.
 - **Field**: 1px ink/15 border with a 4px focus ring. Validation stays inline (see `lib/form.ts`).
 - **ChoiceCard / symptom rows**: white card; selected = mint fill + 2px inset brand ring + check.
-- **Chip**: 36px. Unselected is white with a hairline; selected is `brand-900` with a check.
+- **Chip**: 40px (a thumb-sized target on phones). Unselected is white with a hairline; selected is `brand-900` with a check.
 - **FacilityRow**:
   - Capability tile (dark for emergency), then the name (2 lines on mobile), then quarter · hours · distance.
   - Then up to 3 service tags + "+N", then backup power.
@@ -67,6 +67,28 @@ computed CSS (fonts, sizes, radii, shadows, easing, widths). Six were blocked by
 - **Sidebar (NavRail)**: flush, white/75 with blur, a hairline right edge. 40px rows with a mint active state, plus a "Menu" label.
 - **Stepper**: vertical, numbered, with the answer under each finished step (see `TriageWizard` aside).
 - **Segmented progress**: one segment per step, plus "Step n of N".
+
+## 4b. Lively components and laptop screens (added 2026-10-27)
+
+From a second study (~400 Dribbble shots across 54 page-type queries, plus NHS 111, GOV.UK patterns,
+Practo, Doctolib, Airbnb, Magic UI, Motion): motion should **show real state changing**, not decorate.
+
+- `design/components/Lively.tsx`:
+  - `NumberTicker`: counts up to a real number once, on first view.
+  - `ProgressRing`: a circular sweep.
+  - `PulseDot`: live or waiting status (online doctors, queued case, lab in progress).
+  - `AvatarStack`.
+  - `PulseLine`: a heartbeat trace that draws once in Home's dark hero.
+  - `StepTrack`: a short horizontal progress bar (consults, labs, visits).
+  - `Skeleton`: a content-shaped loading block with a light sweep, used instead of spinners in lists.
+- `FacilityMap`: an offline schematic built from the saved coordinates only, with no tiles and no invented streets. On desktop it sits beside the directory and follows the hovered row; phones get a List | Map toggle.
+- `FacilityPicker`: a searchable radio list (icon, quarter, hours, distance). `prefer` floats the right services to the top. Use it instead of a `<select>` of 40 facilities.
+- **Laptop height.** A 1080p laptop at 125% or 150% scaling gives the browser about 1536×730 or 1280×620:
+  - `@custom-variant short` (desktop width, ≤800px tall) tightens vertical rhythm: `short:pt-5`, `short:min-h-12` and so on.
+  - `text-display-m` also scales with `svh`.
+  - The `AppPage` aside is 300px until `xl`.
+  - Toolbars that must fit a column use container queries (`@container` + `@2xl:`), not viewport breakpoints.
+- Search, sort and filter controls appear only when a list is long enough to need them (more than about 5 items).
 
 ## 5. Page patterns (reference implementations)
 
@@ -76,7 +98,11 @@ computed CSS (fonts, sizes, radii, shadows, easing, widths). Six were blocked by
 | App home: greeting with accent name, one dark hero, a full-width action row, main + aside | `features/home/PatientHome.tsx` |
 | Directory: segmented search bar, chips, auto-fill rows, aside with real counts by service | `features/facilities/FacilityList.tsx` |
 | Detail/profile: editorial header (tile, serif name, status chips, actions on the right), main + sticky aside | `features/facilities/FacilityDetail.tsx` |
-| Wizard: segmented progress, NHS-style options, sticky glass footer, stepper aside | `features/triage/TriageWizard.tsx` |
+| Wizard: segmented progress, NHS-style options, sticky glass footer ("Next: …"), stepper aside, check-answers with Change links | `features/triage/TriageWizard.tsx` |
+| Care timeline: everything in progress as cards with a status dot and a `StepTrack` | `features/home/PatientHome.tsx` (Your care) |
+| Inbox list: status + time, two-line title, inline primary action (Pay) | `features/consult/ConsultList.tsx` |
+| Request form + record list: form main, records aside (records first on phones when they exist) | `features/services/Appointments.tsx`, `Labs.tsx` |
+| Activity feed: tabs, day groups, one card per day, ticket-style receipt | `features/services/History.tsx` |
 
 ## 6. Don'ts
 

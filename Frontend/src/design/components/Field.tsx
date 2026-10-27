@@ -33,7 +33,7 @@ export function Field({
         <label htmlFor={id} className="text-label-l text-ink-900">
           {label}
           {required && (
-            <span className="ml-1.5 text-label-m font-normal text-ink-400">
+            <span className="ml-1.5 text-label-m font-normal text-ink-600">
               Required
             </span>
           )}
@@ -42,7 +42,7 @@ export function Field({
           <span
             className={cn(
               "text-label-m tabular-nums",
-              count > max ? "text-urgent-red" : "text-ink-400"
+              count > max ? "text-urgent-red" : "text-ink-600"
             )}
             aria-live="polite"
           >
@@ -183,7 +183,7 @@ export function Chip({
       whileTap={{ scale: 0.94 }}
       transition={SPRING.fast}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-label-l transition-colors duration-150",
+        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-label-l transition-colors duration-150",
         selected
           ? "bg-brand-900 text-white"
           : "bg-white text-ink-900 ring-1 ring-ink-900/12 ring-inset hover:bg-cream hover:ring-ink-900/25",

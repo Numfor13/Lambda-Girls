@@ -1,14 +1,12 @@
-import { useState, type ReactNode } from "react"
-import { motion } from "motion/react"
+import { useState, type ReactNode, type Ref } from "react"
 import { useAuth } from "@/auth/AuthProvider"
 import { ApiError, friendlyError } from "@/api/errors"
 import { useOnline } from "@/lib/hooks"
 import { useFacilities } from "@/offline/facilities"
 import { SyncStatus } from "./AppChrome"
 import { Feedback } from "./Feedback"
-import { Field, Select } from "./Field"
-import { PageHeader } from "./primitives"
-import { popIn, staggerOnMount } from "@/design/motion"
+import { Field, Input, Select } from "./Field"
+import { AppPage, Panel } from "./AppPage"
 import { SERVICE_DRAFT_PREFIX } from "@/lib/serviceDrafts"
 import type { Capability } from "@/api/types"
 
@@ -16,24 +14,33 @@ export function ServicePage({
   title,
   subtitle,
   children,
+  aside,
+  actions,
+  back,
 }: {
   title: string
   subtitle: string
   children: ReactNode
+  aside?: ReactNode
+  actions?: ReactNode
+  back?: ReactNode
 }) {
   return (
-    <motion.div
-      variants={staggerOnMount()}
-      initial="hidden"
-      animate="show"
-      className="flex min-w-0 flex-col gap-5"
+    <AppPage
+      eyebrow="Care services"
+      title={title}
+      subtitle={subtitle}
+      actions={
+        <>
+          <SyncStatus />
+          {actions}
+        </>
+      }
+      aside={aside}
+      back={back}
     >
-      <PageHeader eyebrow="Care services" title={title} subtitle={subtitle} />
-      <div>
-        <SyncStatus />
-      </div>
       {children}
-    </motion.div>
+    </AppPage>
   )
 }
 export function ServiceCard({
@@ -44,13 +51,9 @@ export function ServiceCard({
   children: ReactNode
 }) {
   return (
-    <motion.section
-      variants={popIn}
-      className="flex min-w-0 flex-col gap-4 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
-    >
-      <h2 className="text-headline-s">{title}</h2>
-      {children}
-    </motion.section>
+    <Panel title={title}>
+      <div className="flex min-w-0 flex-col gap-4">{children}</div>
+    </Panel>
   )
 }
 export function ServiceStatus({ children }: { children: ReactNode }) {
@@ -64,56 +67,92 @@ export function FacilitySelect({
   value,
   onChange,
   capability,
+  searchable = false,
+  error,
+  onBlur,
+  inputRef,
 }: {
   value: string
   onChange: (id: string) => void
   capability?: Capability
+  searchable?: boolean
+  error?: string
+  onBlur?: () => void
+  inputRef?: Ref<HTMLSelectElement>
 }) {
   const facilities = useFacilities()
+  const [search, setSearch] = useState("")
   const available =
     facilities?.filter(
       (f) => f.is_active && (!capability || f.capabilities.includes(capability))
     ) ?? []
+  const matching = available.filter(
+    (f) =>
+      f.facility_id === value ||
+      `${f.name} ${f.quarter}`.toLowerCase().includes(search.toLowerCase())
+  )
   return (
-    <Field
-      label="Facility"
-      error={
-        value && facilities && !available.some((f) => f.facility_id === value)
-          ? "The saved facility is unavailable. Choose another facility."
-          : undefined
-      }
-      hint={
-        available.length
-          ? undefined
-          : "No matching facilities in the saved directory. Refresh facilities in Profile when connected."
-      }
-    >
-      {(id) => (
-        <Select
-          id={id}
-          required
-          value={available.some((f) => f.facility_id === value) ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">Choose a facility</option>
-          {available.map((f) => (
-            <option key={f.facility_id} value={f.facility_id}>
-              {f.name}
-            </option>
-          ))}
-        </Select>
+    <div className="flex min-w-0 flex-col gap-3">
+      {searchable && (
+        <Field label="Search facilities">
+          {(id) => (
+            <Input
+              id={id}
+              type="search"
+              maxLength={100}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Name or quarter"
+            />
+          )}
+        </Field>
       )}
-    </Field>
+      <Field
+        label="Facility"
+        required
+        error={
+          error ??
+          (value &&
+          facilities &&
+          !available.some((f) => f.facility_id === value)
+            ? "The saved facility is unavailable. Choose another facility."
+            : undefined)
+        }
+        hint={
+          available.length
+            ? undefined
+            : "No matching facilities in the saved directory. Refresh facilities in Profile when connected."
+        }
+      >
+        {(id) => (
+          <Select
+            id={id}
+            required
+            {...{ ref: inputRef }}
+            onBlur={onBlur}
+            aria-invalid={Boolean(error)}
+            value={available.some((f) => f.facility_id === value) ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="">Choose a facility</option>
+            {matching.map((f) => (
+              <option key={f.facility_id} value={f.facility_id}>
+                {f.name}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+    </div>
   )
 }
+/** Only says something when it matters: offline, the request waits for a connection (QA C5). */
 export function ConnectionNote() {
   const online = useOnline()
+  if (online) return null
   return (
     <p role="status" className="text-body-m text-ink-600">
-      {online
-        ? "Connected · requests send when you submit."
-        : "Offline · keep your draft here. Connect to submit."}{" "}
-      These requests are not sent automatically.
+      You&apos;re offline. Your draft is kept here; send it when you&apos;re back online.
     </p>
   )
 }
@@ -167,9 +206,7 @@ export function useServiceDraft<T>(kind: string, initial: T) {
 export function DraftNote({ saved }: { saved: boolean }) {
   return (
     <p className="text-label-m text-ink-600">
-      {saved
-        ? "Draft saved on this phone. Sign out to clear service drafts."
-        : "Draft storage unavailable. Keep this page open until you submit."}
+      {saved ? "Your draft is saved on this phone." : "Keep this page open until you send it."}
     </p>
   )
 }

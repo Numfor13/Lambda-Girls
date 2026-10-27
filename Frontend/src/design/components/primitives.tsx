@@ -267,7 +267,7 @@ export function SectionHeader({
       {to && linkLabel && (
         <Link
           to={to}
-          className="group -mr-3 inline-flex h-9 items-center gap-0.5 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
+          className="group -mr-3 inline-flex h-10 items-center gap-0.5 rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
         >
           {linkLabel}
           <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />

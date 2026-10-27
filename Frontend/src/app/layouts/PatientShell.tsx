@@ -19,12 +19,7 @@ import { Toaster } from "@/design/components/Toast"
  * TEMPORARY: routes not yet moved onto AppPage keep the old reading column so they don't
  * stretch. Remove each entry as its page is reworked (docs/REDESIGN_BUILD.md §3c).
  */
-const LEGACY_NARROW = [
-  /^\/app\/profile/,
-  /^\/app\/appointments/,
-  /^\/app\/labs/,
-  /^\/app\/blood/,
-  /^\/app\/history/,
+const LEGACY_NARROW: RegExp[] = [
 ]
 
 export function PatientShell() {
@@ -68,7 +63,7 @@ export function PatientShell() {
         <main
           id="main"
           className={cn(
-            "mx-auto w-full px-4 pt-5 pb-32 sm:px-6 lg:px-10 lg:pt-8 lg:pb-16",
+            "mx-auto w-full px-4 pt-5 pb-32 sm:px-6 lg:px-10 lg:pt-8 lg:pb-16 short:pt-5",
             narrow ? "max-w-3xl" : "max-w-[1320px] min-[1800px]:max-w-[1560px]"
           )}
         >

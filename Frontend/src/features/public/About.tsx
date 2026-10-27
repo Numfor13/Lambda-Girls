@@ -1,135 +1,20 @@
-import {
-  HeartHandshake,
-  MapPin,
-  MessageCircle,
-  Shield,
-  Stethoscope,
-} from "lucide-react"
-import { ButtonLink } from "@/design/components/Button"
-import { Landscape } from "@/design/components/Landscape"
-import { Reveal, StaggerContainer, StaggerItem } from "@/design/motion"
+import { flags } from "@/config/flags"
+import { motion } from "motion/react"
+import { Activity, MapPin, MessageCircle, Shield, Users } from "lucide-react"
+import seed from "@/data/facilities.seed.json"
+import type { Facility } from "@/api/types"
+import { CardGrid, Panel } from "@/design/components/AppPage"
+import { ButtonA, ButtonLink } from "@/design/components/Button"
+import { PublicHero, FeatureCard, StatementBand } from "@/design/components/PublicHero"
+import { BueaDirectoryVignette } from "@/design/components/PublicVignettes"
+import { popIn, Reveal } from "@/design/motion"
 
-const FEATURES = [
-  {
-    icon: MapPin,
-    title: "Find local care",
-    body: "Browse facilities around Buea, check the services listed and call ahead.",
-  },
-  {
-    icon: MessageCircle,
-    title: "Reach a doctor",
-    body: "Describe your concern by text or voice note. Read replies in your consultation.",
-  },
-  {
-    icon: HeartHandshake,
-    title: "Help your household",
-    body: "Use one phone to ask for care for someone you help look after.",
-  },
-]
-export default function About() {
-  return (
-    <>
-    <section className="relative isolate overflow-hidden py-14">
-        <Landscape className="-z-10" preserve="xMidYMid slice" />
-        <Reveal className="container-page">
-          <div className="max-w-3xl shape-bl p-6 glass-strong sm:p-10">
-            <p className="eyebrow">About CareBridge · Buea</p>
-            <h1 className="mt-4 text-display-m">Care, closer to home.</h1>
-            <p className="mt-5 text-body-l text-ink-900">
-              CareBridge helps people in Buea and nearby communities find
-              facilities, check danger signs and consult a doctor, including on
-              behalf of a household member.
-            </p>
-            <ButtonLink to="/app/facilities" icon={MapPin} className="mt-6">
-              Explore facilities
-            </ButtonLink>
-          </div>
-        </Reveal>
-      </section>
-      <section className="container-page section-y">
-        <StaggerContainer className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {FEATURES.map((item, i) => (
-            <StaggerItem
-              key={item.title}
-              className={`flex flex-col gap-4 p-6 ${i === 1 ? "shape-br bg-mint" : "shape-bl bg-white shadow-[var(--shadow-elev-1)]"}`}
-            >
-              <item.icon className="size-8 text-brand-700" aria-hidden />
-              <h2 className="text-headline-s">{item.title}</h2>
-              <p className="text-body-l text-ink-600">{item.body}</p>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      </section>
-      <section className="bg-ground text-white">
-      <Reveal className="container-page py-14">
-          <p className="text-label-l text-white/80">Health within reach</p>
-          <h2 className="mt-4 max-w-3xl text-display-m text-white">
-            A little guidance. A clearer next step.
-          </h2>
-          <p className="mt-5 max-w-2xl text-body-l text-white/85">
-            The danger-sign check is advisory, not a diagnosis. It does not
-            replace care from a clinician. In an emergency, call 15 and seek
-            emergency care.
-          </p>
-        </Reveal>
-      </section>
-      <StaggerContainer className="container-page grid grid-cols-1 gap-5 section-y lg:grid-cols-2">
-        <StaggerItem
-          as="section"
-          id="providers"
-          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)]"
-        >
-          <Stethoscope className="size-7 text-brand-700" aria-hidden />
-          <h2 className="mt-4 text-headline-s">For healthcare providers</h2>
-          <p className="mt-3 text-body-l text-ink-600">
-            Doctors work an urgency-ordered queue, review linked triage findings
-            and reply by text or voice. Prescription and referral codes can be
-            checked by pharmacies and receiving facilities.
-          </p>
-          <ButtonLink
-            to="/sign-in?returnTo=/doctor"
-            variant="secondary"
-            icon={Stethoscope}
-            className="mt-5"
-          >
-            Provider sign-in
-          </ButtonLink>
-        </StaggerItem>
-        <StaggerItem
-          as="section"
-          id="privacy"
-          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)]"
-        >
-          <Shield className="size-7 text-brand-700" aria-hidden />
-          <h2 className="mt-4 text-headline-s">Privacy on a shared phone</h2>
-          <p className="mt-3 text-body-l text-ink-600">
-            Consultations contain the health details you choose to send. Get
-            permission before asking for care on another person's behalf.
-            Signing out clears locally saved clinical data. You can also clear
-            it from Profile; unsent items will be lost.
-          </p>
-        </StaggerItem>
-        <StaggerItem
-          as="section"
-          id="contact"
-          className="scroll-mt-24 rounded-xl bg-white p-6 shadow-[var(--shadow-elev-1)] lg:col-span-2"
-        >
-          <h2 className="text-headline-s">Get in touch about your care</h2>
-          <p className="mt-3 max-w-3xl text-body-l text-ink-600">
-            Use your consultation thread to ask your doctor a follow-up question
-            while the case is open. To confirm facility hours or services, call
-            the facility directly.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <ButtonLink to="/app/consults" variant="tonal" icon={MessageCircle}>
-              Your consults
-            </ButtonLink>
-            <ButtonLink to="/app/facilities" variant="secondary" icon={MapPin}>
-              Facility directory
-            </ButtonLink>
-          </div>
-        </StaggerItem>
-      </StaggerContainer>
-    </>
-  )
+export default function About(){
+  return <><PublicHero eyebrow="CareBridge · Buea" title={"Care, within\nreach."} lede="Built around the next step." body="A health-access PWA for Buea: find facilities, check danger signs and consult a doctor by text or voice." actions={<ButtonLink to="/app/facilities" icon={MapPin}>Find care near you</ButtonLink>} card={<FeatureCard chips={["Buea","Offline","Household"]} title="Closer to your community." line="Start with the facility directory, even on a weak connection."><ButtonLink variant="tonal" to="/how-it-works">How it works</ButtonLink></FeatureCard>} breakout={<BueaDirectoryVignette facilities={seed as Facility[]}/>}><StatementBand panel={{icon:Users,title:"One phone, more people.",body:"With permission, you can ask for care on behalf of a household member who does not have a phone."}} stat={{value:String(seed.length),label:"facilities in the built-in directory"}} statement="Local context. A clear next step." link={{to:"/how-it-works#help",label:"Find practical help"}}/></PublicHero>
+    <section className="container-page py-10"><Reveal><p className="eyebrow">What CareBridge does</p><h2 className="mt-3 mb-6 text-display-m">A bridge to care.</h2></Reveal><CardGrid min={300}>{[{icon:MapPin,title:"Find a facility",text:"Read location and capability details, then call to check what is available."},{icon:Activity,title:"Check danger signs",text:"Use an advisory symptom check to help choose your next step."},{icon:MessageCircle,title:"Speak with a doctor",text:"Send text or voice notes in a paid, asynchronous consultation."}].map(s=><motion.li variants={popIn} key={s.title} className="flex flex-col gap-5 shape-br bg-white p-6 shadow-[var(--shadow-elev-1)]"><s.icon className="size-8 text-brand-700" aria-hidden/><h3 className="text-headline-s">{s.title}</h3><p className="text-body-l text-ink-600">{s.text}</p></motion.li>)}</CardGrid></section>
+    <section id="providers" className="container-page scroll-mt-24 py-10"><Panel title="For healthcare providers"><div className="grid gap-5 lg:grid-cols-2"><div><p className="eyebrow">Work from the queue</p><h2 className="mt-3 text-headline-l">The most urgent cases first.</h2></div><div><p className="text-body-l text-ink-600">The doctor workspace orders cases by urgency and waiting time. Doctors can review the symptom-check audit, reply and issue prescription or referral codes. Professional access is managed through the service’s assigned roles.</p><ButtonLink className="mt-5" variant="tonal" to="/sign-in">Provider sign-in</ButtonLink></div></div></Panel></section>
+    <section id="privacy" className="container-page scroll-mt-24 py-10"><Reveal><p className="eyebrow">Shared phones, careful choices</p><h2 className="mt-3 mb-6 text-display-m">Your information, your phone.</h2></Reveal><div className="grid gap-5 lg:grid-cols-2"><Panel title="Saved data"><Shield className="mb-4 size-6 text-brand-700" aria-hidden/><p className="text-body-l text-ink-600">Some care data stays on this phone so parts of the app work offline. Anyone who can use the browser may be able to see it. Review saved data in Profile and sign out when finished on a shared phone.</p></Panel><Panel title="Anonymous sessions"><p className="text-body-l text-ink-600">Anonymous consultations use a seven-day session on this browser. Its Forget control removes your way back to those conversations on this phone; it does not delete server records. Payment providers may identify you through a Mobile Money number.</p>{flags.anonymous&&<ButtonLink className="mt-5" variant="tonal" to="/ask">About anonymous care</ButtonLink>}</Panel></div></section>
+    <section id="contact" className="container-page scroll-mt-24 py-10"><Panel title="Need help finding care?" tone="mint"><div className="grid gap-5 lg:grid-cols-2"><p className="text-headline-l">Start with a practical next step.</p><div><p className="text-body-l">For a care conversation, use Consults. For guidance with the app, read How it works. In an emergency, call 15.</p><div className="mt-5 flex flex-wrap gap-3"><ButtonLink variant="tonal" to="/how-it-works#help">Read practical help</ButtonLink><ButtonA variant="danger" href="tel:15">Call 15</ButtonA></div></div></div></Panel></section>
+  </>
 }
+

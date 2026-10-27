@@ -42,7 +42,7 @@ export function AppPage({
       variants={staggerOnMount(0.06)}
       initial="hidden"
       animate="show"
-      className={cn("flex flex-col gap-5 lg:gap-7", className)}
+      className={cn("flex flex-col gap-5 lg:gap-7 short:gap-5", className)}
     >
       <motion.header
         variants={popIn}
@@ -67,7 +67,7 @@ export function AppPage({
       </motion.header>
 
       {layout === "split" && aside ? (
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:gap-7 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] xl:gap-7 2xl:grid-cols-[minmax(0,1fr)_400px]">
           <motion.div
             variants={staggerOnMount(0.06)}
             className={cn(

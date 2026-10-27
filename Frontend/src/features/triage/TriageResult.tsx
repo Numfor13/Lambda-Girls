@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useQuery } from "@tanstack/react-query"
-import { motion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 import {
   ArrowLeft,
   ClipboardList,
@@ -115,6 +115,7 @@ function RouteIllustration({ urgent }: { urgent: boolean }) {
 export default function TriageResultPage() {
   const { resultId = "" } = useParams()
   const navigate = useNavigate()
+  const reduce = useReducedMotion()
   const { session } = useAuth()
   const local = useLiveQuery(() => db.triage_results.get(resultId), [resultId])
   const remote = useQuery({
@@ -199,14 +200,14 @@ export default function TriageResultPage() {
           <motion.section
             variants={popIn}
             className={cn(
-              "relative overflow-hidden shape-bl p-6 sm:p-8 lg:p-10",
+              "relative overflow-hidden rounded-2xl p-6 sm:p-8 lg:p-10",
               meta.hero
             )}
             aria-labelledby="verdict"
           >
             <motion.span
               className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10"
-              animate={{ scale: [1, 1.15, 1] }}
+              animate={reduce ? undefined : { scale: [1, 1.12, 1] }}
               transition={{
                 duration: red ? 1.6 : 4,
                 repeat: Infinity,
@@ -217,9 +218,9 @@ export default function TriageResultPage() {
             <div className="relative flex items-center justify-between gap-3">
               <UrgencyBadge urgency={result.urgency} className="bg-white" />
               <motion.span
-                initial={{ scale: 0, rotate: -30 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ ...SPRING.bouncy, delay: 0.25 }}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ ...SPRING.default, delay: 0.25 }}
               >
                 <Icon className="size-9" aria-hidden />
               </motion.span>
@@ -236,6 +237,26 @@ export default function TriageResultPage() {
             <p className="relative mt-4 max-w-[560px] text-body-l opacity-95">
               {detail}
             </p>
+            {/* Where this result sits on the scale (a score card's legend, Osler/Ada style). */}
+            <ol className="relative mt-6 grid grid-cols-3 gap-1.5" aria-label="Urgency scale">
+              {(["RED", "AMBER", "GREEN"] as const).map((u, i) => {
+                const on = u === result.urgency
+                return (
+                  <li key={u} aria-current={on ? "true" : undefined}>
+                    <motion.span
+                      className={cn("block h-1.5 rounded-full", on ? "bg-white" : "bg-white/30")}
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      style={{ originX: 0 }}
+                      transition={{ ...SPRING.slow, delay: 0.3 + i * 0.1 }}
+                    />
+                    <span className={cn("mt-1.5 block text-label-m", on ? "opacity-100" : "opacity-60")}>
+                      {URGENCY_META[u].label}
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
           </motion.section>
 
           <motion.div
@@ -387,12 +408,7 @@ export default function TriageResultPage() {
                     className="flex items-start gap-3"
                   >
                     <UrgencyDot urgency={r.urgency} className="mt-1.5" />
-                    <span className="text-body-m">
-                      {r.description}
-                      <span className="block text-label-m text-ink-400">
-                        Rule {r.rule_id}
-                      </span>
-                    </span>
+                    <span className="text-body-m">{r.description}</span>
                   </motion.li>
                 ))}
               </ul>

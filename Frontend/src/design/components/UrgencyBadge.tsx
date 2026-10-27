@@ -45,7 +45,7 @@ export const URGENCY_META: Record<
     label: "Self-care",
     headline: "You can care for this at home.",
     icon: CircleCheck,
-    badge: "bg-urgent-green-50 text-urgent-green",
+    badge: "bg-urgent-green-50 text-urgent-green-ink",
     dot: "bg-urgent-green",
     hero: "bg-urgent-green text-white",
     page: "bg-urgent-green-50",

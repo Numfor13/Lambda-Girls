@@ -1,490 +1,91 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ClipboardList, MapPin, Phone, Search, Send } from "lucide-react"
+import { MapPin, Phone, Search, Send } from "lucide-react"
 import { request } from "@/api/client"
 import { serviceApi, LAB_STEPS, type CallbackRequest } from "@/api/services"
 import type { Facility } from "@/api/types"
+import { AppPage, Panel } from "@/design/components/AppPage"
 import { Button, ButtonA } from "@/design/components/Button"
+import { SyncStatus } from "@/design/components/AppChrome"
+import { CopyReference } from "@/design/components/CopyReference"
+import { ContentSkeleton } from "@/design/components/ContentSkeleton"
 import { Field, Input, Select, Textarea } from "@/design/components/Field"
-import { Feedback } from "@/design/components/Feedback"
-import {
-  ConsoleTable,
-  PollStatus,
-  useConsoleQuery,
-} from "@/design/components/ConsoleData"
-import {
-  ConnectionNote,
-  ServiceCard,
-  ServiceError,
-  ServicePage,
-  ServiceStatus,
-} from "@/design/components/ServicePage"
-import { EmptyState, PageSpinner } from "@/design/components/primitives"
+import { ConfirmAction, Feedback } from "@/design/components/Feedback"
+import { FormGuard } from "@/design/components/FormGuard"
+import { PollStatus, useConsoleQuery } from "@/design/components/ConsoleData"
+import { RecordPage, RecordTools, ResponsiveRecords, useRecordParams } from "@/design/components/RecordBrowser"
+import { ConnectionNote, ServiceError, ServiceStatus } from "@/design/components/ServicePage"
+import { StageProgress } from "@/design/components/StageProgress"
 import { UrgencyBadge } from "@/design/components/UrgencyBadge"
-import { formatDateTime, telHref } from "@/lib/format"
-import { useOnline } from "@/lib/hooks"
+import { toast } from "@/design/components/Toast"
+import { formatDateTime, telHref, timeAgo } from "@/lib/format"
+import { rules, useForm } from "@/lib/form"
+import { useNow, useOnline } from "@/lib/hooks"
 import { useFacilities } from "@/offline/facilities"
 import { LabTimeline } from "@/features/services/Labs"
 
-function CallbackAction({ item }: { item: CallbackRequest }) {
-  const [note, setNote] = useState(""),
-    online = useOnline(),
-    qc = useQueryClient()
-  const handle = useMutation({
-    mutationFn: () => serviceApi.handleCallback(item.request_id, note),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["operator-callbacks"] }),
-  })
-  return (
-    <div className="flex flex-col gap-3">
-      <Field label="Handler note (optional)">
-        {(id) => (
-          <Textarea
-            id={id}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={2000}
-          />
-        )}
-      </Field>
-      <Button
-        variant="tonal"
-        disabled={!online}
-        loading={handle.isPending}
-        onClick={() => handle.mutate()}
-      >
-        Mark handled
-      </Button>
-      <ServiceError error={handle.error} />
-    </div>
-  )
+const RANK={RED:0,AMBER:1,GREEN:2}
+function CallbackDetail({item,active,done}:{item:CallbackRequest;active:boolean;done:()=>void}) {
+  const online=useOnline(),qc=useQueryClient(),[confirm,setConfirm]=useState(false)
+  const form=useForm({note:""},{note:[rules.maxLength(2000)]})
+  const handle=useMutation({mutationFn:()=>serviceApi.handleCallback(item.request_id,form.values.note.trim()),onSuccess:async()=>{form.reset();setConfirm(false);await qc.invalidateQueries({queryKey:["operator-callbacks"]});toast("Callback handled. This cannot be undone.",{tone:"info"});done()},onError:()=>void qc.invalidateQueries({queryKey:["operator-callbacks"]})})
+  return <Panel title="Selected callback"><div className="flex flex-col gap-4"><UrgencyBadge urgency={item.urgency} short/><p className="text-title-l">{item.phone}</p><p className="text-label-m text-ink-600">Requested {formatDateTime(item.created_at)}</p><p className="text-body-m break-all">Reference: {item.request_id}</p><CopyReference value={item.request_id}/><ButtonA variant="tonal" icon={Phone} href={telHref(item.phone)}>Call patient</ButtonA>{!active&&<Feedback>This request has left the pending queue. Your note is still shown below.</Feedback>}<form noValidate className="flex flex-col gap-4" onSubmit={e=>{e.preventDefault();if(form.check()&&online&&active)setConfirm(true)}}><Field label="Handler note (optional)" count={form.values.note.length} max={2000} error={form.error("note")}>{id=><Textarea id={id} maxLength={2000} {...form.bind("note")}/>}</Field><ServiceError error={handle.error}/>{confirm?<ConfirmAction title="Mark callback handled?" confirmLabel="Mark handled" loading={handle.isPending} onConfirm={()=>handle.mutate()} onCancel={()=>setConfirm(false)}>Only confirm after completing your callback procedure. This cannot be undone through the service.</ConfirmAction>:<Button type="submit" disabled={!online||!active} loading={handle.isPending}>Mark handled</Button>}<ConnectionNote/><FormGuard when={form.dirty&&!handle.isPending} watchQuery={["selected"]}/></form></div></Panel>
 }
 export default function OperatorCallbacks() {
-  const query = useConsoleQuery("operator-callbacks", serviceApi.callbacks)
-  const rows = [...(query.data?.callbacks ?? [])].sort(
-    (a, b) => a.created_at - b.created_at
-  )
-  return (
-    <ServicePage
-      title="Nurse callbacks"
-      subtitle="Pending requests, longest waiting first."
-    >
-      <PollStatus
-        updated={query.dataUpdatedAt}
-        refresh={() => void query.refetch()}
-        loading={query.isFetching}
-      />
-      <ServiceError error={query.error} />
-      {query.isPending ? (
-        <PageSpinner />
-      ) : !rows.length ? (
-        <EmptyState icon={ClipboardList} title="No pending callbacks." />
-      ) : (
-        <ConsoleTable
-          columns={["Request", "Action"]}
-          caption="Pending nurse callbacks"
-        >
-          {rows.map((c) => (
-            <tr key={c.request_id}>
-              <td className="p-4 align-top">
-                <div className="flex flex-col items-start gap-3">
-                  <UrgencyBadge urgency={c.urgency} short />
-                  <p className="text-title-m break-words">{c.phone}</p>
-                  <p>{formatDateTime(c.created_at)}</p>
-                  <ButtonA variant="tonal" icon={Phone} href={telHref(c.phone)}>
-                    Call
-                  </ButtonA>
-                </div>
-              </td>
-              <td className="min-w-0 p-4 align-top">
-                <CallbackAction item={c} />
-              </td>
-            </tr>
-          ))}
-        </ConsoleTable>
-      )}
-      <ConnectionNote />
-    </ServicePage>
-  )
+  const query=useConsoleQuery("operator-callbacks",serviceApi.callbacks),view=useRecordParams(),now=useNow()
+  const [snapshot,setSnapshot]=useState<CallbackRequest|null>(null),all=query.data?.callbacks??[]
+  const rows=all.filter(c=>`${c.phone} ${c.request_id}`.toLowerCase().includes(view.q.toLowerCase())).sort((a,b)=>view.sort==="newest"?b.created_at-a.created_at:a.created_at-b.created_at)
+  const selected=all.find(c=>c.request_id===view.selected)??(snapshot?.request_id===view.selected?snapshot:undefined)
+  return <RecordPage title="Nurse callbacks" subtitle="Pending callback requests. Open a record to call and document the outcome." actions={<SyncStatus/>} updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching} error={query.error} pending={query.isPending} empty={!rows.length} stats={[{label:"pending callbacks",value:all.length}]} aside={selected?<CallbackDetail key={selected.request_id} item={selected} active={all.some(c=>c.request_id===selected.request_id)} done={()=>view.set("selected","")}/>:<Panel title="Work from the queue" tone="mint"><p className="text-body-l">Choose a request to see its phone number and add a handling note. Mark it handled after completing your callback procedure.</p></Panel>}>
+    <RecordTools label="Callbacks" total={all.length} shown={rows.length} view={view}/>
+    <ResponsiveRecords rows={rows} id={c=>c.request_id} selected={view.selected} onSelect={c=>{setSnapshot(c);view.set("selected",c.request_id)}} caption="Pending callbacks" columns={[{label:"Urgency",content:c=><UrgencyBadge urgency={c.urgency} short/>},{label:"Phone",content:c=><span className="text-title-m">{c.phone}</span>},{label:"Waiting",content:c=>timeAgo(c.created_at,now)}]} card={c=><><UrgencyBadge urgency={c.urgency} short/><h2 className="text-title-l">{c.phone}</h2><p className="text-body-m text-ink-600">Waiting {timeAgo(c.created_at,now)}</p></>}/>
+  </RecordPage>
 }
 export function OperatorDispatch() {
-  const online = useOnline()
-  const [capability, setCapability] = useState(""),
-    [term, setTerm] = useState(""),
-    [facility, setFacility] = useState(""),
-    [note, setNote] = useState("")
-  const query = useConsoleQuery(
-    `dispatch-facilities:${capability}`,
-    async () => {
-      const facilities: Facility[] = []
-      let lastKey: string | undefined
-      do {
-        const page = await request<{
-          facilities: Facility[]
-          next_key: string | null
-        }>("facility", "/facilities", {
-          auth: false,
-          query: { capability: capability || undefined, last_key: lastKey },
-        })
-        facilities.push(...page.facilities)
-        lastKey = page.next_key ?? undefined
-      } while (lastKey)
-      return { facilities }
-    }
-  )
-  const rows =
-    query.data?.facilities.filter(
-      (f) =>
-        f.name.toLowerCase().includes(term.toLowerCase()) ||
-        f.quarter.toLowerCase().includes(term.toLowerCase())
-    ) ?? []
-  const send = useMutation({
-    mutationFn: () => serviceApi.dispatch({ facility_id: facility, note }),
-    onSuccess: () => {
-      setNote("")
-      setFacility("")
-    },
-  })
-  return (
-    <ServicePage
-      title="Dispatch log"
-      subtitle="Find a facility, then record the dispatch you arranged."
-    >
-      <ServiceCard title="Facility search">
-        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          <Field label="Capability">
-            {(id) => (
-              <Select
-                id={id}
-                value={capability}
-                onChange={(e) => {
-                  setCapability(e.target.value)
-                  setFacility("")
-                }}
-              >
-                <option value="">All capabilities</option>
-                {[
-                  "general",
-                  "emergency",
-                  "maternity",
-                  "laboratory",
-                  "blood_bank",
-                ].map((c) => (
-                  <option key={c} value={c}>
-                    {c.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
-          <Field label="Search name or quarter">
-            {(id) => (
-              <Input
-                id={id}
-                value={term}
-                onChange={(e) => {
-                  setTerm(e.target.value)
-                  setFacility("")
-                }}
-              />
-            )}
-          </Field>
-        </div>
-        <PollStatus
-          updated={query.dataUpdatedAt}
-          refresh={() => void query.refetch()}
-          loading={query.isFetching}
-        />
-        <ServiceError error={query.error} />
-        <form
-          className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (online && !send.isPending) send.mutate()
-          }}
-        >
-          <div className="flex min-w-0 flex-col gap-4">
-            <Field label="Destination facility">
-              {(id) => (
-                <Select
-                  id={id}
-                  value={facility}
-                  onChange={(e) => setFacility(e.target.value)}
-                  required
-                >
-                  <option value="">Choose a destination</option>
-                  {rows.map((f) => (
-                    <option value={f.facility_id} key={f.facility_id}>
-                      {f.name} · {f.quarter}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Field label="Dispatch note (optional)">
-              {(id) => (
-                <Textarea
-                  id={id}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  maxLength={2000}
-                />
-              )}
-            </Field>
-          </div>
-          <aside className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-4">
-            <ConnectionNote />
-            <ServiceError error={send.error} />
-            {send.isSuccess && (
-              <Feedback success>
-                Dispatch logged. Reference: {send.data.log_id}
-              </Feedback>
-            )}
-            <Button
-              icon={Send}
-              type="submit"
-              className="self-start"
-              disabled={!online || !facility}
-              loading={send.isPending}
-            >
-              Save dispatch log
-            </Button>
-          </aside>
-        </form>
-      </ServiceCard>
-    </ServicePage>
-  )
+  const online=useOnline(),view=useRecordParams(),capability=view.params.get("capability")??""
+  const query=useConsoleQuery(`dispatch-facilities:${capability}`,async()=>{const facilities:Facility[]=[];let lastKey:string|undefined;do{const p=await request<{facilities:Facility[];next_key:string|null}>("facility","/facilities",{auth:false,query:{capability:capability||undefined,last_key:lastKey}});facilities.push(...p.facilities);lastKey=p.next_key??undefined}while(lastKey);return facilities})
+  const form=useForm({facility_id:"",note:""},{facility_id:[rules.required("Choose the destination facility.")],note:[rules.maxLength(2000)]})
+  const [confirm,setConfirm]=useState(false)
+  const rows=(query.data??[]).filter(f=>`${f.name} ${f.quarter}`.toLowerCase().includes(view.q.toLowerCase()))
+  const selected=query.data?.find(f=>f.facility_id===form.values.facility_id)
+  const send=useMutation({mutationFn:()=>serviceApi.dispatch({facility_id:form.values.facility_id,note:form.values.note.trim()}),onSuccess:()=>{form.reset();setConfirm(false);toast("Dispatch log saved")}})
+  return <AppPage eyebrow="Operator workspace" title="Dispatch log" subtitle="Find a facility, then record the dispatch you arranged." actions={<SyncStatus/>} aside={<><Panel title="Log the dispatch"><form noValidate className="flex flex-col gap-4" onSubmit={e=>{e.preventDefault();if(form.check()&&online)setConfirm(true)}}><Field label="Destination facility" required error={form.error("facility_id")}>{id=><Select id={id} {...form.bind("facility_id")}><option value="">Choose a destination</option>{[...new Map([...(selected?[selected]:[]),...rows].map(f=>[f.facility_id,f])).values()].map(f=><option key={f.facility_id} value={f.facility_id}>{f.name}</option>)}</Select>}</Field><Field label="Dispatch note (optional)" count={form.values.note.length} max={2000} error={form.error("note")}>{id=><Textarea id={id} maxLength={2000} {...form.bind("note")}/>}</Field><ServiceError error={send.error}/>{confirm?<ConfirmAction title="Save this dispatch log?" confirmLabel="Save dispatch log" loading={send.isPending} onConfirm={()=>send.mutate()} onCancel={()=>setConfirm(false)}>This records the dispatch you arranged; it does not send a team automatically.</ConfirmAction>:<Button type="submit" icon={Send} disabled={!online} loading={send.isPending}>Save dispatch log</Button>}{send.data&&<CopyReference value={send.data.log_id}/>}<ConnectionNote/><FormGuard when={form.dirty&&!send.isPending}/></form></Panel>{selected&&<Panel title="Destination contact" tone="mint"><p className="text-title-l">{selected.name}</p><p className="mt-3 text-body-m">{selected.address}</p>{selected.phone&&<ButtonA className="mt-4" variant="tonal" icon={Phone} href={telHref(selected.phone)}>Call facility</ButtonA>}</Panel>}</>}>
+    <Panel title="Facility search"><div className="grid gap-4 sm:grid-cols-2"><Field label="Search facilities">{id=><Input id={id} type="search" maxLength={100} value={view.q} placeholder="Name or quarter" onChange={e=>view.set("q",e.target.value)}/>}</Field><Field label="Capability">{id=><Select id={id} value={capability} onChange={e=>view.set("capability",e.target.value)}><option value="">All capabilities</option>{["general","emergency","maternity","laboratory","blood_bank"].map(c=><option key={c} value={c}>{c.replaceAll("_"," ")}</option>)}</Select>}</Field></div><p className="mt-4 text-label-m text-ink-600" role="status">{rows.length} facilities shown</p>{(view.q||capability)&&<Button className="mt-3" variant="ghost" onClick={()=>{view.clear();view.set("capability","")}}>Clear filters</Button>}</Panel>
+    <PollStatus updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching}/><ServiceError error={query.error}/>{query.isPending?<ContentSkeleton/>:<ResponsiveRecords rows={rows} id={f=>f.facility_id} selected={form.values.facility_id} onSelect={f=>form.set("facility_id",f.facility_id)} caption="Dispatch destinations" columns={[{label:"Facility",content:f=><span className="text-title-m">{f.name}</span>},{label:"Quarter",content:f=>f.quarter},{label:"Services",content:f=>f.capabilities.join(", ").replaceAll("_"," ")}]} card={f=><><h2 className="text-title-l">{f.name}</h2><p className="text-body-m">{f.quarter}</p></>}/>}
+  </AppPage>
 }
 export function OperatorEmergencies() {
-  const query = useConsoleQuery("operator-emergencies", serviceApi.emergencies)
-  return (
-    <ServicePage
-      title="Shared emergency locations"
-      subtitle="Live locations shared in the last 24 hours. Follow your emergency-response procedures."
-    >
-      <PollStatus
-        updated={query.dataUpdatedAt}
-        refresh={() => void query.refetch()}
-        loading={query.isFetching}
-      />
-      <ServiceError error={query.error} />
-      {query.isPending ? (
-        <PageSpinner />
-      ) : !query.data?.emergencies.length ? (
-        <EmptyState icon={MapPin} title="No active shared locations." />
-      ) : (
-        <ConsoleTable
-          columns={["Shared location", "Time"]}
-          caption="Active emergency locations"
-        >
-          {query.data.emergencies.map((e) => (
-            <tr key={e.emergency_id}>
-              <td className="p-4 align-top">
-                <div className="flex flex-col items-start gap-3">
-                  <p className="text-title-m">
-                    {e.latitude.toFixed(5)}, {e.longitude.toFixed(5)}
-                  </p>
-                  <p className="text-label-m break-all">
-                    Reference {e.emergency_id}
-                  </p>
-                  <ButtonA
-                    variant="tonal"
-                    icon={MapPin}
-                    href={`https://www.google.com/maps/search/?api=1&query=${e.latitude},${e.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open map
-                  </ButtonA>
-                  <p className="text-label-m text-ink-600">
-                    Opening the map sends these coordinates to Google Maps.
-                  </p>
-                </div>
-              </td>
-              <td className="p-4 align-top">
-                <p>{formatDateTime(e.timestamp)}</p>
-                <p className="mt-2 text-ink-600">
-                  Expires {formatDateTime(e.ttl * 1000)}
-                </p>
-              </td>
-            </tr>
-          ))}
-        </ConsoleTable>
-      )}
-    </ServicePage>
-  )
+  const query=useConsoleQuery("operator-emergencies",serviceApi.emergencies),view=useRecordParams(),now=useNow()
+  const all=(query.data?.emergencies??[]).filter(e=>e.ttl*1000>now)
+  const rows=all.filter(e=>`${e.emergency_id} ${e.latitude}, ${e.longitude}`.includes(view.q)).sort((a,b)=>view.sort==="newest"?b.timestamp-a.timestamp:a.timestamp-b.timestamp)
+  const selected=all.find(e=>e.emergency_id===view.selected)
+  return <RecordPage title="Shared emergency locations" subtitle="Live locations shared in the last 24 hours. Follow your emergency-response procedures." actions={<SyncStatus/>} updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching} error={query.error} pending={query.isPending} empty={!rows.length} stats={[{label:"live locations",value:all.length}]} aside={<Panel title={selected?"Selected location":"Location sharing"} tone={selected?"white":"mint"}>{selected?<div className="flex flex-col items-start gap-4"><p className="text-title-l">{selected.latitude.toFixed(5)}, {selected.longitude.toFixed(5)}</p><p className="text-body-m">Shared {formatDateTime(selected.timestamp)}</p><p className="text-body-m">Expires {formatDateTime(selected.ttl*1000)}</p><p className="text-body-m break-all">{selected.emergency_id}</p><CopyReference value={selected.emergency_id}/><ButtonA variant="tonal" icon={MapPin} href={`https://www.google.com/maps/search/?api=1&query=${selected.latitude},${selected.longitude}`} target="_blank" rel="noopener noreferrer">Open map</ButtonA><p className="text-label-m text-ink-600">Opening the map sends these coordinates to Google Maps.</p></div>:<p className="text-body-l">Choose a location to see its coordinates, expiry and map link. An alert does not confirm that a response has been arranged.</p>}</Panel>}>
+    <RecordTools label="Locations" total={all.length} shown={rows.length} view={view}/><ResponsiveRecords rows={rows} id={e=>e.emergency_id} selected={view.selected} onSelect={e=>view.set("selected",e.emergency_id)} caption="Live emergency locations" columns={[{label:"Location",content:e=><span className="text-title-m">{e.latitude.toFixed(5)}, {e.longitude.toFixed(5)}</span>},{label:"Shared",content:e=>timeAgo(e.timestamp,now)},{label:"Expires",content:e=>formatDateTime(e.ttl*1000)}]} card={e=><><MapPin className="size-6 text-brand-700" aria-hidden/><h2 className="text-title-l">{e.latitude.toFixed(5)}, {e.longitude.toFixed(5)}</h2><p className="text-body-m">Shared {timeAgo(e.timestamp,now)}</p></>}/>
+  </RecordPage>
 }
 export function OperatorBlood() {
-  const query = useConsoleQuery("operator-blood", serviceApi.blood),
-    facilities = useFacilities()
-  return (
-    <ServicePage
-      title="Blood requests"
-      subtitle="Pending clinical requests, most urgent first."
-    >
-      <PollStatus
-        updated={query.dataUpdatedAt}
-        refresh={() => void query.refetch()}
-        loading={query.isFetching}
-      />
-      <ServiceError error={query.error} />
-      {query.isPending ? (
-        <PageSpinner />
-      ) : !query.data?.blood_requests.length ? (
-        <EmptyState icon={ClipboardList} title="No pending blood requests." />
-      ) : (
-        <ConsoleTable
-          columns={["Request", "Facility"]}
-          caption="Pending blood requests"
-        >
-          {query.data.blood_requests.map((b) => (
-            <tr key={b.request_id}>
-              <td className="p-4 align-top">
-                <div className="flex flex-col items-start gap-3">
-                  <UrgencyBadge urgency={b.urgency} short />
-                  <h2 className="text-title-l">
-                    {b.blood_type} · {b.units} unit(s)
-                  </h2>
-                  <p>{formatDateTime(b.created_at)}</p>
-                  <ServiceStatus>{b.status}</ServiceStatus>
-                </div>
-              </td>
-              <td className="p-4 align-top">
-                {facilities?.find(
-                  (f) => f.facility_id === b.requesting_facility_id
-                )?.name ?? "Requesting facility"}
-              </td>
-            </tr>
-          ))}
-        </ConsoleTable>
-      )}
-      <Feedback>
-        Use your operational process to coordinate availability. This service
-        does not provide a fulfilment status update.
-      </Feedback>
-    </ServicePage>
-  )
+  const query=useConsoleQuery("operator-blood",serviceApi.blood),view=useRecordParams(),now=useNow(),facilities=useFacilities()
+  const all=query.data?.blood_requests??[],rows=all.filter(b=>(!view.filter||b.urgency===view.filter)&&`${b.blood_type} ${facilities?.find(f=>f.facility_id===b.requesting_facility_id)?.name??""}`.toLowerCase().includes(view.q.toLowerCase())).sort((a,b)=>RANK[a.urgency]-RANK[b.urgency]||(view.sort==="newest"?b.created_at-a.created_at:a.created_at-b.created_at))
+  const selected=all.find(b=>b.request_id===view.selected),facility=facilities?.find(f=>f.facility_id===selected?.requesting_facility_id)
+  return <RecordPage title="Blood requests" subtitle="Most urgent first; the age sort applies within each urgency level." actions={<SyncStatus/>} updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching} error={query.error} pending={query.isPending} empty={!rows.length} stats={[{label:"pending requests",value:all.length}]} aside={<Panel title={selected?"Selected request":"Coordinate availability"} tone={selected?"white":"mint"}>{selected?<div className="flex flex-col items-start gap-4"><UrgencyBadge urgency={selected.urgency} short/><h2 className="text-headline-m">{selected.blood_type} · {selected.units} unit(s)</h2><StageProgress steps={[{key:"pending",label:"Request pending"}]} current={selected.status}/><p className="text-title-m">{facility?.name??"Requesting facility"}</p>{facility?.phone&&<ButtonA variant="tonal" icon={Phone} href={telHref(facility.phone)}>Call facility</ButtonA>}<p className="text-body-m break-all">{selected.request_id}</p><CopyReference value={selected.request_id}/><p className="text-label-m text-ink-600">Requested {formatDateTime(selected.created_at)}</p><Feedback>The service has no fulfilment-status update. Use your operational process to coordinate availability.</Feedback></div>:<p className="text-body-l">Choose a request to review the clinical details and contact the requesting facility. Request status does not confirm blood availability.</p>}</Panel>}>
+    <RecordTools label="Blood requests" total={all.length} shown={rows.length} view={view} filters={(["RED","AMBER","GREEN"] as const).map(u=>({key:u,label:u,count:all.filter(b=>b.urgency===u).length}))}/><ResponsiveRecords rows={rows} id={b=>b.request_id} selected={view.selected} onSelect={b=>view.set("selected",b.request_id)} caption="Pending blood requests" columns={[{label:"Urgency",content:b=><UrgencyBadge urgency={b.urgency} short/>},{label:"Request",content:b=><span className="text-title-m">{b.blood_type} · {b.units} unit(s)</span>},{label:"Facility",content:b=>facilities?.find(f=>f.facility_id===b.requesting_facility_id)?.name??"Requesting facility"},{label:"Waiting",content:b=>timeAgo(b.created_at,now)}]} card={b=><><UrgencyBadge urgency={b.urgency} short/><h2 className="text-title-l">{b.blood_type} · {b.units} unit(s)</h2><p className="text-body-m">{facilities?.find(f=>f.facility_id===b.requesting_facility_id)?.name??"Requesting facility"}</p></>}/>
+  </RecordPage>
+}
+function LabLookup({selected,choose}:{selected:string;choose:(id:string)=>void}) {
+  const online=useOnline(),form=useForm({id:selected},{id:[rules.required("Enter a lab request ID."),rules.maxLength(200)]})
+  return <Panel title="Find a request"><form noValidate className="flex flex-col gap-4 sm:flex-row sm:items-start" onSubmit={e=>{e.preventDefault();if(form.check())choose(form.values.id.trim())}}><div className="min-w-0 flex-1"><Field label="Lab request ID" required error={form.error("id")}>{id=><Input id={id} maxLength={200} {...form.bind("id")}/>}</Field></div><Button variant="tonal" icon={Search} type="submit" disabled={!online}>Open request</Button></form></Panel>
+}
+function LabUpdate({lab,refresh}:{lab:import("@/api/services").LabRequest;refresh:()=>void}) {
+  const online=useOnline(),form=useForm({result_summary:""},{result_summary:[rules.maxLength(8000)]}),[confirm,setConfirm]=useState<import("@/api/services").LabStatus|null>(null)
+  const next=LAB_STEPS[LAB_STEPS.indexOf(lab.status)+1]
+  const update=useMutation({mutationFn:(status:import("@/api/services").LabStatus)=>serviceApi.updateLab(lab.request_id,{status,...(status==="results_ready"?{result_summary:form.values.result_summary.trim()}:{})}),onSuccess:()=>{form.reset();setConfirm(null);refresh();toast("Lab status updated")},onError:()=>{setConfirm(null);refresh()}})
+  return <Panel title="Update the current stage"><form noValidate className="flex flex-col gap-4" onSubmit={e=>{e.preventDefault();if(form.check()&&online&&next)setConfirm(next)}}><p className="text-title-m">{lab.test_type}</p><ServiceStatus>{lab.status.replaceAll("_"," ")}</ServiceStatus>{(next==="results_ready"||form.values.result_summary)&&<Field label="Result summary (optional)" count={form.values.result_summary.length} max={8000} error={form.error("result_summary")} hint="A summary is saved only when moving to Results ready.">{id=><Textarea id={id} maxLength={8000} {...form.bind("result_summary")}/>}</Field>}<ServiceError error={update.error}/>{next?(confirm?<ConfirmAction title={`Mark ${confirm.replaceAll("_"," ")}?`} confirmLabel="Update lab status" loading={update.isPending} onConfirm={()=>update.mutate(confirm)} onCancel={()=>setConfirm(null)}>Confirm that this step has been completed. Stages cannot be moved backwards through this service.</ConfirmAction>:<Button type="submit" disabled={!online} loading={update.isPending}>Mark {next.replaceAll("_"," ")}</Button>):<Feedback>This request has reached Delivered. There are no further stage updates.</Feedback>}<ConnectionNote/><FormGuard when={form.dirty&&!update.isPending} watchQuery={["selected"]}/></form></Panel>
 }
 export function OperatorLabs() {
-  const [entry, setEntry] = useState(""),
-    [id, setId] = useState(""),
-    [summary, setSummary] = useState("")
-  const online = useOnline(),
-    qc = useQueryClient()
-  const query = useConsoleQuery(
-    `staff-lab:${id}`,
-    () => serviceApi.lab(id),
-    Boolean(id)
-  )
-  const next = query.data
-    ? LAB_STEPS[LAB_STEPS.indexOf(query.data.status) + 1]
-    : undefined
-  const update = useMutation({
-    mutationFn: () =>
-      serviceApi.updateLab(id, {
-        status: next!,
-        ...(next === "results_ready" ? { result_summary: summary } : {}),
-      }),
-    onSuccess: async () => {
-      setSummary("")
-      await qc.invalidateQueries({ queryKey: [`staff-lab:${id}`] })
-    },
-    onError: () => void query.refetch(),
-  })
-  return (
-    <ServicePage
-      title="Lab status"
-      subtitle="Open a request by its ID. Operators cannot browse all lab requests."
-    >
-      <ServiceCard title="Find a request">
-        <form
-          className="flex flex-col gap-4 sm:flex-row sm:items-end"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setId(entry.trim())
-            update.reset()
-          }}
-        >
-          <div className="min-w-0 flex-1">
-            <Field label="Lab request ID">
-              {(field) => (
-                <Input
-                  id={field}
-                  value={entry}
-                  onChange={(e) => setEntry(e.target.value)}
-                  required
-                />
-              )}
-            </Field>
-          </div>
-          <Button
-            icon={Search}
-            type="submit"
-            disabled={!online || !entry.trim()}
-          >
-            Open request
-          </Button>
-        </form>
-      </ServiceCard>
-      {id && (
-        <>
-          <PollStatus
-            updated={query.dataUpdatedAt}
-            refresh={() => void query.refetch()}
-            loading={query.isFetching}
-          />
-          <ServiceError error={query.error} />
-          {query.isPending ? (
-            <PageSpinner />
-          ) : (
-            query.data && (
-              <ServiceCard title={query.data.test_type}>
-                <p className="text-body-m break-all">{query.data.request_id}</p>
-                <LabTimeline lab={query.data} />
-                {query.data.result_summary && (
-                  <p className="text-body-l whitespace-pre-wrap">
-                    {query.data.result_summary}
-                  </p>
-                )}
-                {next && (
-                  <form
-                    className="flex flex-col items-start gap-4"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      if (online && !update.isPending) update.mutate()
-                    }}
-                  >
-                    {next === "results_ready" && (
-                      <Field label="Result summary (optional)">
-                        {(field) => (
-                          <Textarea
-                            id={field}
-                            value={summary}
-                            onChange={(e) => setSummary(e.target.value)}
-                            maxLength={8000}
-                          />
-                        )}
-                      </Field>
-                    )}
-                    <Button
-                      type="submit"
-                      variant="tonal"
-                      loading={update.isPending}
-                      disabled={!online}
-                    >
-                      Mark {next.replaceAll("_", " ")}
-                    </Button>
-                  </form>
-                )}
-                <ServiceError error={update.error} />
-                {update.isSuccess && (
-                  <Feedback success>Lab status updated.</Feedback>
-                )}
-                <ConnectionNote />
-              </ServiceCard>
-            )
-          )}
-        </>
-      )}
-    </ServicePage>
-  )
+  const view=useRecordParams(),now=useNow()
+  const query=useConsoleQuery(`staff-lab:${view.selected}`,()=>serviceApi.lab(view.selected),Boolean(view.selected))
+  return <AppPage eyebrow="Operator workspace" title="Lab status" subtitle="Open a request by ID. The service does not provide an operator list of all lab requests." actions={<SyncStatus/>} aside={query.data?<LabUpdate key={query.data.request_id} lab={query.data} refresh={()=>void query.refetch()}/>:<Panel title="Update a request" tone="mint"><p className="text-body-l">Look up a request to advance its stage. Follow the four-step order; result summaries belong to the Results ready step.</p></Panel>}>
+    <LabLookup key={view.selected} selected={view.selected} choose={id=>view.set("selected",id)}/>
+    {view.selected&&<><PollStatus updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching}/><ServiceError error={query.error}/>{query.isPending?<ContentSkeleton rows={2}/>:query.data&&<><Panel title={query.data.test_type}><LabTimeline lab={query.data}/><p className="mt-4 text-label-m text-ink-600">Updated {timeAgo(query.data.updated_at,now)}</p></Panel><Panel title="Request reference"><p className="mb-4 text-body-m break-all">{query.data.request_id}</p><CopyReference value={query.data.request_id}/></Panel>{query.data.result_summary&&<Panel title="Result summary"><p className="whitespace-pre-wrap text-body-l">{query.data.result_summary}</p></Panel>}</>}{query.isError&&<Button variant="tonal" onClick={()=>void query.refetch()}>Retry lookup</Button>}</>}
+  </AppPage>
 }
