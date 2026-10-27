@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { motion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 import { ChevronRight, Inbox, Info, LoaderCircle } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { SPRING, popIn } from "@/design/motion"
@@ -81,26 +81,29 @@ export function Spinner({ className }: { className?: string }) {
   )
 }
 
-/** M3 Expressive loading indicator: a morphing, rotating shape instead of a bare spinner. */
+/**
+ * Route/page loading. v2: a plain ring, shown only after 300ms so fast loads (cached chunks,
+ * the production build) never flash it, while slow phones still see that something is coming.
+ */
 export function PageSpinner() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Loading">
-      <motion.span
-        className="block size-12 bg-brand-700"
-        animate={{
-          rotate: [0, 180, 360],
-          borderRadius: ["40% 60% 40% 60%", "50% 50% 30% 70%", "40% 60% 40% 60%"],
-          scale: [1, 0.85, 1],
-        }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </div>
+    <motion.div
+      className="flex min-h-[50vh] items-center justify-center"
+      role="status"
+      aria-label="Loading"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3, duration: 0.2 }}
+    >
+      <LoaderCircle className="size-8 animate-spin text-brand-700 motion-reduce:animate-none" strokeWidth={1.75} aria-hidden />
+    </motion.div>
   )
 }
 
 /**
- * Big status mark for outcome screens (payment, saved offline). Waiting = morphing M3 loading
- * shape; done = check that springs in with ripples; error = gentle shake. Brand colours only.
+ * Big status mark for outcome screens (payment, saved offline). Waiting = a still icon with a
+ * soft ring breathing out of it; done = a check that settles in; error and info = still.
+ * No morphing or rotation (v2 motion rules). Brand colours only.
  */
 export function StatusMark({
   state,
@@ -109,26 +112,19 @@ export function StatusMark({
   state: "waiting" | "done" | "error" | "info"
   icon: LucideIcon
 }) {
-  if (state === "waiting") {
-    return (
-      <motion.span
-        className="flex size-24 items-center justify-center bg-mint"
-        animate={{
-          rotate: [0, 90, 180, 270, 360],
-          borderRadius: ["40% 60% 40% 60%", "50%", "60% 40% 60% 40%", "50%", "40% 60% 40% 60%"],
-        }}
-        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-        role="presentation"
-      >
-        <motion.span animate={{ rotate: [0, -360] }} transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}>
-          <Icon className="size-10 text-brand-700" strokeWidth={1.75} aria-hidden />
-        </motion.span>
-      </motion.span>
-    )
-  }
+  const reduce = useReducedMotion()
   return (
     <span className="relative flex size-24 items-center justify-center">
-      {state === "done" &&
+      {state === "waiting" && !reduce && (
+        <motion.span
+          className="absolute inset-0 rounded-full bg-brand-500/20"
+          initial={{ scale: 1, opacity: 0.7 }}
+          animate={{ scale: 1.45, opacity: 0 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+          aria-hidden
+        />
+      )}
+      {state === "done" && !reduce &&
         [0, 1].map((i) => (
           <motion.span
             key={i}
@@ -136,6 +132,7 @@ export function StatusMark({
             initial={{ scale: 0.6, opacity: 0.8 }}
             animate={{ scale: 1.8, opacity: 0 }}
             transition={{ duration: 1.2, delay: 0.2 + i * 0.25, ease: "easeOut" }}
+            aria-hidden
           />
         ))}
       <motion.span
@@ -143,15 +140,11 @@ export function StatusMark({
           "relative flex size-24 items-center justify-center rounded-full",
           state === "done" && "bg-brand-700 text-white",
           state === "error" && "bg-urgent-red-50 text-urgent-red",
-          state === "info" && "bg-mint text-brand-700",
+          (state === "info" || state === "waiting") && "bg-mint text-brand-700",
         )}
-        initial={{ scale: 0.3, rotate: -30, opacity: 0 }}
-        animate={
-          state === "error"
-            ? { scale: 1, rotate: 0, opacity: 1, x: [0, -8, 8, -4, 0] }
-            : { scale: 1, rotate: 0, opacity: 1 }
-        }
-        transition={SPRING.bouncy}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={SPRING.default}
       >
         <Icon className="size-11" strokeWidth={1.75} aria-hidden />
       </motion.span>

@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useId, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
 import { cn } from "@/lib/utils"
@@ -72,11 +72,15 @@ export function Landscape({
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] })
+  // Per-instance gradient ids: two landscapes on one page must not share `cb-sky`/`cb-sun`.
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "")
+  const skyId = `cb-sky-${uid}`
+  const sunId = `cb-sun-${uid}`
   return (
     <div ref={ref} className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden>
       <svg viewBox={viewBox} preserveAspectRatio={preserve} className="size-full overflow-visible">
         <defs>
-          <linearGradient id="cb-sky" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={skyId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" style={{ stopColor: "var(--color-mint-200)" }} />
             <stop
               offset="0.55"
@@ -84,17 +88,17 @@ export function Landscape({
             />
             <stop offset="0.82" style={{ stopColor: "var(--color-land-haze)" }} />
           </linearGradient>
-          <radialGradient id="cb-sun" cx="0.5" cy="0.5" r="0.5">
+          <radialGradient id={sunId} cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stopColor="white" stopOpacity="0.9" />
             <stop offset="1" stopColor="white" stopOpacity="0" />
           </radialGradient>
         </defs>
-        {sky && <rect width="1440" height="900" fill="url(#cb-sky)" />}
+        {sky && <rect width="1440" height="900" fill={`url(#${skyId})`} />}
         <motion.circle
           cx="1000"
           cy="360"
           r="320"
-          fill="url(#cb-sun)"
+          fill={`url(#${sunId})`}
           animate={reduce ? undefined : { scale: [1, 1.06, 1], opacity: [0.85, 1, 0.85] }}
           transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
           style={{ transformOrigin: "1000px 360px" }}

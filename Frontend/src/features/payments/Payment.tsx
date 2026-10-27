@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   Check,
   Clock,
+  Copy,
   Share2,
   Smartphone,
   TriangleAlert,
@@ -26,8 +27,9 @@ import {
   PageSpinner,
   StatusMark,
 } from "@/design/components/primitives"
-import { popIn, staggerOnMount } from "@/design/motion"
+import { SPRING, popIn, staggerOnMount } from "@/design/motion"
 import { formatXaf } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { normalisePhone, rules } from "@/lib/form"
 import { useNow, useOnline } from "@/lib/hooks"
 import { findLocalConsultation, reconcileStatus } from "@/features/consult/actions"
@@ -52,17 +54,25 @@ function readPending(ref: string): Pending | null {
   }
 }
 
+interface Summary {
+  patient: string
+  request?: string
+}
+
 function PaymentStatus({
   consultRef,
   pending,
+  summary,
   onRetry,
 }: {
   consultRef: string
   pending: Pending
+  summary: Summary
   onRetry: () => void
 }) {
   const now = useNow(1_000)
-  const timedOut = now - pending.startedAt > TIMEOUT_MS
+  const elapsed = Math.max(0, now - pending.startedAt)
+  const timedOut = elapsed > TIMEOUT_MS
   const payment = useQuery({
     queryKey: ["payment", pending.paymentId],
     queryFn: () => paymentApi.get(pending.paymentId),
@@ -74,6 +84,7 @@ function PaymentStatus({
   useEffect(() => {
     if (paidConsultation) void reconcileStatus(paidConsultation, "paid")
   }, [paidConsultation])
+  const reference = payment.data?.fapshi_ref || pending.paymentId
 
   if (status === "confirmed") {
     return (
@@ -83,9 +94,7 @@ function PaymentStatus({
         <p className="max-w-sm text-body-l text-ink-600">
           You're in the queue. A doctor will reply soon.
         </p>
-        <p className="text-body-m text-ink-600">
-          Reference: {payment.data?.fapshi_ref}
-        </p>
+        <CopyRef value={reference} />
         <ButtonLink
           to={`/app/consult/${consultRef}`}
           trailing="arrow"
@@ -110,52 +119,199 @@ function PaymentStatus({
     )
   }
 
+  const steps: { label: string; hint?: string; state: "done" | "current" | "next" }[] = [
+    { label: "Request sent to Mobile Money", state: "done" },
+    {
+      label: timedOut ? "Taking longer than usual" : "Approve it on the paying phone",
+      hint: timedOut
+        ? "If the phone showed no prompt, start a new payment."
+        : "Enter the Mobile Money PIN when the prompt appears.",
+      state: "current",
+    },
+    { label: "Your case joins the doctor queue", state: "next" },
+  ]
+
   return (
-    <Outcome>
-      <StatusMark state={timedOut ? "info" : "waiting"} icon={Clock} />
-      <h1 className="text-headline-l">
-        {timedOut
-          ? "Still waiting for confirmation"
-          : "Confirming your payment…"}
-      </h1>
-      <p className="max-w-sm text-body-l text-ink-600">
-        {timedOut
-          ? "We'll let you know when it arrives. You can leave this page."
-          : "Approve the request on the phone that is paying. This page updates by itself."}
-      </p>
-      {payment.isError && (
-        <Notice tone="error">{friendlyError(payment.error)}</Notice>
-      )}
-      {pending.shareUrl && (
-        <Button
-          variant="secondary"
-          icon={Share2}
-          onClick={async () => {
-            if (navigator.share) {
-              await navigator
-                .share({
-                  title: "CareBridge consultation",
-                  text: "Please help pay for my doctor consultation",
-                  url: pending.shareUrl,
-                })
-                .catch(() => undefined)
-            } else {
-              await navigator.clipboard.writeText(pending.shareUrl!)
-            }
-          }}
-        >
-          Share payment link
-        </Button>
-      )}
-      <ButtonLink to={`/app/consult/${consultRef}`} variant="ghost">
-        Back to conversation
-      </ButtonLink>
-      {timedOut && (
-        <Button variant="ghost" size="sm" onClick={onRetry}>
-          Start a new payment
-        </Button>
-      )}
-    </Outcome>
+    <motion.div
+      variants={staggerOnMount(0.07)}
+      initial="hidden"
+      animate="show"
+      className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6"
+    >
+      <motion.section
+        variants={popIn}
+        className="flex flex-col gap-6 rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)] sm:p-7"
+        aria-live="polite"
+      >
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <StatusMark state={timedOut ? "info" : "waiting"} icon={Clock} />
+          <div className="min-w-0">
+            <p className="eyebrow">Payment</p>
+            <h1 className="mt-2 text-headline-l">
+              {timedOut ? "Still waiting for confirmation" : "Confirming your payment…"}
+            </h1>
+            <p className="mt-2 max-w-[52ch] text-body-l text-ink-600">
+              {timedOut
+                ? "You can leave this page. If the money left the account, your case still reaches a doctor."
+                : "This page updates by itself. Most payments confirm in under a minute."}
+            </p>
+          </div>
+        </div>
+
+        {/* Elapsed time against the 2-minute window, so the wait has a visible shape. */}
+        <div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-ink-900/10">
+            <motion.div
+              className="h-full rounded-full bg-brand-700"
+              initial={false}
+              animate={{ width: `${Math.min(100, (elapsed / TIMEOUT_MS) * 100)}%` }}
+              transition={SPRING.slow}
+            />
+          </div>
+          <p className="mt-2 flex justify-between text-label-m text-ink-600">
+            <span>{timedOut ? "Checks paused" : "Checking every few seconds"}</span>
+            <span className="tabular">{formatElapsed(elapsed)}</span>
+          </p>
+        </div>
+
+        <ol className="flex flex-col">
+          {steps.map((st, i) => (
+            <li key={st.label} className="relative flex gap-3 pb-4 last:pb-0">
+              {i < steps.length - 1 && (
+                <span
+                  className={cn(
+                    "absolute top-7 bottom-1 left-[11px] w-px",
+                    st.state === "done" ? "bg-brand-700" : "bg-ink-900/10",
+                  )}
+                  aria-hidden
+                />
+              )}
+              <span
+                className={cn(
+                  "relative flex size-6 shrink-0 items-center justify-center rounded-full text-label-m",
+                  st.state === "done" && "bg-brand-700 text-white",
+                  st.state === "current" && "bg-white text-brand-700 ring-2 ring-brand-700",
+                  st.state === "next" && "bg-cream text-ink-400 ring-1 ring-ink-900/10",
+                )}
+              >
+                {st.state === "done" ? <Check className="size-3.5" aria-hidden /> : i + 1}
+              </span>
+              <span className="min-w-0 pt-0.5">
+                <span className={cn("block text-label-l", st.state === "next" && "text-ink-400")}>
+                  {st.label}
+                </span>
+                {st.hint && <span className="mt-0.5 block text-body-m text-ink-600">{st.hint}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        {payment.isError && (
+          <Notice tone="error">{friendlyError(payment.error)}</Notice>
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-ink-900/8 pt-5 sm:flex-row sm:flex-wrap">
+          {pending.shareUrl && (
+            <Button
+              variant="secondary"
+              icon={Share2}
+              onClick={async () => {
+                if (navigator.share) {
+                  await navigator
+                    .share({
+                      title: "CareBridge consultation",
+                      text: "Please help pay for my doctor consultation",
+                      url: pending.shareUrl,
+                    })
+                    .catch(() => undefined)
+                } else {
+                  await navigator.clipboard.writeText(pending.shareUrl!)
+                }
+              }}
+            >
+              Share payment link
+            </Button>
+          )}
+          {timedOut && (
+            <Button variant="secondary" onClick={onRetry}>
+              Start a new payment
+            </Button>
+          )}
+          <ButtonLink to={`/app/consult/${consultRef}`} variant="ghost">
+            Back to conversation
+          </ButtonLink>
+        </div>
+      </motion.section>
+
+      <motion.aside
+        variants={staggerOnMount(0.07)}
+        className="flex flex-col gap-4 lg:sticky lg:top-6"
+      >
+        <OrderSummary {...summary} />
+        <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
+          <p className="text-label-l text-ink-600">Payment reference</p>
+          <CopyRef value={reference} className="mt-2" />
+          <p className="mt-3 text-body-m text-ink-600">
+            Keep it in case you need to ask about this payment.
+          </p>
+        </motion.section>
+      </motion.aside>
+    </motion.div>
+  )
+}
+
+function formatElapsed(ms: number) {
+  const total = Math.floor(ms / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+}
+
+/** A reference people may read out or paste: monospace, with a copy button that confirms. */
+function CopyRef({ value, className }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = window.setTimeout(() => setCopied(false), 2_000)
+    return () => window.clearTimeout(t)
+  }, [copied])
+  return (
+    <span className={cn("inline-flex max-w-full items-center gap-1 rounded-lg bg-cream py-1 pr-1 pl-3", className)}>
+      <span className="min-w-0 truncate text-code text-ink-900">{value}</span>
+      <button
+        type="button"
+        onClick={() => {
+          void navigator.clipboard?.writeText(value).then(() => setCopied(true), () => undefined)
+        }}
+        className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-label-l text-brand-700 transition-colors hover:bg-white"
+      >
+        {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+      </button>
+    </span>
+  )
+}
+
+/** Who, what and how much: the same card on the pay form and while waiting. */
+function OrderSummary({ patient, request, className }: Summary & { className?: string }) {
+  return (
+    <motion.section
+      variants={popIn}
+      className={cn("rounded-xl bg-brand-800 p-6 text-white shadow-[var(--shadow-elev-2)]", className)}
+    >
+      <dl className="space-y-3 text-body-l">
+        <div className="flex justify-between gap-4">
+          <dt className="text-white/70">Patient</dt>
+          <dd className="font-medium">{patient}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt className="shrink-0 text-white/70">Request</dt>
+          <dd className="line-clamp-3 max-w-[70%] text-right font-medium">{request}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-t border-white/20 pt-4">
+          <dt className="text-title-m">Amount</dt>
+          <dd className="text-headline-l text-white">{formatXaf(env.consultationFeeXaf)}</dd>
+        </div>
+      </dl>
+    </motion.section>
   )
 }
 
@@ -213,8 +369,21 @@ export default function Payment() {
   if (local === undefined || (serverId && consult.isPending))
     return <PageSpinner />
 
+  const c = consult.data?.consultation
+  const summary: Summary = {
+    patient: local?.subject_label ?? "You",
+    request: c?.complaint ?? local?.complaint,
+  }
+
   if (pending)
-    return <PaymentStatus consultRef={ref} pending={pending} onRetry={retry} />
+    return (
+      <PaymentStatus
+        consultRef={ref}
+        pending={pending}
+        summary={summary}
+        onRetry={retry}
+      />
+    )
 
   if (!serverId) {
     return (
@@ -226,7 +395,6 @@ export default function Payment() {
     )
   }
 
-  const c = consult.data?.consultation
   if (c && c.status !== "pending_payment") {
     return (
       <Outcome>
@@ -339,29 +507,7 @@ export default function Payment() {
         variants={staggerOnMount(0.07)}
         className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-4"
       >
-        <motion.section
-          variants={popIn}
-          className="-order-1 shape-br bg-brand-800 p-6 text-white shadow-[var(--shadow-elev-2)] lg:order-none"
-        >
-          <dl className="space-y-3 text-body-l">
-            <div className="flex justify-between gap-4">
-              <dt className="text-white/70">Patient</dt>
-              <dd className="font-medium">{local?.subject_label ?? "You"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="shrink-0 text-white/70">Request</dt>
-              <dd className="line-clamp-3 max-w-[70%] text-right font-medium">
-                {c?.complaint ?? local?.complaint}
-              </dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-4 border-t border-white/20 pt-4">
-              <dt className="text-title-m">Amount</dt>
-              <dd className="text-headline-l text-white">
-                {formatXaf(env.consultationFeeXaf)}
-              </dd>
-            </div>
-          </dl>
-        </motion.section>
+        <OrderSummary {...summary} className="-order-1 lg:order-none" />
 
         <motion.div
           variants={popIn}

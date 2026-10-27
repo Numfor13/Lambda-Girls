@@ -31,7 +31,7 @@ export function Logo({
   to?: string
 }) {
   return (
-    <Link to={to} className="inline-flex shrink-0 items-center gap-2 rounded-md" aria-label="CareBridge home">
+    <Link to={to} className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md" aria-label="CareBridge home">
       <LogoMark className={size === "lg" ? "h-10" : "h-7"} />
       <span
         className={cn(

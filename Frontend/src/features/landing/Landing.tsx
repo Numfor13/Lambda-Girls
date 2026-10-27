@@ -196,7 +196,7 @@ function FactsStrip() {
             delay={i * 0.05}
             className={cn("flex flex-col gap-1 px-1 lg:px-6", i > 0 && "lg:border-l lg:border-white/12")}
           >
-            <span className="font-display text-[34px] leading-none font-[440] tracking-[-0.02em] tabular lg:text-[44px]">
+            <span className="font-display text-[30px] leading-none font-[440] tracking-[-0.02em] whitespace-nowrap tabular sm:text-[34px] lg:text-[44px]">
               {f.value}
             </span>
             <span className="text-body-m text-white/70">{f.label}</span>
@@ -366,7 +366,7 @@ function Tile({
         <Link
           to={to}
           className={cn(
-            "mt-5 inline-flex items-center gap-1.5 text-label-l underline-offset-4 hover:underline",
+            "mt-4 inline-flex min-h-10 items-center gap-1.5 text-label-l underline-offset-4 hover:underline",
             dark ? "text-white" : "text-brand-700",
           )}
         >

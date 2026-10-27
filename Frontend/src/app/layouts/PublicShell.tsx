@@ -241,7 +241,7 @@ export function PublicFooter() {
           stagger={0.08}
         >
           <StaggerItem>
-            <span className="inline-flex rounded-full bg-white py-1.5 pr-4 pl-2.5">
+            <span className="inline-flex rounded-full bg-white pr-4 pl-2.5">
               <Logo />
             </span>
             <p className="mt-5 max-w-[28ch] text-body-l text-white/75">
@@ -251,12 +251,13 @@ export function PublicFooter() {
           {FOOTER_COLUMNS.map((col) => (
             <StaggerItem key={col.title}>
               <p className="text-label-m tracking-[0.08em] text-white/50 uppercase">{col.title}</p>
-              <ul className="mt-4 space-y-2.5">
+              {/* 40px rows on phones (thumb targets); tighter with a mouse. */}
+              <ul className="mt-2 flex flex-col lg:mt-3">
                 {col.links.map((l) => (
                   <li key={l.label}>
                     <Link
                       to={l.to}
-                      className="text-body-m text-white/75 transition-colors hover:text-white"
+                      className="inline-flex min-h-10 items-center text-body-m text-white/75 transition-colors hover:text-white lg:min-h-8"
                     >
                       {l.label}
                     </Link>
