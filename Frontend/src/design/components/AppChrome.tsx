@@ -206,11 +206,15 @@ export function NavRail({
 
 // ---------- Mobile: floating Liquid Glass TabBar ----------
 
-/** Compacts while scrolling down (labels tuck away), expands on scroll up — like iOS 26. */
-export function TabBar({ dests }: { dests: NavDest[] }) {
+/**
+ * Compacts while scrolling down (labels tuck away), expands on scroll up — like iOS 26.
+ * Staff bars keep their labels (`labels="always"`, QA C7): their destinations are less familiar.
+ */
+export function TabBar({ dests, labels = "auto" }: { dests: NavDest[]; labels?: "auto" | "always" }) {
   const { pathname } = useLocation()
   const { scrollY } = useScroll()
-  const [compact, setCompact] = useState(false)
+  const [compactState, setCompact] = useState(false)
+  const compact = labels === "auto" && compactState
   useMotionValueEvent(scrollY, "change", (y) => {
     const prev = scrollY.getPrevious() ?? 0
     if (y > prev + 6 && y > 120) setCompact(true)

@@ -155,11 +155,14 @@ export function StatusMark({
 export function EmptyState({
   icon: Icon = Inbox,
   title,
+  body,
   action,
 }: {
   /** Defaults to an inbox: an empty state must never crash for want of an icon. */
   icon?: LucideIcon
   title: string
+  /** Optional second line: what will make this list fill up. */
+  body?: string
   action?: React.ReactNode
 }) {
   return (
@@ -177,7 +180,10 @@ export function EmptyState({
       >
         <Icon className="size-6 text-brand-700" strokeWidth={1.75} aria-hidden />
       </motion.span>
-      <p className="max-w-sm text-body-l text-ink-600">{title}</p>
+      <div>
+        <p className="max-w-sm text-body-l text-ink-600">{title}</p>
+        {body && <p className="mt-1 max-w-sm text-body-m text-ink-600">{body}</p>}
+      </div>
       {action}
     </motion.div>
   )

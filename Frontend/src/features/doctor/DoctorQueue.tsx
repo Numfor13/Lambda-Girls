@@ -1,46 +1,355 @@
 import { useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowRight, ClipboardList, RefreshCw } from "lucide-react"
+import { motion } from "motion/react"
+import { ArrowRight, ClipboardList, ListOrdered } from "lucide-react"
 import { doctorApi } from "@/api/endpoints"
-import type { Consultation } from "@/api/types"
+import type { Consultation, Urgency } from "@/api/types"
 import { useAuth } from "@/auth/AuthProvider"
 import { AppPage, Panel } from "@/design/components/AppPage"
 import { Button, ButtonLink } from "@/design/components/Button"
-import { ContentSkeleton } from "@/design/components/ContentSkeleton"
-import { Chip, Field, Input, Select } from "@/design/components/Field"
-import { AdvisoryNote, EmptyState } from "@/design/components/primitives"
-import { PollStatus } from "@/design/components/ConsoleData"
-import { CopyReference } from "@/design/components/CopyReference"
-import { ResponsiveRecords, useRecordParams } from "@/design/components/RecordBrowser"
-import { ServiceError, ServiceStatus } from "@/design/components/ServicePage"
-import { StageProgress } from "@/design/components/StageProgress"
-import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { Skeleton } from "@/design/components/Lively"
+import { ServiceError } from "@/design/components/ServicePage"
+import { FilterTiles, ListSearch, PickHint, RecordList, UpdatedAt, useRecordParams } from "@/design/components/Staff"
 import { toast } from "@/design/components/Toast"
+import { UrgencyBadge } from "@/design/components/UrgencyBadge"
+import { AdvisoryNote, EmptyState } from "@/design/components/primitives"
+import { SPRING, popIn } from "@/design/motion"
+import { describeAge } from "@/lib/format"
 import { useNow, useOnline, useVisible } from "@/lib/hooks"
-import { describeAge, timeAgo } from "@/lib/format"
+import { plural } from "@/lib/labels"
+import { cn } from "@/lib/utils"
+import { SYMPTOMS } from "@/triage-engine/symptoms"
 import { DoctorPresence } from "./DoctorPresence"
 
-const RANK={RED:0,AMBER:1,GREEN:2} as const
-export function patientLabel(c:Consultation){return c.patient_id==="anonymous"||c.patient_id.startsWith("anon#")||c.patient_id.startsWith("anon:")?"Anonymous":c.on_behalf_member_id?"Household member":"Patient"}
-export function sortQueue(items:Consultation[]){return [...items].sort((a,b)=>RANK[a.urgency??"GREEN"]-RANK[b.urgency??"GREEN"]||a.created_at-b.created_at)}
-function chime(){try{const ctx=new AudioContext(),osc=ctx.createOscillator(),gain=ctx.createGain();osc.frequency.value=880;gain.gain.setValueAtTime(0.15,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.6);osc.connect(gain).connect(ctx.destination);osc.onended=()=>void ctx.close();osc.start();osc.stop(ctx.currentTime+0.6)}catch{/* Audio may be unavailable before interaction. */}}
-export default function DoctorQueue(){
-  const {session}=useAuth(),navigate=useNavigate(),qc=useQueryClient(),online=useOnline(),visible=useVisible(),now=useNow(),view=useRecordParams()
-  const tab=view.params.get("tab")==="mine"?"mine":"waiting"
-  const query=useQuery({queryKey:["doctor-queue"],queryFn:doctorApi.queue,refetchInterval:visible&&online?20_000:false})
-  const seen=useRef<Set<string>|null>(null)
-  useEffect(()=>{if(!query.data)return;const red=query.data.queue.filter(c=>c.urgency==="RED"&&c.status==="paid");if(seen.current&&red.some(c=>!seen.current!.has(c.consultation_id)))chime();seen.current=new Set(red.map(c=>c.consultation_id))},[query.data])
-  const all=sortQueue(query.data?.queue??[]),waiting=all.filter(c=>c.status==="paid"),mine=all.filter(c=>c.status==="open"&&c.doctor_id===session?.sub)
-  const eligible=[...waiting,...mine],rows=(tab==="mine"?mine:waiting).filter(c=>`${c.complaint} ${patientLabel(c)}`.toLowerCase().includes(view.q.toLowerCase())).sort((a,b)=>RANK[a.urgency??"GREEN"]-RANK[b.urgency??"GREEN"]||(view.sort==="newest"?b.created_at-a.created_at:a.created_at-b.created_at))
-  const selected=eligible.find(c=>c.consultation_id===view.selected)
-  const preview=useQuery({queryKey:["case-preview",session?.sub,selected?.consultation_id],queryFn:()=>doctorApi.getCase(selected!.consultation_id),enabled:Boolean(selected),refetchInterval:selected&&visible&&online?20_000:false})
-  const claim=useMutation({mutationFn:doctorApi.claim,onSuccess:async c=>{await qc.invalidateQueries({queryKey:["doctor-queue"]});toast("Case claimed");navigate(`/doctor/case/${c.consultation_id}`)},onError:()=>void query.refetch()})
-  const aside=selected?<Panel title="Selected case"><div className="flex flex-col items-start gap-4">{selected.urgency&&<UrgencyBadge urgency={selected.urgency}/>}<ServiceStatus>{selected.status}</ServiceStatus><p className="text-title-l">{patientLabel(selected)}</p><p className="whitespace-pre-wrap text-body-l">{selected.complaint}</p><p className="text-label-m text-ink-600">Waiting since {timeAgo(selected.created_at,now)}</p><StageProgress steps={[{key:"paid",label:"Paid · awaiting claim"},{key:"open",label:"In consultation"},{key:"closed",label:"Closed"}]} current={selected.status}/>{preview.isPending?<ContentSkeleton rows={1}/>:preview.data?.triage_result?<><p className="text-body-m">{describeAge(preview.data.triage_result.symptom_payload.age_months)} · linked symptom check</p><AdvisoryNote long/></>:<p className="text-body-m text-ink-600">No linked symptom check is available.</p>}<ServiceError error={preview.error||claim.error}/>{selected.status==="paid"?<Button icon={ArrowRight} disabled={!online} loading={claim.isPending} onClick={()=>claim.mutate(selected.consultation_id)}>Claim case</Button>:<ButtonLink icon={ArrowRight} to={`/doctor/case/${selected.consultation_id}`}>Continue case</ButtonLink>}<CopyReference value={selected.consultation_id}/></div></Panel>:<Panel title="Open a case" tone="mint"><ClipboardList className="mb-4 size-8 text-brand-700" aria-hidden/><p className="text-body-l">Choose a row to preview the complaint and linked symptom check. Claim a paid case before replying.</p></Panel>
-  return <AppPage eyebrow="Doctor workspace" title="Care queue" subtitle="Most urgent first, then longest waiting. The age sort applies within each urgency level." actions={<><DoctorPresence compact/><Button variant="tonal" icon={RefreshCw} disabled={!online} loading={query.isFetching} onClick={()=>void query.refetch()}>Refresh</Button></>} aside={aside}>
-    <div className="flex flex-wrap gap-3">{(["RED","AMBER","GREEN"] as const).map(u=><div key={u} className="flex items-center gap-3 rounded-full px-4 py-3 glass"><UrgencyBadge urgency={u} short/><span className="text-title-m">{waiting.filter(c=>c.urgency===u).length}</span></div>)}</div>
-    <Panel title="Queue view"><div className="flex flex-wrap gap-2"><Chip selected={tab==="waiting"} onClick={()=>view.set("tab","")}>Waiting · {waiting.length}</Chip><Chip selected={tab==="mine"} onClick={()=>view.set("tab","mine")}>My open cases · {mine.length}</Chip></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Search queue">{id=><Input id={id} type="search" maxLength={100} placeholder="Complaint or care context" value={view.q} onChange={e=>view.set("q",e.target.value)}/>}</Field><Field label="Order within urgency">{id=><Select id={id} value={view.sort} onChange={e=>view.set("sort",e.target.value)}><option value="oldest">Longest waiting first</option><option value="newest">Most recent first</option></Select>}</Field></div><p role="status" className="mt-4 text-label-m text-ink-600">{rows.length} case(s) shown</p>{(view.q||view.sort!=="oldest"||tab==="mine")&&<Button variant="ghost" className="mt-3" onClick={view.clear}>Clear filters</Button>}</Panel>
-    <PollStatus updated={query.dataUpdatedAt} refresh={()=>void query.refetch()} loading={query.isFetching}/><ServiceError error={query.error}/>{query.isError&&<Button variant="tonal" onClick={()=>void query.refetch()}>Retry queue</Button>}
-    {query.isPending?<ContentSkeleton/>:!rows.length?<EmptyState icon={ClipboardList} title="No cases match this queue view." action={<Button variant="tonal" onClick={()=>void query.refetch()}>Refresh queue</Button>}/>:<ResponsiveRecords rows={rows} id={c=>c.consultation_id} selected={view.selected} onSelect={c=>view.set("selected",c.consultation_id)} caption="Doctor care queue" columns={[{label:"Urgency",content:c=>c.urgency?<UrgencyBadge urgency={c.urgency} short/>:<ServiceStatus>No check</ServiceStatus>},{label:"Complaint",content:c=><div><p className="line-clamp-2 text-title-m">{c.complaint}</p><p className="mt-2 text-label-m text-ink-600">{patientLabel(c)}</p></div>},{label:"Waiting",content:c=>timeAgo(c.created_at,now)},{label:"Status",content:c=><ServiceStatus>{c.status}</ServiceStatus>}]} card={c=><>{c.urgency&&<UrgencyBadge urgency={c.urgency} short/>}<h2 className="text-title-l">{c.complaint}</h2><p className="text-body-m text-ink-600">{patientLabel(c)} · waiting {timeAgo(c.created_at,now)}</p><ServiceStatus>{c.status}</ServiceStatus></>}/>}
-  </AppPage>
+/*
+ * Doctor queue, from the patient-queue study (One Medical's clinician view, Doctolib Pro,
+ * Elation and ~10 Dribbble queues): counters that add up and filter (QA K1), the next patient
+ * pulled out on top, then everyone after them. Cards carry no patient name (backend gap §8).
+ */
+
+const RANK = { RED: 0, AMBER: 1, GREEN: 2 } as const
+const SYMPTOM_LABEL = new Map(SYMPTOMS.map((s) => [s.code, s.label]))
+
+export function patientLabel(c: Consultation) {
+  return c.patient_id === "anonymous" || c.patient_id.startsWith("anon#") || c.patient_id.startsWith("anon:")
+    ? "Anonymous"
+    : c.on_behalf_member_id
+      ? "Household member"
+      : "Patient"
+}
+
+/** Danger signs first; no symptom check sorts with "can wait"; then the longest wait. */
+export function sortQueue(items: Consultation[]) {
+  return [...items].sort((a, b) => RANK[a.urgency ?? "GREEN"] - RANK[b.urgency ?? "GREEN"] || a.created_at - b.created_at)
+}
+
+export function waited(ms: number, now: number) {
+  const mins = Math.max(0, Math.floor((now - ms) / 60_000))
+  if (mins < 1) return "<1 min"
+  if (mins < 60) return `${mins} min`
+  const h = Math.floor(mins / 60)
+  if (h < 24) return mins % 60 ? `${h} h ${mins % 60} min` : `${h} h`
+  return plural(Math.floor(h / 24), "day")
+}
+
+const URGENCY_WORD: Record<Urgency, string> = { RED: "Emergency", AMBER: "See today", GREEN: "Can wait" }
+
+function chime() {
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.frequency.value = 880
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+    osc.connect(gain).connect(ctx.destination)
+    osc.onended = () => void ctx.close()
+    osc.start()
+    osc.stop(ctx.currentTime + 0.6)
+  } catch {
+    /* Audio may be unavailable before the first interaction. */
+  }
+}
+
+function greeting(now: number) {
+  const h = new Date(now).getHours()
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
+}
+
+function CaseRow({ c, now }: { c: Consultation; now: number }) {
+  return (
+    <span className="flex items-center gap-3 sm:gap-4">
+      <span className="min-w-0 flex-1">
+        <span className="block line-clamp-2 text-title-m text-ink-900">{c.complaint}</span>
+        <span className="mt-0.5 block text-body-m text-ink-600">
+          {patientLabel(c)} · {c.urgency ? URGENCY_WORD[c.urgency] : "No symptom check"}
+        </span>
+      </span>
+      <span className="shrink-0 text-right">
+        <span className="block text-label-l text-ink-900 tabular">{waited(c.created_at, now)}</span>
+        <span className="block text-label-m font-normal text-ink-600">{c.status === "open" ? "open" : "waiting"}</span>
+      </span>
+    </span>
+  )
+}
+
+function NextUp({ c, now, onClaim, claiming, onPreview }: { c: Consultation; now: number; onClaim: () => void; claiming: boolean; onPreview: () => void }) {
+  const online = useOnline()
+  return (
+    <motion.section variants={popIn} className="relative overflow-hidden rounded-2xl bg-brand-900 p-5 text-white lg:p-7 short:p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="eyebrow text-mint-200">Next up</p>
+        {c.urgency && <UrgencyBadge urgency={c.urgency} size="sm" />}
+        <span className="ml-auto text-label-l text-white/80 tabular">Waiting {waited(c.created_at, now)}</span>
+      </div>
+      <p className="mt-3 line-clamp-3 font-display text-[24px] leading-[1.2] font-[460] lg:text-[28px]">{c.complaint}</p>
+      <p className="mt-1 text-body-m text-white/70">{patientLabel(c)}</p>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Button variant="light" icon={ArrowRight} loading={claiming} disabled={!online} onClick={onClaim}>
+          Claim and open
+        </Button>
+        <Button variant="outline-light" onClick={onPreview}>
+          Preview
+        </Button>
+      </div>
+    </motion.section>
+  )
+}
+
+function Preview({ c, now, onClaim, claiming, error }: { c: Consultation; now: number; onClaim: () => void; claiming: boolean; error: unknown }) {
+  const { session } = useAuth()
+  const online = useOnline()
+  const visible = useVisible()
+  const detail = useQuery({
+    queryKey: ["case-preview", session?.sub, c.consultation_id],
+    queryFn: () => doctorApi.getCase(c.consultation_id),
+    refetchInterval: visible && online ? 20_000 : false,
+  })
+  const t = detail.data?.triage_result
+  const p = t?.symptom_payload
+  return (
+    <Panel>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {c.urgency ? <UrgencyBadge urgency={c.urgency} /> : <span className="text-label-l text-ink-600">No symptom check</span>}
+          <span className="text-label-m text-ink-600 tabular">Waiting {waited(c.created_at, now)}</span>
+        </div>
+        <p className="text-headline-s break-words">{c.complaint}</p>
+        <p className="text-body-m text-ink-600">
+          {patientLabel(c)}
+          {p && ` · ${describeAge(p.age_months)}${p.sex ? ` · ${p.sex}` : ""}${p.is_pregnant ? " · pregnant" : ""}`}
+        </p>
+        {detail.isPending ? (
+          <Skeleton className="h-20 rounded-lg" />
+        ) : t ? (
+          <div className="rounded-lg bg-cream p-4">
+            <p className="text-label-l text-ink-600">Signs reported</p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {p?.symptoms.length ? (
+                p.symptoms.map((s) => (
+                  <li key={s} className="rounded-full bg-white px-2.5 py-1 text-label-m text-ink-900">
+                    {SYMPTOM_LABEL.get(s) ?? s}
+                  </li>
+                ))
+              ) : (
+                <li className="text-body-m text-ink-600">None</li>
+              )}
+            </ul>
+            <p className="mt-3 text-body-m">{t.recommendation}</p>
+          </div>
+        ) : (
+          <p className="text-body-m text-ink-600">The patient didn&apos;t link a symptom check.</p>
+        )}
+        <ServiceError error={error || detail.error} />
+        {c.status === "paid" ? (
+          <Button icon={ArrowRight} disabled={!online} loading={claiming} onClick={onClaim}>
+            Claim and open
+          </Button>
+        ) : (
+          <ButtonLink icon={ArrowRight} to={`/doctor/case/${c.consultation_id}`}>
+            Continue case
+          </ButtonLink>
+        )}
+        {t && <AdvisoryNote />}
+      </div>
+    </Panel>
+  )
+}
+
+export default function DoctorQueue() {
+  const { session } = useAuth()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const online = useOnline()
+  const visible = useVisible()
+  const now = useNow()
+  const view = useRecordParams()
+  const tab = view.params.get("tab") === "mine" ? "mine" : "waiting"
+
+  const query = useQuery({ queryKey: ["doctor-queue"], queryFn: doctorApi.queue, refetchInterval: visible && online ? 20_000 : false })
+
+  // A short sound when a new emergency case arrives.
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!query.data) return
+    const red = query.data.queue.filter((c) => c.urgency === "RED" && c.status === "paid")
+    if (seen.current && red.some((c) => !seen.current!.has(c.consultation_id))) chime()
+    seen.current = new Set(red.map((c) => c.consultation_id))
+  }, [query.data])
+
+  const all = sortQueue(query.data?.queue ?? [])
+  const waiting = all.filter((c) => c.status === "paid")
+  const mine = all.filter((c) => c.status === "open" && c.doctor_id === session?.sub)
+  const base = tab === "mine" ? mine : waiting
+  const needle = view.q.trim().toLowerCase()
+  const rows = base.filter(
+    (c) =>
+      (!view.filter || (view.filter === "none" ? !c.urgency : c.urgency === view.filter)) &&
+      (!needle || `${c.complaint} ${patientLabel(c)}`.toLowerCase().includes(needle)),
+  )
+  const selected = [...waiting, ...mine].find((c) => c.consultation_id === view.selected)
+  const showNext = tab === "waiting" && !view.filter && !needle && waiting.length > 0
+  const next = showNext ? waiting[0] : undefined
+  const listed = next ? rows.slice(1) : rows
+
+  const claim = useMutation({
+    mutationFn: doctorApi.claim,
+    onSuccess: async (c) => {
+      await qc.invalidateQueries({ queryKey: ["doctor-queue"] })
+      toast("Case claimed")
+      navigate(`/doctor/case/${c.consultation_id}`)
+    },
+    onError: () => void query.refetch(),
+  })
+
+  const red = waiting.filter((c) => c.urgency === "RED").length
+  const first = session?.name.split(" ").find((w) => !/^(dr\.?|demo)$/i.test(w)) ?? ""
+  const tiles = [
+    { key: "RED", label: "Emergency", tone: "RED" as const, count: base.filter((c) => c.urgency === "RED").length },
+    { key: "AMBER", label: "See today", tone: "AMBER" as const, count: base.filter((c) => c.urgency === "AMBER").length },
+    { key: "GREEN", label: "Can wait", tone: "GREEN" as const, count: base.filter((c) => c.urgency === "GREEN").length },
+    { key: "none", label: "No check", tone: "none" as const, count: base.filter((c) => !c.urgency).length },
+  ]
+
+  return (
+    <AppPage
+      eyebrow="Doctor"
+      title="Care queue"
+      subtitle={
+        query.data
+          ? `${greeting(now)}${first ? `, ${first}` : ""}. ${waiting.length ? `${plural(waiting.length, "patient")} waiting${red ? `, ${red} with danger signs` : ""}.` : "No one is waiting right now."}`
+          : `${greeting(now)}.`
+      }
+      actions={
+        <>
+          <DoctorPresence />
+          <UpdatedAt updated={query.dataUpdatedAt} refresh={() => void query.refetch()} loading={query.isFetching} />
+        </>
+      }
+      aside={
+        selected ? (
+          <Preview
+            key={selected.consultation_id}
+            c={selected}
+            now={now}
+            claiming={claim.isPending && claim.variables === selected.consultation_id}
+            onClaim={() => claim.mutate(selected.consultation_id)}
+            error={claim.error}
+          />
+        ) : (
+          <PickHint icon={ListOrdered} title="How the queue is ordered">
+            Danger signs first, then whoever has waited longest. Cases without a symptom check sit with &ldquo;can wait&rdquo;. A new emergency
+            plays a short sound.
+          </PickHint>
+        )
+      }
+      asideFirst={Boolean(selected)}
+    >
+      <div role="tablist" aria-label="Queue" className="inline-flex self-start rounded-full bg-white p-1 shadow-[var(--shadow-elev-1)]">
+        {(
+          [
+            ["waiting", "Waiting", waiting.length],
+            ["mine", "My open cases", mine.length],
+          ] as const
+        ).map(([key, label, n]) => {
+          const on = tab === key
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => view.setMany({ tab: key === "mine" ? "mine" : "", filter: "", selected: "" })}
+              className={cn("relative h-10 rounded-full px-4 text-label-l transition-colors", on ? "text-white" : "text-ink-600 hover:text-ink-900")}
+            >
+              {on && <motion.span layoutId="queue-tab" className="absolute inset-0 rounded-full bg-brand-900" transition={SPRING.default} />}
+              <span className="relative">
+                {label} · {n}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <FilterTiles label="Filter by urgency" tiles={tiles} value={view.filter} onChange={(k) => view.set("filter", k)} />
+      <ServiceError error={query.error} />
+
+      {query.isPending ? (
+        <div className="flex flex-col gap-2" role="status" aria-label="Loading the queue">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      ) : (
+        <>
+          {next && (
+            <NextUp
+              c={next}
+              now={now}
+              claiming={claim.isPending && claim.variables === next.consultation_id}
+              onClaim={() => claim.mutate(next.consultation_id)}
+              onPreview={() => view.set("selected", next.consultation_id)}
+            />
+          )}
+          <ListSearch value={view.q} onChange={(v) => view.set("q", v)} placeholder="Search complaints" total={base.length} />
+          {listed.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-label-l text-ink-600">{next ? "After that" : tab === "mine" ? "Your open cases" : "Waiting"}</h2>
+              <RecordList
+                rows={listed}
+                id={(c) => c.consultation_id}
+                selected={view.selected}
+                onSelect={(c) => view.set("selected", c.consultation_id)}
+                label={tab === "mine" ? "Your open cases" : "Waiting cases"}
+                urgency={(c) => c.urgency}
+                render={(c) => <CaseRow c={c} now={now} />}
+              />
+            </section>
+          )}
+          {!rows.length &&
+            (view.filter || needle ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="No cases match."
+                action={
+                  <Button
+                    variant="tonal"
+                    onClick={() => view.setMany({ filter: "", q: "" })}
+                  >
+                    Show all
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={ClipboardList}
+                title={tab === "mine" ? "You have no open cases." : "No one is waiting."}
+                body={tab === "mine" ? "Cases you claim stay here until you close them." : "New paid cases appear here by themselves."}
+              />
+            ))}
+        </>
+      )}
+    </AppPage>
+  )
 }

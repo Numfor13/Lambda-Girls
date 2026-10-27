@@ -40,5 +40,5 @@ const dests: NavDest[] = [
   },
 ]
 export function OperatorShell() {
-  return <StaffShell home="/operator" dests={dests} />
+  return <StaffShell home="/operator" dests={dests} role="Operator" />
 }

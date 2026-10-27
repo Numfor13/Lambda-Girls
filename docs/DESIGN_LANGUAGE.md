@@ -107,6 +107,9 @@ Practo, Doctolib, Airbnb, Magic UI, Motion): motion should **show real state cha
 | Split sign-in: form half + a dark preview half that follows the chosen role | `features/auth/SignIn.tsx` |
 | Public tool page: header + the tool first, help in the aside (no hero) | `features/services/HealthTips.tsx`, `features/anonymous/AnonymousAsk.tsx`, `features/public/CodeLookup.tsx` |
 | Code entry: one real input over 8 visible boxes; the answer as a ticket | `features/public/CodeLookup.tsx` |
+| Staff queue: counters that are also filters (`FilterTiles`), "Next up" card, `RecordList` rows with an urgency stripe, detail in the aside (above the list on phones) | `features/doctor/DoctorQueue.tsx`, `features/operator/OperatorConsole.tsx` |
+| Staff record work surface: patient card + conversation + actions as tabs | `features/doctor/DoctorCase.tsx` |
+| Admin CRUD: table on desktop, `RecordList` on phones; the editor replaces the list with a live "as patients see it" preview | `features/admin/AdminConsole.tsx` |
 | Not found / error: `RecoveryScene` (signpost picture, one sentence, one way back, three familiar places) | `design/components/RecoveryScene.tsx` |
 
 ## 6. Don'ts

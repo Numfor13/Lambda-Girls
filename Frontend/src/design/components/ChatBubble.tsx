@@ -55,7 +55,7 @@ export function ChatBubble({ item }: { item: ChatItem }) {
         <div
           className={cn(
             "mt-1 flex items-center justify-end gap-2 text-label-m",
-            item.mine ? "text-white/75" : "text-ink-400"
+            item.mine ? "text-white/75" : "text-ink-600"
           )}
         >
           <time dateTime={new Date(item.created_at).toISOString()}>

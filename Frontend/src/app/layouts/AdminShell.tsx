@@ -22,5 +22,5 @@ const dests: NavDest[] = [
   },
 ]
 export function AdminShell() {
-  return <StaffShell home="/admin" dests={dests} />
+  return <StaffShell home="/admin" dests={dests} role="Administrator" />
 }
