@@ -209,11 +209,6 @@ export interface DoctorApplication {
   document_url?: string
 }
 
-export interface PushSubscriptionJSON {
-  endpoint: string
-  keys: { p256dh: string; auth: string }
-}
-
 export interface SyncResponse {
   synced: boolean
   has_red_triage: boolean
@@ -221,4 +216,29 @@ export interface SyncResponse {
     triage_results: { result_id: string; status: "ok" | "error" }[]
     messages: { message_id: string; status: "ok" | "duplicate" | "error" }[]
   }
+}
+
+export interface AvailableDoctor {
+  doctor_id: string
+  specialty?: string
+  typical_response_minutes: number
+  last_seen: number
+  is_online: boolean
+}
+
+export interface HealthTip {
+  tip_id: string
+  title: string
+  body: string
+  source_name: string
+  source_url: string | null
+  published_date: string
+  locale: Locale
+  tags: string[]
+  is_active: boolean
+}
+
+export interface PushSubscriptionJSON {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
 }

@@ -80,6 +80,8 @@ export default function ApplicationStatus() {
   // Auto-lookup if ref is in URL
   useEffect(() => {
     const ref = params.get("ref")
+    // Look up the reference from the link once, on arrival.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (ref) void lookup(ref)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

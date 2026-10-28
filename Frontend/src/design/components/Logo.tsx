@@ -1,10 +1,7 @@
 import { Link } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
-// Cut from public/brand/carebridge-logo.png (the official stacked logo).
 const MARK = { src: "/brand/carebridge-mark.png", width: 322, height: 256 }
-const WORDMARK = { src: "/brand/carebridge-wordmark.png", width: 640, height: 150 }
-const WORDMARK_LIGHT = { ...WORDMARK, src: "/brand/carebridge-wordmark-light.png" }
 
 export function LogoMark({ className }: { className?: string }) {
   return (
@@ -20,21 +17,10 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
-export function Wordmark({ light = false, className }: { light?: boolean; className?: string }) {
-  const img = light ? WORDMARK_LIGHT : WORDMARK
-  return (
-    <img
-      src={img.src}
-      width={img.width}
-      height={img.height}
-      alt=""
-      aria-hidden
-      draggable={false}
-      className={cn("h-8 w-auto select-none", className)}
-    />
-  )
-}
-
+/**
+ * Mark + live wordmark. The raster lockup's wordmark and tagline were unreadable at nav
+ * sizes, so the name is set in the display serif instead (crisp at any size, translatable).
+ */
 export function Logo({
   light = false,
   size = "md",
@@ -45,9 +31,17 @@ export function Logo({
   to?: string
 }) {
   return (
-    <Link to={to} className="inline-flex shrink-0 items-center gap-2" aria-label="CareBridge home">
-      <LogoMark className={size === "lg" ? "h-14" : "h-10"} />
-      <Wordmark light={light} className={size === "lg" ? "h-11" : "h-[34px]"} />
+    <Link to={to} className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md" aria-label="CareBridge home">
+      <LogoMark className={size === "lg" ? "h-10" : "h-7"} />
+      <span
+        className={cn(
+          "font-display leading-none font-[560] tracking-[-0.02em]",
+          size === "lg" ? "text-[28px]" : "text-[21px]",
+          light ? "text-white" : "text-brand-900",
+        )}
+      >
+        CareBridge
+      </span>
     </Link>
   )
 }

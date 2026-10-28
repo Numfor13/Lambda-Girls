@@ -1,34 +1,25 @@
-import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom"
-import { TriangleAlert } from "lucide-react"
+import { isRouteErrorResponse, useRouteError } from "react-router-dom"
 import { Logo } from "@/design/components/Logo"
+import { RecoveryScene } from "@/design/components/RecoveryScene"
 
+/** Router error boundary: no shell around it, so it brings its own logo. */
 export function RouteError() {
   const error = useRouteError()
   const notFound = isRouteErrorResponse(error) && error.status === 404
-  if (!notFound) console.error(error)
-
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-5 px-6 text-center">
-      <Logo />
-      <TriangleAlert className="mt-6 size-12 text-urgent-amber" strokeWidth={1.5} aria-hidden />
-      <h1 className="text-[26px] font-extrabold">
-        {notFound ? "We couldn't find that page" : "Something went wrong"}
-      </h1>
-      <p className="max-w-sm text-[15px] text-ink-600">
-        Your saved facilities, symptom checks and messages are safe on this phone.
-      </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="h-12 rounded-[10px] bg-brand-700 px-5 font-semibold text-white"
-        >
-          Try again
-        </button>
-        <Link to="/app" className="flex h-12 items-center rounded-[10px] border-[1.5px] border-brand-700 px-5 font-semibold text-brand-900">
-          Go to home
-        </Link>
+    <main className="flex min-h-svh flex-col gap-4 bg-cream p-3 sm:p-6">
+      <div className="px-2 pt-1">
+        <Logo />
       </div>
-    </div>
+      {notFound ? (
+        <RecoveryScene eyebrow="Page not found" title="This page took a wrong turn.">
+          The link may be old or mistyped. Go home, or pick up from one of the places below.
+        </RecoveryScene>
+      ) : (
+        <RecoveryScene eyebrow="Something went wrong" title="This page didn't load properly." retry={() => window.location.reload()}>
+          It&apos;s not something you did. Try again; anything you saved on this phone is still there.
+        </RecoveryScene>
+      )}
+    </main>
   )
 }

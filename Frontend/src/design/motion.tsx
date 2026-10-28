@@ -1,63 +1,93 @@
-import {
-  AnimatePresence,
-  motion,
-  type HTMLMotionProps,
-  type Transition,
-  type Variants,
-} from "motion/react"
-
-export { AnimatePresence }
+import { motion, type HTMLMotionProps, type Transition, type Variants } from "motion/react"
 
 export const EASE_OUT = [0.22, 1, 0.36, 1] as const
-export const EASE_IN_OUT = [0.4, 0, 0.2, 1] as const
-export const SPRING = { type: "spring", stiffness: 420, damping: 32 } as const
-export const SPRING_SOFT = { type: "spring", stiffness: 260, damping: 28 } as const
 
-// ── Reveal variants ──────────────────────────────────────────────────────────
+/**
+ * Motion physics, v2. The reference platforms (Apple, Stripe, Linear, One Medical) move with
+ * short, critically-damped springs and 150–300ms colour transitions: things settle, they
+ * don't bounce. `bouncy` keeps its name for existing call sites but only overshoots slightly.
+ */
+export const SPRING = {
+  /** Small components: buttons, chips, toggles, nav indicators. */
+  fast: { type: "spring", stiffness: 700, damping: 48, mass: 1 },
+  /** Cards, sheets, page content. */
+  default: { type: "spring", stiffness: 360, damping: 38, mass: 1 },
+  /** Emphasis moments (status marks, selection pills): a hint of overshoot, no wobble. */
+  bouncy: { type: "spring", stiffness: 420, damping: 30, mass: 1 },
+  /** Large, slow surfaces: backdrops, landscape. */
+  slow: { type: "spring", stiffness: 140, damping: 28, mass: 1 },
+} satisfies Record<string, Transition>
 
-const reveal = (from: { x?: number; y?: number; scale?: number }, duration = 0.6): Variants => ({
+/** Press feedback: a small press-in, no hover growth (hover is a colour change). */
+export const pressable = {
+  whileTap: { scale: 0.97 },
+  transition: SPRING.fast,
+} as const
+
+/** Entrance for content that pops in (cards, tiles). */
+export const popIn: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: SPRING.default },
+}
+
+/** Stagger parent for popIn children, used on mount (not scroll). */
+export const staggerOnMount = (stagger = 0.06, delayChildren = 0.04): Variants => ({
+  hidden: {},
+  show: { transition: { staggerChildren: stagger, delayChildren } },
+})
+
+/** Route-level transition: content rises in on a spring, fades out quickly. */
+export function PageTransition({ children, id }: { children: React.ReactNode; id: string }) {
+  return (
+    <motion.div
+      key={id}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0, transition: SPRING.default }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+const reveal = (from: { x?: number; y?: number }, duration = 0.6): Variants => ({
   hidden: { opacity: 0, ...from },
   show: (delay = 0) => ({
     opacity: 1,
     x: 0,
     y: 0,
-    scale: 1,
     transition: { duration, ease: EASE_OUT, delay },
   }),
 })
 
 export const revealVariants = {
-  up:    reveal({ y: 36 }),
-  down:  reveal({ y: -28 }),
-  in:    reveal({}, 0.7),
-  left:  reveal({ x: -40 }),
-  right: reveal({ x: 40 }),
-  pop:   reveal({ y: 20, scale: 0.92 }),
+  up: reveal({ y: 20 }),
+  in: reveal({}, 0.7),
+  left: reveal({ x: -20 }),
+  right: reveal({ x: 20 }),
 } satisfies Record<string, Variants>
 
 export type RevealVariant = keyof typeof revealVariants
 
-export const VIEWPORT = { once: true, amount: 0.18 } as const
+/** Reveal once, when roughly a fifth of the element is on screen. */
+export const VIEWPORT = { once: true, amount: 0.2 } as const
 
-type Tag = "div" | "section" | "header" | "ul" | "ol" | "li" | "nav" | "span" | "p" | "h1" | "h2"
+type Tag = "div" | "section" | "header" | "ul" | "ol" | "li" | "nav"
 
+// Pre-built map so we never create a component during render.
+// All tags accept the same motion-prop surface we use; assert to the div type for uniformity.
 const MOTION_TAGS = {
-  div:     motion.div,
+  div: motion.div,
   section: motion.section,
-  header:  motion.header,
-  ul:      motion.ul,
-  ol:      motion.ol,
-  li:      motion.li,
-  nav:     motion.nav,
-  span:    motion.span,
-  p:       motion.p,
-  h1:      motion.h1,
-  h2:      motion.h2,
+  header: motion.header,
+  ul: motion.ul,
+  ol: motion.ol,
+  li: motion.li,
+  nav: motion.nav,
 } as Record<Tag, typeof motion.div>
 
 type BaseProps = Omit<HTMLMotionProps<"div">, "variants" | "initial" | "whileInView">
 
-/** Animate in once when ~18% of the element enters the viewport. */
 export function Reveal({
   as = "div",
   variant = "up",
@@ -77,10 +107,9 @@ export function Reveal({
   )
 }
 
-/** Stagger children as they scroll into view. */
 export function StaggerContainer({
   as = "div",
-  stagger = 0.09,
+  stagger = 0.1,
   delayChildren = 0,
   amount = VIEWPORT.amount,
   ...rest
@@ -97,7 +126,7 @@ export function StaggerContainer({
   )
 }
 
-/** Child of StaggerContainer; inherits the parent stagger timing. */
+/** A child of StaggerContainer; it inherits the parent's hidden/show timing. */
 export function StaggerItem({
   as = "div",
   variant = "up",
@@ -107,137 +136,15 @@ export function StaggerItem({
   return <Comp variants={revealVariants[variant]} {...rest} />
 }
 
-// ── Hover zoom (image cards) ─────────────────────────────────────────────────
-
 const ZOOM_TRANSITION: Transition = { duration: 0.45, ease: EASE_OUT }
 
+/**
+ * Put `initial="rest" whileHover="hover"` on the hover target (e.g. the whole card)
+ * and these variants on the image, so overlays above the image still trigger the zoom.
+ */
 export const zoomVariants: Variants = {
-  rest:  { scale: 1,    transition: ZOOM_TRANSITION },
-  hover: { scale: 1.08, transition: ZOOM_TRANSITION },
+  rest: { scale: 1, transition: ZOOM_TRANSITION },
+  hover: { scale: 1.04, transition: ZOOM_TRANSITION },
 }
 
 export const hoverZoomTrigger = { initial: "rest", whileHover: "hover", animate: "rest" } as const
-
-// ── Tappable card — lift + scale on press ───────────────────────────────────
-
-export const tapCardProps = {
-  whileHover: { y: -3, boxShadow: "0 8px 24px rgba(0,0,0,.10)" },
-  whileTap:   { scale: 0.975, y: 0 },
-  transition: SPRING_SOFT,
-} as const
-
-// ── Fade-through (for status / tab content swaps) ───────────────────────────
-
-export const fadeThroughVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.97, filter: "blur(4px)" },
-  show:   { opacity: 1, scale: 1,    filter: "blur(0px)", transition: { duration: 0.25, ease: EASE_OUT } },
-  exit:   { opacity: 0, scale: 0.97, filter: "blur(2px)", transition: { duration: 0.18, ease: EASE_IN_OUT } },
-}
-
-/** Wrap dynamic content that swaps in/out. */
-export function FadeThrough({
-  motionKey,
-  children,
-  className,
-}: {
-  motionKey: string | number
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={motionKey}
-        variants={fadeThroughVariants}
-        initial="hidden"
-        animate="show"
-        exit="exit"
-        className={className}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  )
-}
-
-// ── Wizard step slide (directional) ─────────────────────────────────────────
-
-export function SlideStep({
-  stepKey,
-  direction = 1,
-  children,
-  className,
-}: {
-  stepKey: string | number
-  direction?: 1 | -1
-  children: React.ReactNode
-  className?: string
-}) {
-  const x = 60 * direction
-  return (
-    <AnimatePresence mode="wait" custom={direction}>
-      <motion.div
-        key={stepKey}
-        custom={direction}
-        initial={{ opacity: 0, x }}
-        animate={{ opacity: 1, x: 0, transition: { duration: 0.32, ease: EASE_OUT } }}
-        exit={{ opacity: 0, x: -x, transition: { duration: 0.22, ease: EASE_IN_OUT } }}
-        className={className}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  )
-}
-
-// ── Float — gentle up-down idle animation ───────────────────────────────────
-
-export function Float({
-  children,
-  amplitude = 10,
-  duration = 3.4,
-  className,
-}: {
-  children: React.ReactNode
-  amplitude?: number
-  duration?: number
-  className?: string
-}) {
-  return (
-    <motion.div
-      className={className}
-      animate={{ y: [0, -amplitude, 0] }}
-      transition={{ duration, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-// ── Pulse ring — for icons that should draw attention ───────────────────────
-
-export function PulseRing({
-  children,
-  color = "rgba(29,106,66,.22)",
-  className,
-}: {
-  children: React.ReactNode
-  color?: string
-  className?: string
-}) {
-  return (
-    <span className={`relative inline-flex ${className ?? ""}`}>
-      <motion.span
-        className="absolute inset-0 rounded-full"
-        style={{ background: color }}
-        animate={{ scale: [1, 1.55, 1], opacity: [0.7, 0, 0.7] }}
-        transition={{ duration: 2.2, ease: "easeInOut", repeat: Infinity }}
-      />
-      {children}
-    </span>
-  )
-}
-
-// ── NumberTicker — animate a number counting up ──────────────────────────────
-
-export { NumberTicker } from "./NumberTicker"

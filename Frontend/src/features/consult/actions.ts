@@ -1,6 +1,6 @@
 import { ulid } from "ulid"
 import type { ConsultationStatus, Urgency } from "@/api/types"
-import { db, type ConsultType, type LocalConsultation } from "@/offline/db"
+import { db, type LocalConsultation } from "@/offline/db"
 import { enqueue } from "@/offline/outbox"
 import { syncOutbox } from "@/offline/sync"
 import type { Recording } from "@/offline/voiceRecorder"
@@ -12,6 +12,15 @@ export const STATUS_LABEL: Record<ConsultationStatus, string> = {
   closed: "Closed",
 }
 
+/**
+ * The local copy only learns its status at creation, so Home and the list went stale after
+ * payment. Call this whenever the server reports a consultation's status.
+ */
+export async function reconcileStatus(serverId: string, status: ConsultationStatus) {
+  const rec = await db.consultations.where("consultation_id").equals(serverId).first()
+  if (rec && rec.status !== status) await db.consultations.update(rec.local_id, { status })
+}
+
 export async function findLocalConsultation(ref: string): Promise<LocalConsultation | undefined> {
   return (
     (await db.consultations.get(ref)) ??
@@ -21,7 +30,6 @@ export async function findLocalConsultation(ref: string): Promise<LocalConsultat
 
 export async function createConsultation(input: {
   complaint: string
-  consultType: ConsultType
   subjectLabel: string
   patientId?: string
   memberId: string | null
@@ -34,7 +42,6 @@ export async function createConsultation(input: {
   await db.consultations.put({
     local_id: localId,
     complaint: input.complaint,
-    consult_type: input.consultType,
     status: "pending_payment",
     urgency: input.urgency,
     on_behalf_member_id: input.memberId,

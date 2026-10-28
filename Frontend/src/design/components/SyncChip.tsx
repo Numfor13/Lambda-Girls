@@ -31,7 +31,7 @@ export function SyncChip({
     </>
   )
   const className = cn(
-    "inline-flex items-center gap-1 text-[11px] font-medium",
+    "inline-flex items-center gap-1 text-label-m font-medium",
     light ? "text-white/85" : meta.className,
   )
 

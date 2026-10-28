@@ -13,6 +13,10 @@ export const apiUrls = {
   payment: pick(e.VITE_API_URL_PAYMENT),
   doctor: pick(e.VITE_API_URL_DOCTOR),
   push: pick(e.VITE_API_URL_PUSH),
+  extended: pick(e.VITE_API_URL_EXTENDED),
+  channel: pick(e.VITE_API_URL_CHANNEL),
+  anonymous: pick(e.VITE_API_URL_ANONYMOUS),
+  // No backend routes yet; only the unrouted doctor-application screens use it.
   doctorApplication: pick(e.VITE_API_URL_DOCTOR_APPLICATION),
 } as const
 
@@ -27,13 +31,15 @@ export const env = {
     redirectUri:
       e.VITE_COGNITO_REDIRECT_URI ?? `${window.location.origin}/auth/callback`,
   },
-  consultationFeeXaf: Number(e.VITE_CONSULTATION_FEE_XAF ?? 2500),
+  consultationFeeXaf: Number(e.VITE_CONSULTATION_FEE_XAF ?? 2000),
+  osmTileUrl: e.VITE_OSM_TILE_URL ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  // Used only by the unrouted rides, call and doctor-profile screens; the backend
+  // charges one server-side fee (consultationFeeXaf).
   consultationFees: {
     general: 2500,
     specialist: 5000,
     lab: 2000,
   },
-  osmTileUrl: e.VITE_OSM_TILE_URL ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   operatorPhone: "673107072",
   rideBaseRateXafPerKm: 200,
 }

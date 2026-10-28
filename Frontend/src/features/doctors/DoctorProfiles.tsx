@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { FlaskConical, Stethoscope, UserCog, Star, Clock, CheckCircle } from "lucide-react"
 import { PageHeader } from "@/design/components/primitives"
-import { FadeThrough, StaggerContainer, StaggerItem, tapCardProps } from "@/design/motion"
+import { StaggerContainer, StaggerItem } from "@/design/motion"
 import { motion } from "motion/react"
 import { env } from "@/config/env"
 import { formatXaf } from "@/lib/format"
@@ -167,7 +167,6 @@ function DoctorCard({ doctor }: { doctor: DoctorProfile }) {
 
   return (
     <motion.div
-      {...tapCardProps}
       className={`flex flex-col gap-4 rounded-[16px] border bg-white p-4 ${doctor.available ? "border-line" : "border-line opacity-70"}`}
     >
       <div className="flex items-start gap-3">
@@ -244,7 +243,7 @@ export default function DoctorProfiles() {
         ))}
       </div>
 
-      <FadeThrough motionKey={active} className="flex flex-col gap-4">
+      <div key={active} className="flex flex-col gap-4">
         <div className="rounded-[14px] bg-mint px-4 py-3 text-sm text-brand-900">
           <p className="font-semibold">{cat.label} — {formatXaf(cat.fee)} per consultation</p>
           <p className="mt-0.5 text-brand-700">{cat.description}</p>
@@ -257,7 +256,7 @@ export default function DoctorProfiles() {
             </StaggerItem>
           ))}
         </StaggerContainer>
-      </FadeThrough>
+      </div>
 
       <div className="rounded-[14px] border border-line p-4 text-sm text-ink-600">
         <p className="font-semibold text-ink-900">How it works</p>

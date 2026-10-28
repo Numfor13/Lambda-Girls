@@ -1,5 +1,5 @@
 import { ApiError } from "@/api/client"
-import { consultApi, type SyncBody } from "@/api/endpoints"
+import { consultApi, triageApi, type SyncBody } from "@/api/endpoints"
 import { currentSession } from "@/auth/session"
 import { db, type OutboxItem } from "./db"
 import { backoffMs, MAX_ATTEMPTS, setRecordState } from "./outbox"
@@ -36,6 +36,21 @@ async function done(item: OutboxItem) {
   await setRecordState(item.kind, item.ref, "sent")
 }
 
+/** The backend is the source of truth for triage: once a result has synced, take its answer. */
+async function adoptServerTriage(resultId: string) {
+  try {
+    const r = await triageApi.get(resultId)
+    await db.triage_results.update(resultId, {
+      urgency: r.urgency,
+      recommendation: r.recommendation,
+      facility_type_needed: r.facility_type_needed,
+      rules_fired: r.rules_fired,
+    })
+  } catch {
+    // The local result (same rules) stays until the next look-up.
+  }
+}
+
 function chunk<T>(list: T[], size: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size))
@@ -50,10 +65,6 @@ async function syncTriage(items: OutboxItem[]) {
       if (!r) continue
       body.triage_results.push({
         result_id: r.result_id,
-        urgency: r.urgency,
-        recommendation: r.recommendation,
-        facility_type_needed: r.facility_type_needed,
-        rules_fired: r.rules_fired,
         symptom_payload: r.symptom_payload,
         on_behalf_member_id: r.on_behalf_member_id,
         queued_at: r.created_at,
@@ -65,7 +76,10 @@ async function syncTriage(items: OutboxItem[]) {
       const status = new Map(res.results.triage_results.map((r) => [r.result_id, r.status]))
       for (const item of batch) {
         if (status.get(item.ref) === "error") await fail(item, new Error("Server rejected item"))
-        else await done(item)
+        else {
+          await done(item)
+          await adoptServerTriage(item.ref)
+        }
       }
     } catch (e) {
       for (const item of batch) await fail(item, e)

@@ -1,14 +1,18 @@
 import { ulid } from "ulid"
 import seed from "@/data/facilities.seed.json"
+import { evaluate } from "@/triage-engine/engine"
 import { ApiError } from "./errors"
+import { serviceMockRoutes, type ServiceMockDb } from "./mock-services"
 import type {
   Consultation,
   Facility,
+  HealthTip,
   Message,
   Payment,
   Prescription,
   Profile,
   Referral,
+  SymptomPayload,
   TriageResult,
   Urgency,
 } from "./types"
@@ -17,6 +21,7 @@ import type {
 // Response shapes mirror the Lambda handlers exactly so switching over needs no UI changes.
 
 interface MockDb {
+  services?: ServiceMockDb
   profiles: Record<string, Profile>
   triage: (TriageResult & { user_id: string })[]
   consultations: Consultation[]
@@ -24,6 +29,7 @@ interface MockDb {
   payments: Payment[]
   prescriptions: Prescription[]
   referrals: Referral[]
+  push_subscriptions: Record<string, unknown>
 }
 
 const KEY = "cb_mock_db"
@@ -44,12 +50,43 @@ function load(): MockDb {
     payments: [],
     prescriptions: [],
     referrals: [],
+    push_subscriptions: {},
   }
 }
 
 function save(data: MockDb) {
   localStorage.setItem(KEY, JSON.stringify(data))
 }
+
+// Demo-only content for mock mode. Real data comes from the extended API.
+const MOCK_DOCTORS = [
+  { doctor_id: "demo-doctor-1", specialty: "General practice", typical_response_minutes: 15 },
+  { doctor_id: "demo-doctor-2", specialty: "Paediatrics", typical_response_minutes: 25 },
+]
+const MOCK_TIPS: HealthTip[] = [
+  {
+    tip_id: "tip-ors",
+    title: "Oral rehydration at home: how to mix ORS safely",
+    body: "Mix one sachet in one litre of clean water. Give small sips often, and keep breastfeeding.",
+    source_name: "WHO",
+    source_url: null,
+    published_date: "2026-10-12",
+    locale: "en",
+    tags: ["children", "diarrhoea"],
+    is_active: true,
+  },
+  {
+    tip_id: "tip-malaria",
+    title: "Sleep under a treated net every night",
+    body: "Mosquitoes that spread malaria bite at night. Tuck the net under the mattress.",
+    source_name: "WHO",
+    source_url: null,
+    published_date: "2026-09-30",
+    locale: "en",
+    tags: ["malaria"],
+    is_active: true,
+  },
+]
 
 const RANK: Record<Urgency, number> = { RED: 0, AMBER: 1, GREEN: 2 }
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -96,6 +133,7 @@ function profileFor(data: MockDb, sub: string): Profile {
 }
 
 const routes: [string, RegExp, Handler][] = [
+  ...serviceMockRoutes(facilities, MOCK_TIPS),
   ["GET", /^\/profile$/, ({ user, data }) => profileFor(data, requireUser(user).sub)],
   [
     "PUT",
@@ -153,6 +191,71 @@ const routes: [string, RegExp, Handler][] = [
     },
   ],
   [
+    "POST",
+    /^\/triage$/,
+    ({ user, data, body }) => {
+      const sub = requireUser(user).sub
+      const payload = {
+        age_months: (body.age_months as number) ?? 999,
+        is_pregnant: Boolean(body.is_pregnant),
+        symptoms: (body.symptoms as string[]) ?? [],
+        vitals: (body.vitals as { resp_rate?: number }) ?? {},
+      }
+      const result = evaluate(payload)
+      const item = {
+        result_id: crypto.randomUUID(),
+        user_id: sub,
+        ...result,
+        symptom_payload: payload,
+        on_behalf_member_id: (body.on_behalf_member_id as string) ?? null,
+        synced_from_offline: Boolean(body.queued_at),
+        created_at: (body.queued_at as number) ?? Date.now(),
+      }
+      data.triage.push(item)
+      return item
+    },
+  ],
+  [
+    "GET",
+    /^\/doctors\/available$/,
+    ({ user }) => {
+      requireUser(user)
+      // Demo presence: two doctors heart-beating "now". The real list comes from PUT /doctor/presence.
+      const now = Date.now()
+      const doctors = MOCK_DOCTORS.map((d) => ({ ...d, last_seen: now - 60_000, is_online: true }))
+      return { doctors, count: doctors.length }
+    },
+  ],
+  [
+    "GET",
+    /^\/health-tips$/,
+    ({ query }) => {
+      const locale = query.get("locale")
+      const tips = MOCK_TIPS.filter((t) => !locale || t.locale === locale)
+      return { tips, count: tips.length }
+    },
+  ],
+  ["GET", /^\/push\/vapid-public-key$/, () => ({ vapid_public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" })],
+  [
+    "POST",
+    /^\/push\/subscribe$/,
+    ({ user, data, body }) => {
+      const sub = requireUser(user).sub
+      data.push_subscriptions ??= {}
+      data.push_subscriptions[sub] = { endpoint: body.endpoint, keys: body.keys }
+      return { subscribed: true }
+    },
+  ],
+  [
+    "DELETE",
+    /^\/push\/subscribe$/,
+    ({ user, data }) => {
+      const sub = requireUser(user).sub
+      if (data.push_subscriptions) delete data.push_subscriptions[sub]
+      return { unsubscribed: true }
+    },
+  ],
+  [
     "GET",
     /^\/triage$/,
     ({ user, data }) => {
@@ -193,16 +296,21 @@ const routes: [string, RegExp, Handler][] = [
       const sub = requireUser(user).sub
       const complaint = String(body.complaint ?? "").trim()
       if (!complaint) throw new ApiError(400, "complaint is required")
+      // Like the backend: urgency comes only from the caller's own stored triage result.
+      const triageId = (body.triage_result_id as string) || null
+      const triage = triageId ? data.triage.find((t) => t.result_id === triageId) : undefined
+      if (triageId && (!triage || triage.user_id !== sub)) throw new ApiError(400, "triage_result_id not found")
+      const memberId = (body.on_behalf_member_id as string) || null
       const now = Date.now()
       const item: Consultation = {
         consultation_id: crypto.randomUUID(),
-        patient_id: (body.patient_id as string) || sub,
+        patient_id: memberId ? `${sub}#${memberId}` : sub,
         phone_owner_id: sub,
-        on_behalf_member_id: (body.on_behalf_member_id as string) ?? null,
-        triage_result_id: (body.triage_result_id as string) ?? null,
+        on_behalf_member_id: memberId,
+        triage_result_id: triageId,
         complaint,
         status: "pending_payment",
-        urgency: (body.urgency as Urgency) ?? null,
+        urgency: triage?.urgency ?? null,
         doctor_id: null,
         created_at: now,
         updated_at: now,
@@ -281,15 +389,30 @@ const routes: [string, RegExp, Handler][] = [
         messages: [] as { message_id: string; status: "ok" | "duplicate" }[],
       }
       let hasRed = false
-      for (const tr of (body.triage_results as (TriageResult & { queued_at: number })[]) ?? []) {
+      for (const tr of (body.triage_results as {
+        result_id: string
+        symptom_payload?: SymptomPayload
+        on_behalf_member_id?: string | null
+        queued_at?: number
+      }[]) ?? []) {
+        const payload: SymptomPayload = tr.symptom_payload ?? {
+          age_months: 999,
+          is_pregnant: false,
+          symptoms: [],
+          vitals: {},
+        }
+        const result = evaluate(payload)
         data.triage = data.triage.filter((t) => t.result_id !== tr.result_id)
         data.triage.push({
-          ...tr,
+          result_id: tr.result_id ?? crypto.randomUUID(),
           user_id: sub,
+          ...result,
+          symptom_payload: payload,
+          on_behalf_member_id: tr.on_behalf_member_id ?? null,
           synced_from_offline: true,
-          created_at: tr.queued_at,
+          created_at: tr.queued_at ?? Date.now(),
         })
-        if (tr.urgency === "RED") hasRed = true
+        if (result.urgency === "RED") hasRed = true
         results.triage_results.push({ result_id: tr.result_id, status: "ok" })
       }
       for (const msg of (body.messages as Message[]) ?? []) {
@@ -326,6 +449,8 @@ const routes: [string, RegExp, Handler][] = [
         payment_id: payment.payment_id,
         payment_url: String(body.redirect_url),
         fapshi_ref: payment.fapshi_ref,
+        amount_xaf: payment.amount_xaf,
+        simulated: true,
       }
     },
   ],

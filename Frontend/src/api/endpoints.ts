@@ -1,5 +1,7 @@
 import { request } from "./client"
 import type {
+  AvailableDoctor,
+  HealthTip,
   CaseDetail,
   Consultation,
   DoctorApplication,
@@ -14,11 +16,11 @@ import type {
   RecommendingHospital,
   Referral,
   Specialty,
+  SymptomPayload,
   SyncResponse,
   TriageResult,
   Urgency,
 } from "./types"
-
 
 export const profileApi = {
   get: () => request<Profile>("profile", "/profile"),
@@ -44,6 +46,8 @@ export const facilityApi = {
 export const triageApi = {
   list: () => request<{ results: TriageResult[]; count: number }>("triage", "/triage"),
   get: (id: string) => request<TriageResult>("triage", `/triage/${id}`),
+  submit: (body: SymptomPayload & { on_behalf_member_id?: string | null; queued_at?: number }) =>
+    request<TriageResult>("triage", "/triage", { method: "POST", body }),
 }
 
 export interface NewConsultation {
@@ -55,9 +59,12 @@ export interface NewConsultation {
 }
 
 export interface SyncBody {
-  triage_results: (Omit<TriageResult, "synced_from_offline" | "created_at"> & {
+  triage_results: {
+    result_id: string
+    symptom_payload: SymptomPayload
+    on_behalf_member_id?: string | null
     queued_at: number
-  })[]
+  }[]
   messages: (Pick<
     Message,
     | "consultation_id"
@@ -102,7 +109,8 @@ export const consultApi = {
 
 export const paymentApi = {
   initiate: (body: { consultation_id: string; phone: string; redirect_url: string }) =>
-    request<{ payment_id: string; payment_url: string; fapshi_ref: string }>(
+    // amount_xaf is the server-side fee; simulated is true when Fapshi isn't configured (demo).
+    request<{ payment_id: string; payment_url: string; fapshi_ref: string; amount_xaf: number; simulated: boolean }>(
       "payment",
       "/payments/initiate",
       { method: "POST", body },
@@ -141,15 +149,29 @@ export const doctorApi = {
   referral: (code: string) => request<Referral>("doctor", `/referrals/${code}`, { auth: false }),
 }
 
+// Shapes match Backend/health_track/lambdas/push/*.py (docs/BACKEND_FEATURE_MAP.md §3.7).
 export const pushApi = {
   vapidPublicKey: () =>
-    request<{ public_key: string }>("push", "/push/vapid-public-key", { auth: false }),
-  subscribe: (body: { subscription: PushSubscriptionJSON }) =>
-    request<{ ok: boolean }>("push", "/push/subscribe", { method: "POST", body }),
+    request<{ vapid_public_key: string }>("push", "/push/vapid-public-key", { auth: false }),
+  subscribe: (body: PushSubscriptionJSON) =>
+    request<{ subscribed: boolean }>("push", "/push/subscribe", { method: "POST", body }),
   unsubscribe: () =>
-    request<{ ok: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
+    request<{ unsubscribed: boolean }>("push", "/push/subscribe", { method: "DELETE" }),
 }
 
+// Extended services API (docs/BACKEND_FEATURE_MAP.md §3.9).
+export const extendedApi = {
+  availableDoctors: () =>
+    request<{ doctors: AvailableDoctor[]; count: number }>("extended", "/doctors/available"),
+  healthTips: (query: { locale?: string; tag?: string; limit?: string } = {}) =>
+    request<{ tips: HealthTip[]; count: number; next_token?: string }>("extended", "/health-tips", {
+      auth: false,
+      query,
+    }),
+}
+
+// Doctor applications: the backend on main has no routes for these yet, so the
+// screens that use this client are not routed (see App.tsx).
 export interface NewDoctorApplication {
   full_name: string
   email: string

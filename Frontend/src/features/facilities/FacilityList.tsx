@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { motion } from "motion/react"
-import { LocateFixed, MapPin, RefreshCw, Search, SearchX } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import { List, LocateFixed, Map as MapIcon, MapPin, Phone, RefreshCw, Search, SearchX } from "lucide-react"
 import type { Capability } from "@/api/types"
-import { FacilityRow } from "@/design/components/FacilityRow"
-import { Chip, Select } from "@/design/components/Field"
-import { EASE_OUT } from "@/design/motion"
-import { EmptyState, PageHeader, PageSpinner } from "@/design/components/primitives"
+import { FacilityMap } from "@/design/components/FacilityMap"
+import { FacilityRow, hoursLabel } from "@/design/components/FacilityRow"
+import { NumberTicker } from "@/design/components/Lively"
+import { Chip } from "@/design/components/Field"
+import { AppPage, Panel } from "@/design/components/AppPage"
+import { buttonClass } from "@/design/components/Button"
+import { SPRING, staggerOnMount } from "@/design/motion"
+import { EmptyState, PageSpinner } from "@/design/components/primitives"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { quarterCentroids, rankFacilities } from "@/lib/geo"
 import { CAPABILITY_LABELS, formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { refreshFacilities, useFacilities, useFacilitiesSyncedAt } from "@/offline/facilities"
 
 type FilterKey = Capability | "backup_power" | "csu"
@@ -34,6 +39,8 @@ export default function FacilityList() {
   const [query, setQuery] = useState("")
   const [quarter, setQuarter] = useState("")
   const [refreshing, setRefreshing] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [view, setView] = useState<"list" | "map">("list")
   const [filters, setFilters] = useState<Set<FilterKey>>(() => {
     const cap = params.get("capability") as FilterKey | null
     return new Set(cap && FILTERS.some((f) => f.key === cap) ? [cap] : [])
@@ -78,26 +85,131 @@ export default function FacilityList() {
 
   if (!facilities) return <PageSpinner />
 
-  return (
-    <div>
-      <PageHeader title="Find care near you" subtitle="Health facilities in and around Buea." />
+  // Real counts from the directory, for the "by service" shortcuts in the aside.
+  const counts = FILTERS.map((f) => ({
+    ...f,
+    n: facilities.filter((x) =>
+      f.key === "backup_power" ? x.has_backup_power : f.key === "csu" ? x.accepts_csu_card : x.capabilities.includes(f.key),
+    ).length,
+  }))
+  const open247 = facilities.filter((f) => hoursLabel(f.opening_hours) === "Open 24/7").length
 
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-400"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search in Buea"
-          aria-label="Search facilities"
-          className="h-12 w-full rounded-[12px] border border-line bg-cream pr-4 pl-12 text-[16px] placeholder:text-ink-400 focus:border-brand-500 focus:bg-white focus:outline-none"
-        />
+  return (
+    <AppPage
+      eyebrow="Facilities"
+      title="Find care near you"
+      subtitle="Every health facility in and around Buea, saved on your phone so it works without a network."
+      aside={
+        <>
+          <FacilityMap
+            all={facilities}
+            shown={visible}
+            highlight={hovered}
+            origin={origin ?? null}
+            onHover={setHovered}
+            className="hidden shadow-[var(--shadow-elev-1)] lg:block"
+          />
+          <Panel tone="mint" className="hidden lg:block">
+            <p className="eyebrow">By service</p>
+            <ul className="mt-3 flex flex-col">
+              {counts.map((c) => (
+                <li key={c.key}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(c.key)}
+                    aria-pressed={filters.has(c.key)}
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md px-3 text-label-l transition-colors",
+                      filters.has(c.key) ? "bg-brand-900 text-white" : "text-brand-900 hover:bg-white/70",
+                    )}
+                  >
+                    {c.label}
+                    <NumberTicker value={c.n} className={filters.has(c.key) ? "text-white/80" : "text-ink-600"} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 px-3 text-body-m text-ink-600">{open247} open around the clock.</p>
+          </Panel>
+          <Panel>
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-urgent-red-50 text-urgent-red">
+                <Phone className="size-[18px]" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-title-m">Someone can&apos;t breathe, won&apos;t wake or is bleeding heavily?</p>
+                <p className="mt-1 text-body-m text-ink-600">Don&apos;t search. Call the emergency line now.</p>
+              </div>
+            </div>
+            <a href="tel:15" className={buttonClass({ variant: "danger", full: true, className: "mt-4" })}>
+              <Phone className="size-5" aria-hidden /> Call 15
+            </a>
+          </Panel>
+          <p className="flex flex-wrap items-center gap-x-2 px-1 text-body-m text-ink-600">
+            {syncedAt ? `Updated ${formatDate(syncedAt)}` : "Built-in directory"} · Works offline
+            {online && (
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={refreshing}
+                className="inline-flex h-9 items-center gap-1 rounded-full px-2 text-label-l text-brand-700 hover:bg-mint"
+              >
+                <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
+                Refresh
+              </button>
+            )}
+          </p>
+        </>
+      }
+    >
+      {/* Search bar: one solid surface with three segments (Airbnb pattern). */}
+      <div className="@container">
+      <div className="flex flex-col gap-2 rounded-xl bg-white p-2 shadow-[var(--shadow-elev-2)] @2xl:flex-row @2xl:items-center @2xl:gap-0 @2xl:rounded-full">
+        <label className="relative flex min-w-0 flex-1 items-center">
+          <Search className="pointer-events-none absolute left-4 size-5 text-ink-400" aria-hidden />
+          <span className="sr-only">Search facilities</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name, quarter or street"
+            className="h-12 w-full rounded-full bg-transparent pr-4 pl-12 text-body-l placeholder:text-ink-400 hover:bg-cream focus:bg-cream focus:outline-none"
+          />
+        </label>
+        <span className="mx-1 hidden h-8 w-px bg-line @2xl:block" aria-hidden />
+        {/* Narrow column: quarter and "Near me" share the second row; wide: one pill row. */}
+        <div className="flex items-center gap-2 @2xl:contents">
+        <label className="relative flex min-w-0 flex-1 items-center @2xl:w-56 @2xl:flex-none">
+          <MapPin className="pointer-events-none absolute left-4 size-[18px] text-ink-400" aria-hidden />
+          <span className="sr-only">Sort by distance from a quarter</span>
+          <select
+            value={quarter}
+            onChange={(e) => setQuarter(e.target.value)}
+            className="h-12 w-full appearance-none rounded-full bg-transparent pr-8 pl-11 text-label-l text-ink-900 hover:bg-cream focus:bg-cream focus:outline-none"
+          >
+            <option value="">{coords ? "My location" : "Any quarter"}</option>
+            {quarters.map((q) => (
+              <option key={q} value={q}>
+                {q}
+              </option>
+            ))}
+          </select>
+        </label>
+        {status !== "denied" && status !== "unavailable" && (
+          <button
+            type="button"
+            onClick={locate}
+            className={buttonClass({ variant: coords && !quarter ? "tonal" : "primary", className: "shrink-0 @2xl:ml-1" })}
+          >
+            <LocateFixed className="size-[18px]" aria-hidden />
+            {status === "locating" ? "Finding you…" : coords && !quarter ? "Nearest first" : "Near me"}
+          </button>
+        )}
+        </div>
+      </div>
       </div>
 
-      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filters">
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filters">
         {FILTERS.map((f) => (
           <Chip key={f.key} selected={filters.has(f.key)} onClick={() => toggle(f.key)}>
             {f.label}
@@ -105,83 +217,89 @@ export default function FacilityList() {
         ))}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[12px] bg-mint px-4 py-3 text-sm text-brand-900">
-        {coords && !quarter ? (
-          <span className="flex items-center gap-2 font-medium">
-            <LocateFixed className="size-4" aria-hidden /> Nearest first, from your location
-          </span>
-        ) : (
-          <>
-            <span className="flex items-center gap-2 font-medium">
-              <MapPin className="size-4" aria-hidden />
-              {quarter ? `Nearest to ${quarter}` : "Sorted A–Z"}
-            </span>
-            {status !== "denied" && status !== "unavailable" && !quarter && (
-              <button
-                type="button"
-                onClick={locate}
-                className="font-semibold text-brand-700 underline underline-offset-2"
-              >
-                {status === "locating" ? "Finding you…" : "Use my location"}
-              </button>
-            )}
-          </>
-        )}
-        <label className="ml-auto flex items-center gap-2">
-          <span className="sr-only">Choose your quarter</span>
-          <Select
-            value={quarter}
-            onChange={(e) => setQuarter(e.target.value)}
-            className="h-10 w-auto bg-white text-sm"
+      <div className="flex items-baseline justify-between gap-3">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.p
+            key={visible.length}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={SPRING.fast}
+            className="text-label-l text-ink-900"
+            aria-live="polite"
           >
-            <option value="">{coords ? "My location" : "Choose your quarter"}</option>
-            {quarters.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
+            {visible.length} {visible.length === 1 ? "facility" : "facilities"}
+            <span className="font-normal text-ink-600">
+              {" "}
+              · {coords && !quarter ? "nearest first" : quarter ? `nearest to ${quarter}` : "A–Z"}
+            </span>
+          </motion.p>
+        </AnimatePresence>
+        <div className="flex shrink-0 items-center gap-1">
+          {(filters.size > 0 || query) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilters(new Set())
+                setQuery("")
+              }}
+              className="inline-flex h-10 items-center rounded-full px-3 text-label-l text-brand-700 hover:bg-mint"
+            >
+              Clear all
+            </button>
+          )}
+          {/* Phones: switch between the list and the schematic map (desktop shows both). */}
+          <div className="flex rounded-full bg-white p-1 shadow-[var(--shadow-elev-1)] lg:hidden" role="group" aria-label="View">
+            {(
+              [
+                ["list", List, "List"],
+                ["map", MapIcon, "Map"],
+              ] as const
+            ).map(([key, Icon, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={view === key}
+                onClick={() => setView(key)}
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-label-l transition-colors",
+                  view === key ? "bg-brand-900 text-white" : "text-ink-600 hover:text-ink-900",
+                )}
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </button>
             ))}
-          </Select>
-        </label>
+          </div>
+        </div>
       </div>
 
-      <p className="mt-5 text-sm text-ink-600" aria-live="polite">
-        {visible.length} {visible.length === 1 ? "facility" : "facilities"}
-      </p>
-
-      {visible.length === 0 ? (
-        <div className="mt-3">
-          <EmptyState icon={SearchX} title="No facilities match your search or filters." />
-        </div>
-      ) : (
-        <ul className="mt-3 flex flex-col gap-3">
-          {visible.map((f, i) => (
-            <motion.li
-              key={f.facility_id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE_OUT, delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <FacilityRow facility={f} />
-            </motion.li>
-          ))}
-        </ul>
+      {view === "map" && (
+        <FacilityMap
+          all={facilities}
+          shown={visible}
+          highlight={hovered}
+          origin={origin ?? null}
+          onHover={setHovered}
+          className="shadow-[var(--shadow-elev-1)] lg:hidden"
+        />
       )}
 
-      <p className="mt-6 flex flex-wrap items-center gap-x-2 text-xs text-ink-600">
-        {syncedAt ? `Last updated ${formatDate(syncedAt)}` : "Built-in directory"} · Available
-        offline
-        {online && (
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={refreshing}
-            className="inline-flex items-center gap-1 font-semibold text-brand-700"
-          >
-            <RefreshCw className={refreshing ? "size-3 animate-spin" : "size-3"} aria-hidden />
-            Refresh
-          </button>
-        )}
-      </p>
-    </div>
+      {visible.length === 0 ? (
+        <EmptyState icon={SearchX} title="No facilities match your search or filters." />
+      ) : (
+        <motion.ul
+          key={[...filters].join() + quarter}
+          className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3"
+          variants={staggerOnMount(0.03)}
+          initial="hidden"
+          animate="show"
+        >
+          {visible.map((f) => (
+            <FacilityRow key={f.facility_id} facility={f} onHover={setHovered} />
+          ))}
+        </motion.ul>
+      )}
+    </AppPage>
   )
 }

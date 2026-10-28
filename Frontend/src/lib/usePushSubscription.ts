@@ -37,13 +37,13 @@ export function usePushSubscription() {
     setLoading(true)
     setError(null)
     try {
-      const { public_key } = await pushApi.vapidPublicKey()
+      const { vapid_public_key: public_key } = await pushApi.vapidPublicKey()
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(public_key),
       })
-      await pushApi.subscribe({ subscription: sub.toJSON() as PushSubscriptionJSON })
+      await pushApi.subscribe(sub.toJSON() as PushSubscriptionJSON)
       setSubscribed(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not enable notifications")
