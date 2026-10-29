@@ -1,5 +1,6 @@
 import boto3, logging, os
 from boto3.dynamodb.conditions import Key
+from health_track_common import access
 from health_track_common.response import ok, err
 
 logger = logging.getLogger()
@@ -15,8 +16,7 @@ def handler(event, context):
         if not user_id:
             return err(401, "Unauthorized")
 
-        groups = claims.get("cognito:groups", "")
-        is_doctor = "Doctor" in (groups if isinstance(groups, list) else groups.split(","))
+        is_doctor = access.is_doctor(event)
 
         if is_doctor:
             # Doctors see paid + open consultations via StatusUrgencyIndex

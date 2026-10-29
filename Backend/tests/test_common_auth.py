@@ -61,3 +61,15 @@ def test_get_groups_normalises():
     assert get_groups(_event(groups="A, B")) == {"A", "B"}
     assert get_groups(_event(groups=["A"])) == {"A"}
     assert get_groups(_event()) == set()
+
+
+def test_staff_groups_only_trusted_from_staff_pool(monkeypatch):
+    staff = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_staff"
+    monkeypatch.setenv("STAFF_POOL_ISSUER", staff)
+    patient_token = _event(groups="Patient,Admin")
+    patient_token["requestContext"]["authorizer"]["claims"]["iss"] = "https://cognito-idp.us-east-1.amazonaws.com/x"
+    assert get_groups(patient_token) == {"Patient"}
+    assert require_group(patient_token, "Admin")[1]["statusCode"] == 403
+    staff_token = _event(groups="Admin")
+    staff_token["requestContext"]["authorizer"]["claims"]["iss"] = staff
+    assert require_group(staff_token, "Admin") == ("u1", None)

@@ -59,7 +59,8 @@ class ApiStack(Stack):
     """One REST API, one Lambda per domain (router), async push pipeline, alarms and dashboard."""
 
     def __init__(self, scope: Construct, construct_id: str, *, config: Config, data: DataStack,
-                 user_pool: cognito.IUserPool, alert_topic: sns.ITopic, **kwargs) -> None:
+                 user_pool: cognito.IUserPool, staff_pool: cognito.IUserPool, alert_topic: sns.ITopic,
+                 **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         removal = RemovalPolicy.RETAIN if config.is_prod else RemovalPolicy.DESTROY
         key: kms.IKey = data.key
@@ -93,7 +94,9 @@ class ApiStack(Stack):
         # X-Ray SDK: subsegments for every DynamoDB/S3/SSM/EventBridge and outbound HTTP call (Fapshi, web push).
         xray_layer = deps_layer("XRayLayer", "xray-deps")
 
-        base_env = {"ENV_NAME": config.env_name, "CORS_ALLOW_ORIGIN": cors_origin}
+        base_env = {"ENV_NAME": config.env_name, "CORS_ALLOW_ORIGIN": cors_origin,
+                    # Staff groups are trusted only in tokens from the staff pool (health_track_common.auth).
+                    "STAFF_POOL_ISSUER": f"https://cognito-idp.{self.region}.amazonaws.com/{staff_pool.user_pool_id}"}
         routes_of = {}  # function -> {"METHOD /resource": module}, wired to API Gateway below
 
         def function(name: str, folder: str, env: dict, *, routes: dict = None, handler: str = None,
@@ -325,6 +328,68 @@ class ApiStack(Stack):
         })
         data.i18n_bucket.grant_read(i18n, "i18n/*")
 
+        # -- Doctor verification: public application, admin review -----------------------------------
+        reviewer_topic = sns.Topic(self, "DoctorApplicationTopic",
+            topic_name=f"HealthTrack-DoctorApplications-{config.env_name}",
+            master_key=key,
+            enforce_ssl=True,
+        )
+        if config.reviewer_email or config.alert_email:
+            reviewer_topic.add_subscription(subs.EmailSubscription(config.reviewer_email or config.alert_email))
+        docs = data.doctor_documents_bucket
+        application_env = {
+            **tbl(("application", "DoctorApplications")),
+            "DOCUMENTS_BUCKET": docs.bucket_name,
+            "STAFF_USER_POOL_ID": staff_pool.user_pool_id,
+            "SENDER_EMAIL": config.sender_email if config.email_domain else "",
+        }
+        # Split by trust: the public function can only touch drafts and freeze them; it can neither
+        # read submitted documents nor create accounts.
+        doctor_application = function("DoctorApplication", "doctor_application", {
+            **application_env,
+            "REVIEWER_TOPIC_ARN": reviewer_topic.topic_arn,
+        }, routes={
+            "POST /doctor-applications/uploads": "post_uploads",
+            "POST /doctor-applications": "post_application",
+            "GET /doctor-applications/{application_id}": "get_application_status",
+        })
+        t["DoctorApplications"].grant_read_write_data(doctor_application)
+        # Object-level only (no s3:List*: frozen keys contain application IDs, which are status credentials).
+        doctor_application.add_to_role_policy(iam.PolicyStatement(
+            actions=["s3:PutObject", "s3:GetObject"], resources=[docs.arn_for_objects("drafts/*")]))
+        doctor_application.add_to_role_policy(iam.PolicyStatement(
+            actions=["s3:PutObject"], resources=[docs.arn_for_objects("doctor-applications/*")]))  # frozen copies
+        key.grant(doctor_application, "kms:Decrypt", "kms:GenerateDataKey*")
+        reviewer_topic.grant_publish(doctor_application)
+        doctor_application.add_to_role_policy(iam.PolicyStatement(
+            actions=["cognito-idp:AdminGetUser"], resources=[staff_pool.user_pool_arn]))
+
+        doctor_application_admin = function("DoctorApplicationAdmin", "doctor_application", {
+            **application_env,
+            **tbl(("profile", "Profiles")),
+        }, routes={
+            "GET /admin/doctor-applications": "list_applications",
+            "GET /admin/doctor-applications/{application_id}": "get_application",
+            "PUT /admin/doctor-applications/{application_id}": "put_application",
+            "POST /admin/doctor-applications/{application_id}/approve": "approve_application",
+            "POST /admin/doctor-applications/{application_id}/reject": "reject_application",
+            "POST /admin/doctor-applications/{application_id}/resend-invite": "resend_invite",
+        })
+        t["DoctorApplications"].grant_read_write_data(doctor_application_admin)
+        t["Profiles"].grant_read_write_data(doctor_application_admin)
+        docs.grant_read(doctor_application_admin, "doctor-applications/*")
+        doctor_application_admin.add_to_role_policy(iam.PolicyStatement(
+            actions=["s3:PutObjectTagging", "s3:DeleteObjectTagging"],
+            resources=[docs.arn_for_objects("doctor-applications/*")]))
+        doctor_application_admin.add_to_role_policy(iam.PolicyStatement(
+            actions=["cognito-idp:AdminCreateUser", "cognito-idp:AdminGetUser", "cognito-idp:AdminAddUserToGroup"],
+            resources=[staff_pool.user_pool_arn]))
+        if config.email_domain:
+            send_email = iam.PolicyStatement(actions=["ses:SendEmail"], resources=[
+                f"arn:aws:ses:{self.region}:{self.account}:identity/{config.email_domain}"])
+            for fn in (doctor_application, doctor_application_admin):
+                fn.add_to_role_policy(send_email)
+
         # Domain events -> web push (EventBridge default bus).
         events_put = iam.PolicyStatement(actions=["events:PutEvents"], resources=[
             f"arn:aws:events:{self.region}:{self.account}:event-bus/default"])
@@ -363,6 +428,9 @@ class ApiStack(Stack):
             "/channels/ussd/POST": (2, 5),
             "/prescriptions/{code}/GET": (2, 5),
             "/referrals/{code}/GET": (2, 5),
+            "/doctor-applications/uploads/POST": (1, 2),
+            "/doctor-applications/POST": (1, 2),
+            "/doctor-applications/{application_id}/GET": (2, 5),
         }
         api = apigateway.RestApi(self, "Api",
             rest_api_name=f"health-track-{config.env_name}",
@@ -410,7 +478,7 @@ class ApiStack(Stack):
         validator = api.add_request_validator("RequestValidator", validate_request_parameters=True,
                                              validate_request_body=True)  # body: only where a model is set
         authorizer = apigateway.CognitoUserPoolsAuthorizer(self, "Authorizer",
-            cognito_user_pools=[user_pool],
+            cognito_user_pools=[user_pool, staff_pool],  # patients, and staff (MFA-only pool)
             authorizer_name=f"health-track-{config.env_name}",
             results_cache_ttl=Duration.minutes(5),
         )
@@ -419,6 +487,8 @@ class ApiStack(Stack):
             "GET /prescriptions/{code}", "GET /referrals/{code}",
             "GET /health-tips", "GET /push/vapid-public-key", "GET /i18n/{locale}",
             "POST /payments/webhook", "POST /channels/sms", "POST /channels/ussd",
+            "POST /doctor-applications/uploads", "POST /doctor-applications",
+            "GET /doctor-applications/{application_id}",
         }
         for fn, routes in routes_of.items():
             # One invoke permission per function for the whole API, instead of one per method.
@@ -483,9 +553,10 @@ class ApiStack(Stack):
                                         left=[fn.metric_duration(statistic="p95", period=five_min)
                                               for fn in api_functions])],
                 # Business KPIs from structured logs (events.record): free, unlike custom metrics.
-                [cloudwatch.LogQueryWidget(title="Business events (triage by urgency, consultations, payments)",
+                [cloudwatch.LogQueryWidget(title="Business events (triage, consultations, payments, doctor applications)",
                     width=24, log_group_names=[f"/aws/lambda/HealthTrack-{n}-{config.env_name}" for n in
-                                               ("Triage", "Consultation", "Payment", "PaymentWebhook", "Extended")],
+                                               ("Triage", "Consultation", "Payment", "PaymentWebhook", "Extended",
+                                                "DoctorApplication", "DoctorApplicationAdmin")],
                     query_lines=["filter message like /^business_event /",
                                  "parse message 'business_event *' as event",
                                  "stats count(*) as total by event"])],
@@ -494,3 +565,4 @@ class ApiStack(Stack):
 
         CfnOutput(self, "ApiUrl", value=api.url)
         CfnOutput(self, "OperatorAlertTopicArn", value=operator_topic.topic_arn)
+        CfnOutput(self, "DoctorApplicationTopicArn", value=reviewer_topic.topic_arn)

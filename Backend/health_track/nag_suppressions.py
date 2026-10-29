@@ -7,7 +7,8 @@ from cdk_nag import NagSuppressions
 
 PUBLIC_BY_DESIGN = (
     "Public by design: offline-first directory, pharmacy/facility code lookups, translations, the "
-    "VAPID public key, and webhooks from Fapshi/telco gateways (verified in the handler: Fapshi status "
+    "VAPID public key, doctor applications (no account exists until an admin approves them), and "
+    "webhooks from Fapshi/telco gateways (verified in the handler: Fapshi status "
     "API / gateway token). Anonymous routes authenticate the X-Anonymous-Session token in the handler. "
     "Every public route has a per-method throttle."
 )
@@ -28,15 +29,16 @@ def apply(app) -> None:
                     "AWSLambdaBasicExecutionRole / API Gateway CloudWatch role are AWS-managed logging-only policies."},
                 {"id": "AwsSolutions-IAM5", "reason":
                     "Wildcards are CDK grant suffixes scoped to one table's indexes (table/X/index/*), one bucket "
-                    "prefix (voice-notes/*, i18n/*), KMS GenerateDataKey* on the single health-data key, and X-Ray."},
+                    "prefix (voice-notes/*, i18n/*, drafts/*, doctor-applications/*), KMS GenerateDataKey* on the "
+                    "single health-data key, and X-Ray."},
             ])
         if name.startswith("HealthTrack-Auth-"):
             NagSuppressions.add_stack_suppressions(stack, [
                 {"id": "AwsSolutions-COG1", "reason":
                     "NIST SP 800-63B: 12-character minimum without composition rules, for low-literacy users."},
                 {"id": "AwsSolutions-COG2", "reason":
-                    "TOTP MFA is optional for patients; the pre-token-generation trigger removes Doctor/Operator/"
-                    "Admin groups from tokens unless the user has TOTP MFA, so staff privileges require MFA."},
+                    "TOTP MFA is optional in the patient pool (offline-first, shared phones). Doctor/Operator/Admin "
+                    "accounts live in the separate staff pool, where TOTP MFA is required."},
                 {"id": "AwsSolutions-COG8", "reason":
                     "Cognito Plus (threat protection) is $0.02/MAU, over the $3/month budget at launch."},
                 {"id": "AwsSolutions-IAM4", "reason": "AWSLambdaBasicExecutionRole is an AWS-managed logging policy."},
