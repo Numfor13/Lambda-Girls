@@ -37,6 +37,9 @@ TABLES = {
     "HealthTips":        ("tip_id", None, [("LocaleIndex", "locale", ("published_date", S))], None),
     "DoctorPresence":    ("doctor_id", None, [], None),
     "AnonymousSessions": ("session_token", None, [], "ttl"),
+    "DoctorApplications": ("application_id", None, [("StatusIndex", "status", ("submitted_at", N)),
+                                                    ("EmailIndex", "email", None),
+                                                    ("OnmcIndex", "onmc_number", None)], None),
 }
 
 
@@ -145,6 +148,35 @@ class DataStack(Stack):
             auto_delete_objects=not config.is_prod,
         )
 
+        # Doctor verification evidence (ONMC documents, degree, national ID, selfie). Uploads land in drafts/
+        # through presigned POSTs; submission copies them to frozen keys under doctor-applications/.
+        # Not versioned: a deleted identity document must really be gone.
+        self.doctor_documents_bucket = s3.Bucket(self, "DoctorDocumentsBucket",
+            bucket_name=f"health-track-doctor-documents-{self.account}-{config.env_name}",
+            encryption=s3.BucketEncryption.KMS,
+            encryption_key=self.key,
+            bucket_key_enabled=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            enforce_ssl=True,
+            server_access_logs_bucket=self.logs_bucket,
+            server_access_logs_prefix="doctor-documents/",
+            cors=[s3.CorsRule(
+                allowed_methods=[s3.HttpMethods.POST],
+                allowed_origins=list(config.allowed_origins),
+                allowed_headers=["*"],
+                max_age=3600,
+            )],
+            lifecycle_rules=[
+                s3.LifecycleRule(id="UnsubmittedDrafts", prefix="drafts/", expiration=Duration.days(1),
+                                 abort_incomplete_multipart_upload_after=Duration.days(1)),
+                s3.LifecycleRule(id="RejectedApplications", tag_filters={"state": "rejected"},
+                                 expiration=Duration.days(90)),
+            ],
+            removal_policy=removal,
+            auto_delete_objects=not config.is_prod,
+        )
+
         CfnOutput(self, "HealthDataKeyArn", value=self.key.key_arn)
         CfnOutput(self, "VoiceNotesBucketName", value=self.voice_notes_bucket.bucket_name)
         CfnOutput(self, "I18nBucketName", value=self.i18n_bucket.bucket_name)
+        CfnOutput(self, "DoctorDocumentsBucketName", value=self.doctor_documents_bucket.bucket_name)

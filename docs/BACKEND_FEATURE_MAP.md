@@ -21,9 +21,9 @@ Tier 2 services: SMS/USSD channel, nurse callback queue, operator console, appoi
 | Role | How it is assigned | What they do |
 |---|---|---|
 | **Patient** | Automatically on sign-up (post-confirmation trigger) | Profile, household, triage, consult, pay, extended services |
-| **Doctor** | Manual (Cognito console/CLI) | Queue, claim, reply, prescribe, refer, close, presence heartbeat |
-| **Operator** | Manual | Nurse callbacks, dispatch log, emergencies, blood requests, lab status |
-| **Admin** | Manual | Facility CRUD, health tips CRUD, confirm appointments, lab status |
+| **Doctor** | **Staff pool.** Created when an Admin approves a doctor application (§3.13) | Queue, claim, reply, prescribe, refer, close, presence heartbeat |
+| **Operator** | **Staff pool.** Created by CLI (`Backend/RUNBOOK.md` §5) | Nurse callbacks, dispatch log, emergencies, blood requests, lab status |
+| **Admin** | **Staff pool.** Created by CLI | Facility CRUD, health tips CRUD, confirm appointments, lab status, **review doctor applications** |
 | **Anonymous** | No account: `X-Anonymous-Session` header | Consult and pay without identity (7-day session) |
 | **Public** | No auth | Facilities, health tips, Rx/referral code lookup, VAPID key, i18n |
 | **Feature phone** | SMS/USSD webhook | Menu: hospitals, first aid, symptom check, nurse callback |
@@ -35,7 +35,13 @@ Tier 2 services: SMS/USSD channel, nurse callback queue, operator console, appoi
 - **IaC:** AWS CDK (Python), entry `Backend/app.py`. 14 stacks named `HealthTrack-<Name>-<env>` (`env` = `dev` | `staging` | `prod`, from `-c env=`).
 - **Compute:** Python 3.12 Lambdas, one per route. Shared layer at `Backend/lambda_layers/common/python/health_track_common/` (`response.ok/err`, `auth.require_group`, `anonymous`, `locale`, `fapshi`, `rules`).
 - **Data:** DynamoDB tables named `HealthTrack-<Table>-<env>`. S3 for voice notes and i18n JSON.
-- **Auth:** Cognito User Pool, Hosted UI (OAuth code flow + PKCE), email or phone sign-in. API Gateway uses a **Cognito User Pools authorizer**, so the frontend must send the **ID token** as `Authorization: Bearer <id_token>` (it already does: `Frontend/src/auth/session.ts`).
+- **Auth:** **two** Cognito user pools, both accepted by the API authorizer:
+  - **Patient pool:** self sign-up; only the `Patient` group; optional TOTP; 1 h tokens and a 30-day refresh token.
+  - **Staff pool** (Doctor, Operator, Admin): no self sign-up; **TOTP mandatory**; **10-minute tokens**; a **24-hour session** (the refresh token rotates on every refresh but never extends past 24 h after sign-in).
+
+  Staff screens must use the staff pool's authority and client ID (`HealthTrack-Auth-<env>` outputs `StaffCognitoAuthority`, `StaffAppClientId`, `StaffHostedUiDomain`).
+
+  Patient pool details: Hosted UI (OAuth code flow + PKCE), email or phone sign-in. API Gateway uses a **Cognito User Pools authorizer**, so the frontend must send the **ID token** as `Authorization: Bearer <id_token>` (it already does: `Frontend/src/auth/session.ts`).
 - **Dev conveniences:** in `dev`, sign-ups are auto-confirmed, Fapshi is **not called** (fake sandbox URL), and the webhook skips signature checks.
 
 ### ⚠️ There is no single API: there are 11 API Gateways
@@ -238,8 +244,61 @@ Doctors see anonymous cases as `patient_id: "anonymous"`, `is_anonymous: true`, 
 ### 3.12 Auth triggers (no HTTP)
 
 - **Pre sign-up:** auto-confirms in `dev`.
-- **Post confirmation:** creates the profile row and adds the user to the `Patient` group.
-- **Hosted UI:** callback `http://localhost:5173/auth/callback`, logout `http://localhost:5173/sign-in`, scopes `openid email profile`. **Add the deployed frontend URL to `auth_stack.py` before you deploy the frontend anywhere.**
+- **Post confirmation** (patient pool only): creates the profile row and adds the user to the `Patient` group.
+- **Patient Hosted UI:** callback `http://localhost:5173/auth/callback`, logout `http://localhost:5173/sign-in`. **Add the deployed frontend URL to `cdk.json` before you deploy the frontend anywhere.**
+- **Staff Hosted UI:** its own domain (`StaffHostedUiDomain`), scopes `openid email profile`. Cognito itself runs the whole first sign-in: email + temporary password → new password → QR code for an authenticator app → 6-digit code → tokens. After that, every sign-in asks for email + password + code.
+  - Tokens last 10 min. Renew them silently with the refresh token through the OAuth token endpoint; `oidc-client-ts` `automaticSilentRenew` does this. **Store the new refresh token each time**, because the old one stops working 10 s after rotation.
+  - When a refresh fails (24 h after sign-in), send the user to sign in again.
+
+### 3.13 Doctor applications (Waspito-style doctor sign-up)
+
+A doctor **has no account until an Admin approves the application**. "Sign up as a doctor" is a public form, not a Cognito sign-up.
+
+**Applicant flow (all 🔓, throttled):**
+
+1. `POST /doctor-applications/uploads` reserves an application and returns one upload form per document.
+   - Request: `{ "documents": { "onmc_certificate": "application/pdf", "onmc_card": "image/jpeg", "medical_degree": "application/pdf", "identity_document": "image/png", "selfie_with_ids": "image/jpeg" } }`.
+   - All five keys are required. The first four accept `application/pdf`, `image/jpeg` or `image/png`. **`selfie_with_ids` accepts only `image/jpeg` or `image/png`:** it is a photo of the applicant holding their CNI or passport and their ONMC card next to their face.
+   - Response: `201 { application_id, expires_in: 900, uploads: { <doc_type>: { url, fields } } }`.
+2. Upload each file **with a multipart form POST**, not a PUT. Send it to `uploads[doc].url`, with every entry of `uploads[doc].fields` as form fields **first** and then the file as the field named `file`.
+   - The `Content-Type` you send must match the type you declared in step 1. Files can be at most **5 MB**.
+   - S3 answers `204`. The forms expire after 15 minutes; if they do, start again at step 1.
+3. `POST /doctor-applications` submits the application. The request carries:
+   - `application_id`, from step 1;
+   - `full_name`, `email`, `phone` (`+237…`, international format);
+   - `specialty` (the 21 values in `Frontend/src/api/types.ts`);
+   - `onmc_number`, in the form `12345/2019` (registration number / year of first inscription);
+   - `medical_school` and `graduation_year` (integer);
+   - `identity_document_type` (`cni` | `passport`) and `identity_document_number`.
+
+   Response: `201 { application_id, status: "pending" }`.
+
+   | Error | Meaning |
+   |---|---|
+   | `400` | The message names the field or document, e.g. `"selfie_with_ids is not a valid JPEG file"` or `"identity_document has not been uploaded"` |
+   | `409` | The application was already submitted, or the email is already in use. The email case always gets one generic message on purpose, so the form can't be used to discover staff accounts. |
+   | `503` | The review queue is full (200 applications waiting). Show the message and ask the applicant to try again later. Step 1 can also return this. |
+
+4. Show the "under review, usually within 24 hours" card, and **show the application ID** with a link to the status page. Until a domain is configured, the "received" and "rejected" emails are not sent (`Backend/PENDING_BEFORE_DEPLOY.md`).
+5. `GET /doctor-applications/{application_id}` → `{ application_id, status, submitted_at, reviewed_at, rejection_reason }`. `status` is one of `pending`, `under_review`, `approving` (the account is being created; show it as "being approved"), `approved` or `rejected`.
+6. On approval, Cognito emails the doctor a temporary password and the staff sign-in link. The first sign-in then goes as in §3.12.
+
+**Admin review (🛠, staff pool):**
+
+| Method & path | Request | Response |
+|---|---|---|
+| `GET /admin/doctor-applications?status=pending` | `status`: `pending` (default), `under_review`, `approving`, `approved` or `rejected` | `{ applications, count }`, newest first, without document keys |
+| `GET /admin/doctor-applications/{id}` | – | Full application, plus `document_urls` (`<doc_type>` → link valid for 5 minutes; fetch again to refresh) and `duplicates: { onmc_number: [{application_id, status}], email: [...] }`. Also `duplicate_onmc: true` when the ONMC number was already used when the application was submitted. **Show duplicates prominently: they are the main sign of a stolen identity.** |
+| `PUT /admin/doctor-applications/{id}` | `{ admin_notes? (≤2000), checks?: { onmc_register_verified?, documents_consistent?, selfie_matches? } }` (booleans) | `{ updated, status: "under_review", checks }`. The first edit moves the application to `under_review`. Returns `409` once it is decided. |
+| `POST /admin/doctor-applications/{id}/approve` | `{}` | `{ approved, email }`. Returns `409` unless **all three checks are true**, and also if another application with the same ONMC number is already approved or this one is already decided. The application first moves to `approving`, and only then is the account created; after that, reject and edit are refused. If approve fails part-way (a `500`), the application stays `approving` and **the admin just presses Approve again**. |
+| `POST /admin/doctor-applications/{id}/reject` | `{ reason }` (1–500 chars, shown to the applicant) | `{ rejected }`. A rejected application's documents are deleted 90 days after they were submitted. |
+| `POST /admin/doctor-applications/{id}/resend-invite` | `{}` | `{ resent }`. Use it when the 7-day temporary password expired or the email got lost. Returns `409` if the doctor has already signed in or the application isn't approved. |
+
+Checklist wording for the review screen:
+
+- `onmc_register_verified`: "ONMC number found in the Order's register under this name".
+- `documents_consistent`: "Name and photo match across CNI/passport, ONMC card, certificate and degree".
+- `selfie_matches`: "Selfie shows the same person holding both cards, and the cards are readable".
 
 ---
 

@@ -18,6 +18,15 @@ class Config:
     allowed_origins: tuple = ("*",)
     callback_urls: tuple = ("http://localhost:5173/auth/callback",)
     logout_urls: tuple = ("http://localhost:5173/sign-in",)
+    # Staff (Doctor/Operator/Admin) sign-in: its own pool and app client; default to the patient URLs.
+    staff_callback_urls: tuple = ("http://localhost:5173/auth/callback",)
+    staff_logout_urls: tuple = ("http://localhost:5173/sign-in",)
+    staff_login_url: str = "http://localhost:5173/sign-in"
+    # Email groundwork: empty until a domain exists (see PENDING_BEFORE_DEPLOY.md).
+    email_domain: str = ""
+    sender_email: str = ""
+    # New doctor applications are announced here; falls back to alert_email.
+    reviewer_email: str = ""
     consultation_fee_xaf: int = 2000
     monthly_budget_usd: int = 3
     # CloudTrail's first management-event trail per account is free; create it in one env only.
@@ -58,6 +67,12 @@ def get_config(app_node) -> Config:
         allowed_origins=tuple(ctx.get("allowedOrigins", ["*"])),
         callback_urls=tuple(ctx.get("callbackUrls", ["http://localhost:5173/auth/callback"])),
         logout_urls=tuple(ctx.get("logoutUrls", ["http://localhost:5173/sign-in"])),
+        staff_callback_urls=tuple(ctx.get("staffCallbackUrls", ctx.get("callbackUrls", ["http://localhost:5173/auth/callback"]))),
+        staff_logout_urls=tuple(ctx.get("staffLogoutUrls", ctx.get("logoutUrls", ["http://localhost:5173/sign-in"]))),
+        staff_login_url=ctx.get("staffLoginUrl", "http://localhost:5173/sign-in"),
+        email_domain=ctx.get("emailDomain", ""),
+        sender_email=ctx.get("senderEmail", ""),
+        reviewer_email=ctx.get("reviewerEmail", ""),
         consultation_fee_xaf=int(ctx.get("consultationFeeXaf", 2000)),
         monthly_budget_usd=int(ctx.get("monthlyBudgetUsd", 3)),
         enable_trail=bool(ctx.get("enableTrail", True)),

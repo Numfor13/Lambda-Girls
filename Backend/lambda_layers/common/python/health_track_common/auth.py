@@ -1,6 +1,10 @@
 """Cognito group checks for API Gateway (Cognito authorizer) events."""
 
+import os
+
 from health_track_common.response import err
+
+STAFF_GROUPS = {"Doctor", "Operator", "Admin"}
 
 
 def _claims(event) -> dict:
@@ -8,11 +12,20 @@ def _claims(event) -> dict:
 
 
 def get_groups(event) -> set:
-    """Return the caller's Cognito groups; `cognito:groups` may be a list or a comma string."""
-    groups = _claims(event).get("cognito:groups", "")
+    """Return the caller's Cognito groups; `cognito:groups` may be a list or a comma string.
+
+    The API accepts tokens from the patient and the staff pool. Staff groups count only in staff-pool
+    tokens (MFA mandatory there), so a staff group created by mistake in the patient pool grants nothing.
+    """
+    claims = _claims(event)
+    groups = claims.get("cognito:groups", "")
     if not isinstance(groups, list):
         groups = groups.split(",")
-    return {g.strip() for g in groups if g and g.strip()}
+    groups = {g.strip() for g in groups if g and g.strip()}
+    staff_issuer = os.environ.get("STAFF_POOL_ISSUER")
+    if staff_issuer and claims.get("iss") != staff_issuer:
+        groups -= STAFF_GROUPS
+    return groups
 
 
 def require_group(event, *groups):

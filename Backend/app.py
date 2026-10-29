@@ -19,19 +19,20 @@ def name(stack: str) -> str:
 data = DataStack(app, name("Data"), config=config, env=env, termination_protection=config.is_prod)
 
 health_tables = ["Profiles", "TriageResults", "Consultations", "Messages", "Payments",
-                 "Prescriptions", "Referrals", "Emergencies", "AnonymousSessions"]
+                 "Prescriptions", "Referrals", "Emergencies", "AnonymousSessions", "DoctorApplications"]
 governance = GovernanceStack(app, name("Governance"), config=config, env=env,
     key=data.key,
     health_table_arns=[data.tables[t].table_arn for t in health_tables],
     voice_notes_bucket=data.voice_notes_bucket,
     logs_bucket=data.logs_bucket,
+    doctor_documents_bucket=data.doctor_documents_bucket,
 )
 auth = AuthStack(app, name("Auth"), config=config, env=env,
     profiles_table=data.tables["Profiles"], key=data.key,
     termination_protection=config.is_prod,
 )
 ApiStack(app, name("Api"), config=config, env=env,
-    data=data, user_pool=auth.user_pool, alert_topic=governance.alert_topic,
+    data=data, user_pool=auth.user_pool, staff_pool=auth.staff_pool, alert_topic=governance.alert_topic,
 )
 
 for key, value in config.tags.items():

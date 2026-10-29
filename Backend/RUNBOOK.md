@@ -85,12 +85,34 @@ The on-call operator always handles emergency-location alerts (operator topic) a
 
 ## 5. Staff onboarding (doctors, operators, admins)
 
-1. The person signs up through the hosted UI and lands in `Patient`.
-2. They enrol TOTP MFA with an authenticator app. **Without TOTP the pre-token trigger strips staff groups.**
-3. Verify the doctor's licence before step 4. For now this is recorded outside the system.
-4. An Admin adds the group: `aws cognito-idp admin-add-user-to-group --user-pool-id <id> --username <email> --group-name Doctor`.
+Staff accounts live in the **staff user pool** (`HealthTrack-Auth-<env>` output `StaffUserPoolId`). It has no self sign-up, TOTP MFA is mandatory, tokens last 10 minutes, and sessions last 24 hours. Patients never become staff: the patient pool has only the `Patient` group.
 
-To offboard, run `admin-remove-user-from-group`, then `admin-user-global-sign-out`.
+**Doctors** apply through `POST /doctor-applications` (ONMC certificate, ONMC card, degree, CNI or passport, and a selfie holding both cards). An Admin reviews the application in the admin console:
+
+1. Look up the ONMC number in the ONMC register (or call the Order), then tick `onmc_register_verified`.
+2. Check that the name and photo match across the CNI or passport, the ONMC card, the certificate and the degree. Tick `documents_consistent`.
+3. Check the selfie: the same face as the ID photos, with both cards visible and readable next to the face. Tick `selfie_matches`.
+4. Approve. This creates the account and Cognito emails a temporary password (valid for 7 days). Otherwise, reject with a reason.
+
+If approve fails part-way (500), the application stays `approving`; press **Approve** again to finish it. Reject is refused in that state on purpose, because the account may already exist.
+
+**Never create Doctor, Operator or Admin groups in the patient pool.** The API ignores staff groups in patient-pool tokens (`STAFF_POOL_ISSUER`), so such a group would do nothing, but it would confuse whoever reads the console next.
+
+If a doctor's invitation expired or was lost, use **resend invite** (`POST /admin/doctor-applications/{id}/resend-invite`).
+
+**Operators and Admins** are created from the CLI:
+
+```bash
+POOL=$(aws cloudformation describe-stacks --stack-name HealthTrack-Auth-$ENV   --query "Stacks[0].Outputs[?OutputKey=='StaffUserPoolId'].OutputValue" --output text)
+aws cognito-idp admin-create-user --user-pool-id $POOL --username person@example.org   --user-attributes Name=email,Value=person@example.org Name=email_verified,Value=true Name=name,Value="Full Name"   --desired-delivery-mediums EMAIL
+aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username person@example.org --group-name Admin
+```
+
+At first sign-in they set a password and enrol TOTP. Cognito enforces both.
+
+**Lost authenticator.** Confirm the person's identity outside the app, for example by a call to a number already on file. Then clear their TOTP registration with `aws cognito-idp admin-delete-software-token --user-pool-id $POOL --username <email>`. This is AWS's admin TOTP reset, available since August 2026, so update the AWS CLI if the command is missing. At their next sign-in they enrol a new authenticator. Confirm this once in dev (see `PENDING_BEFORE_DEPLOY.md`). **Do not delete and re-create the user:** a new user gets a new `sub`, which orphans their profile and their consultation history.
+
+**Offboarding.** Run `admin-user-global-sign-out`, then `admin-disable-user`. Because the refresh token expires within 24 hours and access tokens within 10 minutes, any remaining session ends quickly.
 
 ## 6. Secrets rotation
 
@@ -141,7 +163,7 @@ Lambdas cache parameters per container. To force a refresh, redeploy the Api sta
 | 5   | Backup restore drill                                    | PITR restore of Facilities: 250 s, 40/40 items                                                  |
 | 6   | Load and throttle test                                  | 300 requests at ~8 rps: 100% 200, p95 508 ms; route throttle returns 429 with CORS              |
 | 7   | Secrets are in SSM, none in code or environment         | 4 parameters; no secrets in templates                                                           |
-| 8   | Staff MFA enforced                                      | Doctor without TOTP rejected (403); with TOTP accepted                                          |
+| 8   | Staff MFA enforced                                      | Staff pool `MfaConfiguration: ON` (re-verify after the staff-pool deploy: new user forced through TOTP setup) |
 | 9   | Runbook owners named (§1a)                              | **Names pending**                                                                               |
 
 ### 8b. Continuous improvement

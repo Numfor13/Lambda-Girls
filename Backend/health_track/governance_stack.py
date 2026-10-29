@@ -19,7 +19,7 @@ class GovernanceStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, *, config: Config,
                  key: kms.IKey, health_table_arns: list, voice_notes_bucket: s3.IBucket,
-                 logs_bucket: s3.IBucket, **kwargs) -> None:
+                 logs_bucket: s3.IBucket, doctor_documents_bucket: s3.IBucket, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         removal = RemovalPolicy.RETAIN if config.is_prod else RemovalPolicy.DESTROY
 
@@ -96,13 +96,14 @@ class GovernanceStack(Stack):
                     ],
                 ),
                 cloudtrail.CfnTrail.AdvancedEventSelectorProperty(
-                    name="Voice note object events",
+                    name="Voice note and doctor document object events",
                     field_selectors=[
                         cloudtrail.CfnTrail.AdvancedFieldSelectorProperty(field="eventCategory", equal_to=["Data"]),
                         cloudtrail.CfnTrail.AdvancedFieldSelectorProperty(
                             field="resources.type", equal_to=["AWS::S3::Object"]),
                         cloudtrail.CfnTrail.AdvancedFieldSelectorProperty(
-                            field="resources.ARN", starts_with=[f"{voice_notes_bucket.bucket_arn}/"]),
+                            field="resources.ARN", starts_with=[f"{voice_notes_bucket.bucket_arn}/",
+                                                              f"{doctor_documents_bucket.bucket_arn}/"]),
                     ],
                 ),
             ]
