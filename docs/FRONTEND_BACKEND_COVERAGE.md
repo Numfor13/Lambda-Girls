@@ -21,6 +21,10 @@ The registered-patient payment screen now retains the server amount and `simulat
 
 The owner also requested free map APIs. Shared map surfaces now use OpenStreetMap immediately, prefer free Google Maps Embed for a single location when a restricted key is configured, and use Google Maps URLs for directions. The coordinate-only view remains as an offline/error fallback. See [MAPS.md](MAPS.md) for coverage, privacy, provider requirements and configuration.
 
+## Latest live check
+
+See [LIVE_VERIFICATION.md](LIVE_VERIFICATION.md): existing public API reads succeed, but the new doctor-application route is unavailable at the configured API stage. Staff-pool settings are missing locally; the owning AWS profile/environment is needed to continue.
+
 ## Configuration and deployment
 
 Keep `VITE_API_BASE_URL` pointed at the unified API; `VITE_API_URL_DOCTOR_APPLICATION` and `VITE_API_URL_I18N` are optional overrides.
