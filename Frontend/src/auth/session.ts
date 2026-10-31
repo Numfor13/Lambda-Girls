@@ -1,5 +1,5 @@
 import { UserManager, WebStorageStateStore, type User } from "oidc-client-ts"
-import { authConfigured, env } from "@/config/env"
+import { authConfigured, staffAuthConfigured, env } from "@/config/env"
 
 export type Role = "Patient" | "Doctor" | "Operator" | "Admin"
 
@@ -15,21 +15,30 @@ export interface Session {
 
 const DEMO_KEY = "cb_demo_session"
 
-let manager: UserManager | null = null
-
-export function getUserManager(): UserManager | null {
-  if (!authConfigured) return null
-  manager ??= new UserManager({
-    authority: env.cognito.authority,
-    client_id: env.cognito.clientId,
-    redirect_uri: env.cognito.redirectUri,
+export type AuthMode = "patient" | "staff"
+const MODE_KEY = "cb_auth_mode"
+const managers: Partial<Record<AuthMode, UserManager>> = {}
+export function getAuthMode(): AuthMode {
+  return sessionStorage.getItem(MODE_KEY) === "staff" ? "staff" : "patient"
+}
+export function selectAuthMode(mode: AuthMode) {
+  sessionStorage.setItem(MODE_KEY, mode)
+}
+export function getUserManager(
+  mode: AuthMode = getAuthMode()
+): UserManager | null {
+  const config = mode === "staff" ? env.cognitoStaff : env.cognito
+  if (!config.authority || !config.clientId) return null
+  return (managers[mode] ??= new UserManager({
+    authority: config.authority,
+    client_id: config.clientId,
+    redirect_uri: config.redirectUri,
     post_logout_redirect_uri: window.location.origin,
     response_type: "code",
-    scope: "openid email",
+    scope: mode === "staff" ? "openid email profile" : "openid email",
     automaticSilentRenew: true,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
-  })
-  return manager
+  }))
 }
 
 /**
@@ -42,7 +51,10 @@ export async function signUpRedirect(returnTo?: string): Promise<void> {
   await um.signinRedirect({ state: { returnTo: returnTo ?? "/app" } })
 }
 
-export function sessionFromUser(user: User): Session {
+export function sessionFromUser(
+  user: User,
+  mode: AuthMode = getAuthMode()
+): Session {
   const p = user.profile as Record<string, unknown>
   const groups = Array.isArray(p["cognito:groups"])
     ? (p["cognito:groups"] as Role[])
@@ -54,7 +66,10 @@ export function sessionFromUser(user: User): Session {
     ),
     email: typeof p.email === "string" ? p.email : undefined,
     phone: typeof p.phone_number === "string" ? p.phone_number : undefined,
-    groups: groups.length ? groups : ["Patient"],
+    groups:
+      mode === "staff"
+        ? groups.filter((g) => ["Doctor", "Operator", "Admin"].includes(g))
+        : ["Patient"],
     idToken: user.id_token ?? "",
     demo: false,
   }
@@ -70,6 +85,7 @@ export function readDemoSession(): Session | null {
 }
 
 export function writeDemoSession(role: Role): Session {
+  selectAuthMode(role === "Patient" ? "patient" : "staff")
   const session: Session = {
     sub: `demo-${role.toLowerCase()}-1`,
     name: {
@@ -97,7 +113,7 @@ export async function currentSession(): Promise<Session | null> {
     const user = await um.getUser()
     return user && !user.expired ? sessionFromUser(user) : null
   }
-  return readDemoSession()
+  return !authConfigured && !staffAuthConfigured ? readDemoSession() : null
 }
 
 /** Token passed to the mock API so it can tell patients and doctors apart. */

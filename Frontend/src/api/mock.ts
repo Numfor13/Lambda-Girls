@@ -1,3 +1,8 @@
+import en from "@/data/i18n/en.json"
+import fr from "@/data/i18n/fr.json"
+import pid from "@/data/i18n/pid.json"
+import { applicationMockRoutes } from "./mock-doctor-applications"
+import type { DoctorApplication } from "./doctor-applications"
 import { ulid } from "ulid"
 import seed from "@/data/facilities.seed.json"
 import { evaluate } from "@/triage-engine/engine"
@@ -21,6 +26,7 @@ import type {
 // Response shapes mirror the Lambda handlers exactly so switching over needs no UI changes.
 
 interface MockDb {
+  doctorApplications?: DoctorApplication[]
   services?: ServiceMockDb
   profiles: Record<string, Profile>
   triage: (TriageResult & { user_id: string })[]
@@ -60,8 +66,16 @@ function save(data: MockDb) {
 
 // Demo-only content for mock mode. Real data comes from the extended API.
 const MOCK_DOCTORS = [
-  { doctor_id: "demo-doctor-1", specialty: "General practice", typical_response_minutes: 15 },
-  { doctor_id: "demo-doctor-2", specialty: "Paediatrics", typical_response_minutes: 25 },
+  {
+    doctor_id: "demo-doctor-1",
+    specialty: "General practice",
+    typical_response_minutes: 15,
+  },
+  {
+    doctor_id: "demo-doctor-2",
+    specialty: "Paediatrics",
+    typical_response_minutes: 25,
+  },
 ]
 const MOCK_TIPS: HealthTip[] = [
   {
@@ -133,8 +147,48 @@ function profileFor(data: MockDb, sub: string): Profile {
 }
 
 const routes: [string, RegExp, Handler][] = [
+  ...applicationMockRoutes(),
+  [
+    "GET",
+    /^\/i18n\/(en|fr|pid)$/,
+    ({ params }) => ({ en, fr, pid })[params[0] as "en" | "fr" | "pid"],
+  ],
+  [
+    "POST",
+    /^\/payments\/([^/]+)\/simulate$/,
+    ({ user, data, params }) => {
+      if (!user || user.sub !== "demo-admin-1")
+        throw new ApiError(user ? 403 : 401, "Admin group required")
+      const p = data.payments.find((p) => p.payment_id === params[0])
+      if (!p) throw new ApiError(404, "Payment not found")
+      if (p.status !== "initiated")
+        throw new ApiError(409, "Only an initiated payment can be confirmed")
+      const c = data.consultations.find(
+        (c) => c.consultation_id === p.consultation_id
+      )
+      p.status = "confirmed"
+      p.confirmed_at = Date.now()
+      p.receipt_data = {
+        ...p.receipt_data,
+        reference: p.fapshi_ref,
+        amount: p.amount_xaf,
+        timestamp: p.confirmed_at,
+      }
+      if (!c || c.status !== "pending_payment") {
+        ;(p as Payment & { needs_refund?: boolean }).needs_refund = true
+        return { payment_id: p.payment_id, result: "consultation_not_pending" }
+      }
+      c.status = "paid"
+      c.updated_at = Date.now()
+      return { payment_id: p.payment_id, result: "confirmed" }
+    },
+  ],
   ...serviceMockRoutes(facilities, MOCK_TIPS),
-  ["GET", /^\/profile$/, ({ user, data }) => profileFor(data, requireUser(user).sub)],
+  [
+    "GET",
+    /^\/profile$/,
+    ({ user, data }) => profileFor(data, requireUser(user).sub),
+  ],
   [
     "PUT",
     /^\/profile$/,
@@ -145,7 +199,11 @@ const routes: [string, RegExp, Handler][] = [
         p.display_name = body.display_name.slice(0, 100)
         updated.push("display_name")
       }
-      if (body.locale === "en" || body.locale === "fr" || body.locale === "pid") {
+      if (
+        body.locale === "en" ||
+        body.locale === "fr" ||
+        body.locale === "pid"
+      ) {
         p.locale = body.locale
         updated.push("locale")
       }
@@ -176,7 +234,9 @@ const routes: [string, RegExp, Handler][] = [
     /^\/profile\/household\/([^/]+)$/,
     ({ user, data, params }) => {
       const p = profileFor(data, requireUser(user).sub)
-      p.on_behalf_profiles = (p.on_behalf_profiles ?? []).filter((m) => m.member_id !== params[0])
+      p.on_behalf_profiles = (p.on_behalf_profiles ?? []).filter(
+        (m) => m.member_id !== params[0]
+      )
       return { deleted: params[0] }
     },
   ],
@@ -222,7 +282,11 @@ const routes: [string, RegExp, Handler][] = [
       requireUser(user)
       // Demo presence: two doctors heart-beating "now". The real list comes from PUT /doctor/presence.
       const now = Date.now()
-      const doctors = MOCK_DOCTORS.map((d) => ({ ...d, last_seen: now - 60_000, is_online: true }))
+      const doctors = MOCK_DOCTORS.map((d) => ({
+        ...d,
+        last_seen: now - 60_000,
+        is_online: true,
+      }))
       return { doctors, count: doctors.length }
     },
   ],
@@ -235,14 +299,21 @@ const routes: [string, RegExp, Handler][] = [
       return { tips, count: tips.length }
     },
   ],
-  ["GET", /^\/push\/vapid-public-key$/, () => ({ vapid_public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" })],
+  [
+    "GET",
+    /^\/push\/vapid-public-key$/,
+    () => ({ vapid_public_key: "MOCK_VAPID_PUBLIC_KEY_BASE64" }),
+  ],
   [
     "POST",
     /^\/push\/subscribe$/,
     ({ user, data, body }) => {
       const sub = requireUser(user).sub
       data.push_subscriptions ??= {}
-      data.push_subscriptions[sub] = { endpoint: body.endpoint, keys: body.keys }
+      data.push_subscriptions[sub] = {
+        endpoint: body.endpoint,
+        keys: body.keys,
+      }
       return { subscribed: true }
     },
   ],
@@ -282,7 +353,9 @@ const routes: [string, RegExp, Handler][] = [
     ({ user, data }) => {
       const u = requireUser(user)
       const consultations = u.isDoctor
-        ? data.consultations.filter((c) => c.status === "paid" || c.status === "open")
+        ? data.consultations.filter(
+            (c) => c.status === "paid" || c.status === "open"
+          )
         : data.consultations
             .filter((c) => c.phone_owner_id === u.sub)
             .sort((a, b) => b.created_at - a.created_at)
@@ -298,8 +371,11 @@ const routes: [string, RegExp, Handler][] = [
       if (!complaint) throw new ApiError(400, "complaint is required")
       // Like the backend: urgency comes only from the caller's own stored triage result.
       const triageId = (body.triage_result_id as string) || null
-      const triage = triageId ? data.triage.find((t) => t.result_id === triageId) : undefined
-      if (triageId && (!triage || triage.user_id !== sub)) throw new ApiError(400, "triage_result_id not found")
+      const triage = triageId
+        ? data.triage.find((t) => t.result_id === triageId)
+        : undefined
+      if (triageId && (!triage || triage.user_id !== sub))
+        throw new ApiError(400, "triage_result_id not found")
       const memberId = (body.on_behalf_member_id as string) || null
       const now = Date.now()
       const item: Consultation = {
@@ -337,7 +413,9 @@ const routes: [string, RegExp, Handler][] = [
     ({ user, data, params, body }) => {
       const u = requireUser(user)
       const clientId = String(body.client_message_id ?? crypto.randomUUID())
-      const existing = data.messages.find((m) => m.client_message_id === clientId)
+      const existing = data.messages.find(
+        (m) => m.client_message_id === clientId
+      )
       if (existing) return existing
       findConsultation(data, params[0])
       const message: Message = {
@@ -345,7 +423,8 @@ const routes: [string, RegExp, Handler][] = [
         message_id: crypto.randomUUID(),
         sender_id: u.sub,
         sender_role: u.isDoctor ? "doctor" : "patient",
-        content_type: body.content_type === "voice_note" ? "voice_note" : "text",
+        content_type:
+          body.content_type === "voice_note" ? "voice_note" : "text",
         text_body: (body.text_body as string) ?? null,
         voice_note_key: (body.voice_note_key as string) ?? null,
         duration_seconds: (body.duration_seconds as number) ?? null,
@@ -416,8 +495,15 @@ const routes: [string, RegExp, Handler][] = [
         results.triage_results.push({ result_id: tr.result_id, status: "ok" })
       }
       for (const msg of (body.messages as Message[]) ?? []) {
-        if (data.messages.some((m) => m.client_message_id === msg.client_message_id)) {
-          results.messages.push({ message_id: msg.message_id, status: "duplicate" })
+        if (
+          data.messages.some(
+            (m) => m.client_message_id === msg.client_message_id
+          )
+        ) {
+          results.messages.push({
+            message_id: msg.message_id,
+            status: "duplicate",
+          })
           continue
         }
         data.messages.push({ ...msg, sender_id: sub })
@@ -470,22 +556,8 @@ const routes: [string, RegExp, Handler][] = [
       requireUser(user)
       const p = data.payments.find((x) => x.payment_id === params[0])
       if (!p) throw new ApiError(404, "Payment not found")
-      // Simulates the Fapshi webhook arriving a few seconds after checkout.
-      if (p.status === "initiated" && Date.now() - p.created_at > 3000) {
-        p.status = "confirmed"
-        p.confirmed_at = Date.now()
-        p.receipt_data = {
-          ...p.receipt_data,
-          reference: p.fapshi_ref,
-          amount: p.amount_xaf,
-          timestamp: p.confirmed_at,
-        }
-        const c = findConsultation(data, p.consultation_id)
-        if (c.status === "pending_payment") {
-          c.status = "paid"
-          c.updated_at = Date.now()
-        }
-      }
+      if (p.payer_id !== user!.sub && p.patient_id !== user!.sub)
+        throw new ApiError(403, "Access denied")
       return p
     },
   ],
@@ -498,7 +570,8 @@ const routes: [string, RegExp, Handler][] = [
         .filter((c) => c.status === "paid" || c.status === "open")
         .sort(
           (a, b) =>
-            RANK[a.urgency ?? "GREEN"] - RANK[b.urgency ?? "GREEN"] || a.created_at - b.created_at,
+            RANK[a.urgency ?? "GREEN"] - RANK[b.urgency ?? "GREEN"] ||
+            a.created_at - b.created_at
         )
       return { queue, count: queue.length }
     },
@@ -513,7 +586,9 @@ const routes: [string, RegExp, Handler][] = [
         .filter((m) => m.consultation_id === params[0])
         .sort((a, b) => a.created_at - b.created_at)
       const triage_result =
-        data.triage.find((t) => t.result_id === consultation.triage_result_id) ?? null
+        data.triage.find(
+          (t) => t.result_id === consultation.triage_result_id
+        ) ?? null
       return { consultation, messages, triage_result }
     },
   ],
@@ -523,11 +598,16 @@ const routes: [string, RegExp, Handler][] = [
     ({ user, data, params }) => {
       const u = requireDoctor(user)
       const c = findConsultation(data, params[0])
-      if (c.status !== "paid") throw new ApiError(409, "Consultation is not claimable")
+      if (c.status !== "paid")
+        throw new ApiError(409, "Consultation is not claimable")
       c.status = "open"
       c.doctor_id = u.sub
       c.updated_at = Date.now()
-      return { consultation_id: c.consultation_id, doctor_id: u.sub, status: "open" }
+      return {
+        consultation_id: c.consultation_id,
+        doctor_id: u.sub,
+        status: "open",
+      }
     },
   ],
   [
@@ -609,7 +689,7 @@ export async function mockRequest<T>(
   method: string,
   fullPath: string,
   body: unknown,
-  token: string | null,
+  token: string | null
 ): Promise<T> {
   await new Promise((r) => setTimeout(r, 250))
   if (!navigator.onLine) throw new ApiError(0, "Network unavailable")

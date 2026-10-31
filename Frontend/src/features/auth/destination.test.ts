@@ -18,6 +18,7 @@ describe("sign-in return destinations", () => {
     "/\\example.com",
     "/app\n/consults",
     "/sign-in",
+    "/staff/sign-in",
     "/auth/callback",
   ])("rejects unsafe or looping destination %j", (target) => {
     expect(safeReturn(target)).toBeNull()

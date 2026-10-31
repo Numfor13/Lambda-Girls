@@ -189,7 +189,7 @@ export default function About() {
         title="See the most urgent case first."
         lede="Cases arrive with the symptom check already done: the danger signs, the person's age and how long they've waited. Reply by text or voice and give a prescription or referral code the patient carries to the pharmacy or facility."
       >
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
+        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
           <ul className="flex flex-col gap-4">
             {[
               { icon: Activity, text: "Ordered by urgency, then by waiting time" },
@@ -204,12 +204,12 @@ export default function About() {
               </li>
             ))}
             <li className="pt-2">
-              <ButtonLink to="/sign-in" variant="light">
+              <ButtonLink to="/staff/sign-in" variant="light">
                 Staff sign-in
               </ButtonLink>
             </li>
           </ul>
-          <Reveal variant="right">
+          <Reveal variant="right" className="min-w-0">
             <QueuePreview />
           </Reveal>
         </div>

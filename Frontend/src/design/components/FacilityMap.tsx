@@ -1,20 +1,72 @@
-import { useMemo } from "react"
-import { useNavigate } from "react-router-dom"
-import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { lazy, Suspense, useRef, useState } from "react"
+import { useInView } from "motion/react"
+import { Map, WifiOff } from "lucide-react"
 import type { Facility } from "@/api/types"
 import type { Coords } from "@/lib/geo"
-import { SPRING } from "@/design/motion"
+import { env } from "@/config/env"
+import { googleEmbed, validCoordinates, type MapPoint } from "@/lib/maps"
+import { useOnline } from "@/lib/hooks"
 import { cn } from "@/lib/utils"
+import { Button } from "./Button"
+import { OfflineFacilityMap } from "./OfflineFacilityMap"
+import { Skeleton } from "./Lively"
 
-const W = 400
-const H = 300
-const PAD = 26
+const StreetMap = lazy(() => import("./StreetMap"))
+function OnlineMap({
+  points,
+  highlight,
+  onHover,
+  onError,
+}: {
+  points: MapPoint[]
+  highlight?: string | null
+  onHover?: (id: string | null) => void
+  onError: () => void
+}) {
+  const [useOsm, setUseOsm] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const visible = useInView(ref, { once: true })
+  const embed =
+    !useOsm && points.length === 1
+      ? googleEmbed(points[0], env.googleMapsEmbedKey)
+      : null
+  return (
+    <div ref={ref} className="min-w-0">
+      {!visible ? (
+        <Skeleton className="h-80" />
+      ) : embed ? (
+        <iframe
+          title={"Google map: " + points[0].label}
+          src={embed}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="block h-80 w-full border-0"
+        />
+      ) : (
+        <Suspense fallback={<Skeleton className="h-80" />}>
+          <StreetMap
+            points={points}
+            highlight={highlight}
+            onHover={onHover}
+            onTileError={onError}
+          />
+        </Suspense>
+      )}
+      {embed && (
+        <div className="bg-white px-3 py-1">
+          <Button size="sm" variant="ghost" onClick={() => setUseOsm(true)}>
+            Use OpenStreetMap instead
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
 
-/**
- * A schematic map of the directory (Airbnb/ClassPass list + map split), drawn from the saved
- * coordinates alone: no tiles, no network, no invented streets. Every facility is a faint dot;
- * the ones that match the current search are solid; the row under the pointer pulses. Pins
- * open the facility. The list beside it stays the accessible way through the same content.
+/** Online street maps for the public facility directory; a local coordinate overview offline.
+ * Personal origin coordinates are kept in the local overview and distance calculations, never
+ * sent to the street-map provider. Providers receive only public facility positions here.
  */
 export function FacilityMap({
   all,
@@ -31,118 +83,132 @@ export function FacilityMap({
   onHover?: (id: string | null) => void
   className?: string
 }) {
-  const navigate = useNavigate()
-  const reduce = useReducedMotion()
-  const project = useMemo(() => {
-    const pts = all.map((f) => ({ lat: f.latitude, lon: f.longitude }))
-    if (origin) pts.push({ lat: origin.latitude, lon: origin.longitude })
-    const lats = pts.map((p) => p.lat)
-    const lons = pts.map((p) => p.lon)
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-    const minLon = Math.min(...lons), maxLon = Math.max(...lons)
-    // Equirectangular with the latitude's cosine, so distances look right this close to the equator.
-    const k = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180))
-    const spanX = Math.max((maxLon - minLon) * k, 1e-6)
-    const spanY = Math.max(maxLat - minLat, 1e-6)
-    const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY)
-    const offX = (W - spanX * scale) / 2
-    const offY = (H - spanY * scale) / 2
-    return (c: { latitude: number; longitude: number }) => ({
-      x: offX + (c.longitude - minLon) * k * scale,
-      y: H - (offY + (c.latitude - minLat) * scale),
-    })
-  }, [all, origin])
-
-  const shownIds = useMemo(() => new Set(shown.map((f) => f.facility_id)), [shown])
-  const hot = highlight ? all.find((f) => f.facility_id === highlight) : undefined
-  const me = origin ? project(origin) : null
-
+  const online = useOnline()
+  const [overview, setOverview] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const validAll = all.filter(validCoordinates)
+  const validShown = shown.filter(validCoordinates)
+  const points = validShown.map((f) => ({
+    id: f.facility_id,
+    label: f.name,
+    latitude: f.latitude,
+    longitude: f.longitude,
+    detail: f.quarter + " · " + f.address,
+    href: "/app/facilities/" + encodeURIComponent(f.facility_id),
+  }))
+  const local = overview || !online || failed || !points.length
   return (
-    <figure className={cn("overflow-hidden rounded-xl bg-mint", className)}>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full"
-        role="img"
-        aria-label={`Map of ${shown.length} matching facilities${origin ? " and your position" : ""}`}
-        onMouseLeave={() => onHover?.(null)}
-      >
-        <defs>
-          <pattern id="fm-grid" width="25" height="25" patternUnits="userSpaceOnUse">
-            <path d="M25 0H0V25" fill="none" className="stroke-brand-700/10" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width={W} height={H} fill="url(#fm-grid)" />
-        <g aria-hidden>
-          {all.map((f) => {
-            const p = project(f)
-            const on = shownIds.has(f.facility_id)
-            const er = f.capabilities.includes("emergency")
-            return (
-              <motion.circle
-                key={f.facility_id}
-                cx={p.x}
-                cy={p.y}
-                initial={false}
-                animate={{ r: on ? (er ? 6.5 : 5) : 3, opacity: on ? 1 : 0.35 }}
-                transition={SPRING.default}
-                className={cn(
-                  on ? (er ? "fill-brand-900 stroke-white" : "fill-brand-600 stroke-white") : "fill-brand-700/40",
-                  on && "cursor-pointer",
-                )}
-                strokeWidth={on ? 2 : 0}
-                onMouseEnter={on ? () => onHover?.(f.facility_id) : undefined}
-                onClick={on ? () => navigate(`/app/facilities/${f.facility_id}`) : undefined}
-              >
-                <title>{f.name}</title>
-              </motion.circle>
-            )
-          })}
-          {me && (
-            <g>
-              {!reduce && (
-                <motion.circle
-                  cx={me.x}
-                  cy={me.y}
-                  r={7}
-                  className="fill-brand-500/30"
-                  animate={{ r: [7, 18], opacity: [0.6, 0] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-                />
-              )}
-              <circle cx={me.x} cy={me.y} r={6} className="fill-white" />
-              <circle cx={me.x} cy={me.y} r={4} className="fill-brand-500" />
-            </g>
+    <div className={cn("overflow-hidden rounded-xl bg-mint", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+        <p className="flex items-center gap-2 text-label-m text-brand-900">
+          {online ? (
+            <Map className="size-4" aria-hidden />
+          ) : (
+            <WifiOff className="size-4" aria-hidden />
           )}
-          <AnimatePresence>
-            {hot && (
-              <motion.g
-                key={hot.facility_id}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={SPRING.fast}
-                style={{ transformOrigin: `${project(hot).x}px ${project(hot).y}px` }}
-              >
-                <circle cx={project(hot).x} cy={project(hot).y} r={13} className="fill-brand-500/25" />
-                <circle cx={project(hot).x} cy={project(hot).y} r={7.5} className="fill-brand-900 stroke-white" strokeWidth={2.5} />
-              </motion.g>
-            )}
-          </AnimatePresence>
-        </g>
-      </svg>
-      <figcaption className="flex items-center justify-between gap-3 px-4 py-2.5 text-label-m text-ink-600">
-        <span className="min-w-0 truncate">{hot ? hot.name : "Positions only, no streets · works offline"}</span>
-        <span className="flex shrink-0 items-center gap-3">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-brand-900" aria-hidden /> Emergency
-          </span>
-          {origin && (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-brand-500 ring-2 ring-white" aria-hidden /> You
-            </span>
+          {!online
+            ? "Offline · saved positions"
+            : failed
+              ? "Street map unavailable"
+              : local
+                ? "Saved positions"
+                : validShown.length + " facility locations"}
+        </p>
+        {online && points.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (failed) {
+                setFailed(false)
+                setOverview(false)
+              } else setOverview((v) => !v)
+            }}
+          >
+            {failed
+              ? "Retry street map"
+              : overview
+                ? "Street map"
+                : "Offline overview"}
+          </Button>
+        )}
+      </div>
+      {local ? (
+        validAll.length ? (
+          <OfflineFacilityMap
+            all={validAll}
+            shown={validShown}
+            highlight={highlight}
+            origin={origin && validCoordinates(origin) ? origin : null}
+            onHover={onHover}
+          />
+        ) : (
+          <p className="p-5 text-body-m text-ink-600">
+            No valid facility coordinates are available.
+          </p>
+        )
+      ) : (
+        <OnlineMap
+          points={points}
+          highlight={highlight}
+          onHover={onHover}
+          onError={() => setFailed(true)}
+        />
+      )}
+      {!local && (
+        <p className="px-4 py-2 text-label-m text-ink-600">
+          Select a pin for facility details. Street maps need a connection.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Precise shared/personal positions need an explicit load action before leaving this device. */
+export function LocationMap({
+  latitude,
+  longitude,
+  label,
+  sensitive = true,
+}: Coords & { label: string; sensitive?: boolean }) {
+  const online = useOnline()
+  const [allowed, setAllowed] = useState(!sensitive)
+  const [failed, setFailed] = useState(false)
+  if (!validCoordinates({ latitude, longitude })) return null
+  const provider = env.googleMapsEmbedKey ? "Google Maps" : "OpenStreetMap"
+  return (
+    <div className="overflow-hidden rounded-xl bg-mint">
+      {!allowed || !online || failed ? (
+        <div className="flex flex-col items-start gap-3 p-4">
+          <p className="text-title-m">{label}</p>
+          <p className="text-code text-ink-600">
+            {latitude.toFixed(5)}, {longitude.toFixed(5)}
+          </p>
+          <p className="text-body-m text-ink-600">
+            {!online
+              ? "Reconnect for a street map. The saved coordinates remain available."
+              : failed
+                ? "Street tiles could not load. Retry when connected."
+                : "Loading this map shares the position with " + provider + "."}
+          </p>
+          {online && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setAllowed(true)
+                setFailed(false)
+              }}
+            >
+              {failed ? "Retry map" : "Load location map"}
+            </Button>
           )}
-        </span>
-      </figcaption>
-    </figure>
+        </div>
+      ) : (
+        <OnlineMap
+          points={[{ id: "shared-position", label, latitude, longitude }]}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
   )
 }

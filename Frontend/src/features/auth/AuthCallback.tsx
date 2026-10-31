@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LogIn } from "lucide-react"
-import { getUserManager, sessionFromUser } from "@/auth/session"
+import { getUserManager, getAuthMode, sessionFromUser } from "@/auth/session"
 import { ButtonLink } from "@/design/components/Button"
 import { PulseDot } from "@/design/components/Lively"
 import { Logo } from "@/design/components/Logo"
@@ -18,14 +18,18 @@ export default function AuthCallback() {
     started.current = true
     const manager = getUserManager()
     if (!manager) {
-      navigate("/sign-in", { replace: true })
+      navigate(getAuthMode() === "staff" ? "/staff/sign-in" : "/sign-in", {
+        replace: true,
+      })
       return
     }
     manager
       .signinRedirectCallback()
       .then((user) => {
         const state = user.state as { returnTo?: string } | undefined
-        navigate(authDestination(sessionFromUser(user), state?.returnTo), { replace: true })
+        navigate(authDestination(sessionFromUser(user), state?.returnTo), {
+          replace: true,
+        })
       })
       .catch(() => setFailed(true))
   }, [navigate])
@@ -39,16 +43,23 @@ export default function AuthCallback() {
             <StatusMark state="info" icon={LogIn} />
             <h1 className="text-headline-m">Sign-in didn&apos;t finish</h1>
             <p className="text-body-l text-ink-600">
-              The link may have expired or been opened twice. Go back and sign in again; it only takes a moment.
+              The link may have expired or been opened twice. Go back and sign
+              in again; it only takes a moment.
             </p>
-            <ButtonLink to="/sign-in" icon={LogIn}>
+            <ButtonLink
+              to={getAuthMode() === "staff" ? "/staff/sign-in" : "/sign-in"}
+              icon={LogIn}
+            >
               Back to sign in
             </ButtonLink>
           </>
         ) : (
           <>
             <h1 className="text-headline-m">Signing you in</h1>
-            <p role="status" className="flex items-center gap-3 text-body-l text-ink-600">
+            <p
+              role="status"
+              className="flex items-center gap-3 text-body-l text-ink-600"
+            >
               <PulseDot tone="brand" /> Getting your account ready…
             </p>
           </>

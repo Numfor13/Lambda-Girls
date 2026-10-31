@@ -44,25 +44,9 @@ Tier 2 services: SMS/USSD channel, nurse callback queue, operator console, appoi
   Patient pool details: Hosted UI (OAuth code flow + PKCE), email or phone sign-in. API Gateway uses a **Cognito User Pools authorizer**, so the frontend must send the **ID token** as `Authorization: Bearer <id_token>` (it already does: `Frontend/src/auth/session.ts`).
 - **Dev conveniences:** in `dev`, sign-ups are auto-confirmed, Fapshi is **not called** (fake sandbox URL), and the webhook skips signature checks.
 
-### ⚠️ There is no single API: there are 11 API Gateways
+### Unified API (current main)
 
-Every stack creates its **own** `RestApi`, so each service has its own base URL (CloudFormation output `HealthTrack-<X>ApiUrl-<env>`). The frontend's `src/config/env.ts` knows only 7 of them.
-
-| Service key (frontend) | Stack | Base URL env var | In frontend env today? |
-|---|---|---|---|
-| `profile` | ProfileStack (`HealthTrackApi`) | `VITE_API_URL_PROFILE` | ✅ |
-| `facility` | FacilityStack | `VITE_API_URL_FACILITY` | ✅ |
-| `triage` | TriageStack | `VITE_API_URL_TRIAGE` | ✅ |
-| `consultation` | ConsultationStack | `VITE_API_URL_CONSULTATION` | ✅ |
-| `payment` | PaymentStack | `VITE_API_URL_PAYMENT` | ✅ |
-| `doctor` | DoctorStack | `VITE_API_URL_DOCTOR` | ✅ |
-| `push` | PushStack | `VITE_API_URL_PUSH` | ✅ |
-| `extended` | ExtendedStack | *(add `VITE_API_URL_EXTENDED`)* | ❌ |
-| `channel` | ChannelStack (SMS/USSD + operator) | *(add `VITE_API_URL_CHANNEL`)* | ❌ |
-| `anonymous` | AnonymousStack | *(add `VITE_API_URL_ANONYMOUS`)* | ❌ |
-| `i18n` | I18nStack | *(add `VITE_API_URL_I18N`)* | ❌ |
-
-Note: `/doctor/presence` lives on the **extended** API, not the doctor API. `/operator/emergencies` is on **extended**, while `/operator/callbacks` is on **channel**.
+`Backend/health_track/api_stack.py` declares one API Gateway for all HTTP domains. Set `VITE_API_BASE_URL` from its deployment output. Per-service `VITE_API_URL_*` values remain optional overrides, including `I18N` and `DOCTOR_APPLICATION`. The old per-stack API inventory has been superseded. See [FRONTEND_BACKEND_COVERAGE.md](FRONTEND_BACKEND_COVERAGE.md) for current wiring.
 
 ### Conventions every response follows
 
@@ -324,15 +308,17 @@ Checklist wording for the review screen:
 
 ## 5. Gaps, bugs and risks the frontend must know about
 
+**Historical gap log:** several original 2026-10-22 items below were resolved by the backend rebuild and later frontend work. The current code and §6.1 take precedence; do not treat every older row as a still-open defect.
+
 Ranked roughly by how much they affect the redesign. "FE" = fix in the frontend, "BE" = needs backend work.
 
 | # | Issue | Where | Impact | Owner |
 |---|---|---|---|---|
-| 1 | **Push contract mismatch.** The frontend reads `public_key` (backend sends `vapid_public_key`), posts `{ subscription: {...} }` (backend wants `{ endpoint, keys }` at the top level), and expects `{ ok }` (backend returns `{ subscribed }` / `{ unsubscribed }`). Against the real API, subscribing fails with `400`. The mock hides this. | `Frontend/src/api/endpoints.ts` `pushApi`, `src/lib/usePushSubscription.ts`, `src/api/mock.ts` | Push is broken against the real backend | FE |
+| 1 | **Resolved — push contract mismatch (original report).** The frontend reads `public_key` (backend sends `vapid_public_key`), posts `{ subscription: {...} }` (backend wants `{ endpoint, keys }` at the top level), and expects `{ ok }` (backend returns `{ subscribed }` / `{ unsubscribed }`). Against the real API, subscribing fails with `400`. The mock hides this. | `Frontend/src/api/endpoints.ts` `pushApi`, `src/lib/usePushSubscription.ts`, `src/api/mock.ts` | Push is broken against the real backend | FE |
 | 2 | **No domain events are published.** Nothing calls EventBridge `put_events`, so `message.sent` and `payment.confirmed` never trigger a push, and `/sync` only returns `has_red_triage` without escalating any consultation. Keep polling as the primary update mechanism. | `consultation/post_message.py`, `payment/post_webhook.py`, `consultation/post_sync.py` | No push notifications; no RED escalation | BE |
 | 3 | **VAPID keys are not configured.** The stack hard-codes `VAPID_PUBLIC_KEY="TO_BE_SET_POST_DEPLOY"` and an empty private key, so the public-key endpoint returns that placeholder string. | `push_stack.py` | Push unusable until set | BE |
-| 4 | **Dev payments never confirm** (§3.5). The pay screen must handle "waiting for confirmation" well and time out gracefully; for demos, use the webhook curl. | `payment/post_initiate.py` | Demo flow stalls at payment | FE (UX) + docs |
-| 5 | **Four API base URLs are missing** from the frontend config: extended, channel, anonymous, i18n. | `Frontend/src/config/env.ts`, `.env.example` | Tier 2 screens cannot reach the backend | FE |
+| 4 | **Updated — demo payments require explicit Admin confirmation** (§3.5). The pay screen must handle "waiting for confirmation" well and time out gracefully; for demos, use `/admin/payments` → `POST /payments/{id}/simulate` when backend simulation is enabled. | `payment/post_initiate.py` | Demo flow stalls at payment | FE (UX) + docs |
+| 5 | **Resolved — four API base URLs were missing** from the frontend config: extended, channel, anonymous, i18n. | `Frontend/src/config/env.ts`, `.env.example` | Tier 2 screens cannot reach the backend | FE |
 | 6 | **Weak ownership checks.** `POST /consultations/{id}/messages` and `voice-note-upload-url` check only that the consultation exists, not that the caller owns it. `POST /consultations` trusts the `patient_id` and `urgency` from the body. Any doctor can read any case (audit S-04). | consultation handlers | Security | BE |
 | 7 | **The client sets the payment amount** (`amount_xaf`, default 2000), and the webhook does not check it. | `payment/post_initiate.py` | Payment integrity | BE (FE: just don't send it) |
 | 8 | **The voice-note presigned PUT signs `ContentLength=500KB`**, so S3 may reject uploads whose size differs. Test a real upload before you redesign the recorder. | `consultation/get_voice_note_upload_url.py` | Voice notes may fail | BE (verify) |
@@ -353,27 +339,30 @@ Ranked roughly by how much they affect the redesign. "FE" = fix in the frontend,
 
 ## 6. Mapping to the frontend: today and for the redesign
 
-### 6.1 What the current frontend already covers
+### 6.1 Current frontend coverage (2026-10-31)
 
-| Backend area | Current screens (`Frontend/src/features/...`) | Status |
+The full audit of main commit `b27d6e7`, all 73 routes, fresh validation, and deployment limits is in [FRONTEND_BACKEND_COVERAGE.md](FRONTEND_BACKEND_COVERAGE.md).
+
+| Backend area | Frontend correspondent | Status |
 |---|---|---|
-| Profile and household | `profile/Profile.tsx`, `profile/Household.tsx` | ✅ wired |
-| Facilities | `facilities/FacilityList.tsx`, `FacilityDetail.tsx` (+ offline seed cache) | ✅ wired (the map view is flagged off) |
-| Triage | `triage/TriageWizard.tsx`, `TriageResult.tsx`, `BreathCounter.tsx` | ✅ wired (local engine plus server submit) |
-| Consult and chat | `consult/ConsultNew.tsx`, `ConsultChat.tsx`, `ConsultList.tsx` | ✅ wired (text plus voice) |
-| Payment | `payments/Payment.tsx` | ✅ wired (polls for confirmation) |
-| Doctor | `doctor/DoctorQueue.tsx`, `DoctorCase.tsx` (claim, reply, prescribe, refer, close) | ✅ wired |
-| Rx/referral lookup | `public/CodeLookup.tsx` (`/rx/:code`, `/ref/:code`) | ✅ wired |
-| Push | `lib/usePushSubscription.ts` | ⚠️ contract mismatch (§5 #1) |
-| Offline outbox and sync | `offline/*`, `app/SyncManager.tsx` | ✅ wired |
-| Payments history / receipts | – | ❌ no screen (`flags.receipts` is off) |
-| Triage history | – | ❌ no screen |
-| Extended services (appointments, lab, blood, emergency, tips, available doctors, doctor presence) | – | ❌ no API client, no screens |
-| Operator console (callbacks, dispatch, emergencies, blood, lab status) | – | ❌ none |
-| Admin (facilities CRUD, tips CRUD, confirm appointments) | – | ❌ none |
-| Anonymous mode | – | ❌ none |
-| SMS/USSD simulator | – | ❌ none |
-| i18n (FR / Pidgin) | – | ❌ (`<html lang>` is sent as `Accept-Language`; no string loading) |
+| Profile / household | `/app/profile`, `/app/profile/household` | Wired; online-write limits remain explicit |
+| Facilities | `/app/facilities`, `/app/facilities/:id`, Admin editor | Wired, with live free street maps and offline overview; see [MAPS.md](MAPS.md) |
+| Triage / sync | Wizard, result, history, outbox | Wired; client result IDs are sent through sync and reconciled with the server |
+| Consultation / voice / payment | New, list, chat, payment, history / receipt | Wired; server amount and simulation status retained |
+| Doctor queue / case / presence | `/doctor`, `/doctor/case/:id` | Wired |
+| Rx / referral public lookup | `/rx/:code`, `/ref/:code` and entry pages | Wired |
+| Push | Profile notification helper | Contract corrected; existing feature flag and deployment prerequisites still apply |
+| Appointments / labs / blood / emergency | Patient services, RED share, operator views | Wired |
+| Health tips / available doctors | Tips, Home, consultation availability | Wired |
+| Operator console | Callbacks, dispatch, shared positions, blood, lab-by-ID | Wired |
+| Admin console | Facilities, tips, visit confirmation | Wired |
+| Anonymous session / consult / text / payment | `/ask`, `/ask/:id` | Wired; session-scoped text outbox |
+| Verified doctor application / status | `/apply/doctor`, `/apply/status` | Added 2026-10-31 against §3.13, replacing the obsolete unrouted contract |
+| Admin doctor review | `/admin/applications` | Added: all three checks, notes, duplicate references, decisions and resend invitation |
+| Staff pool authentication | `/staff/sign-in` | Added separate authority/client; Cognito performs mandatory MFA |
+| Payment simulation | `/admin/payments` | Added Admin-only demo tool; backend controls availability |
+| Published translations | `/languages?locale=en\|fr\|pid` | Added a bilingual wording guide; full app translation remains incomplete |
+| SMS / USSD and payment webhooks | Provider integrations; human callback / payment outcomes use existing screens | No public browser webhook forms; no simulator bypassing provider authentication |
 
 ### 6.2 Suggested information architecture for the redesign
 

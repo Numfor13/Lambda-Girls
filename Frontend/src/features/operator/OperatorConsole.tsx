@@ -7,7 +7,7 @@ import type { Facility, Urgency } from "@/api/types"
 import { AppPage, Panel } from "@/design/components/AppPage"
 import { Button, ButtonA, iconButtonClass } from "@/design/components/Button"
 import { CopyReference } from "@/design/components/CopyReference"
-import { FacilityMap } from "@/design/components/FacilityMap"
+import { FacilityMap, LocationMap } from "@/design/components/FacilityMap"
 import { FacilityPicker } from "@/design/components/FacilityPicker"
 import { CAPABILITY_ICON, hoursLabel, primaryCapability } from "@/design/components/FacilityRow"
 import { Field, Input, Textarea } from "@/design/components/Field"
@@ -237,7 +237,7 @@ function FacilityCard({ f, all }: { f: Facility; all: Facility[] }) {
           Call {formatPhone(f.phone)}
         </ButtonA>
       )}
-      <FacilityMap all={all} shown={all} highlight={f.facility_id} origin={null} />
+      <FacilityMap all={all} shown={[f]} highlight={f.facility_id} origin={null} />
     </motion.section>
   )
 }
@@ -401,7 +401,8 @@ function LocationDetail({ e, facilities }: { e: Emergency; facilities: Facility[
           </ButtonA>
           <CopyReference value={coords} label="Copy position" />
         </div>
-        <p className="text-label-m text-ink-600">Opening the map sends this position to Google.</p>
+        <p className="text-label-m text-ink-600">Opening Google Maps sends this position to Google.</p>
+        <LocationMap latitude={e.latitude} longitude={e.longitude} label="Shared emergency position" />
         <div className="border-t border-line pt-4">
           <p className="mb-2 text-label-l">Nearest emergency care</p>
           <ul className="flex flex-col gap-2">

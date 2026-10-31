@@ -267,3 +267,8 @@ npm run typecheck && npm run lint && npm test
 - For the doctor pages, sign in as the demo doctor on `/sign-in` in mock mode.
 - Pull often: `git pull --rebase` before each commit. Commit per page: `feat(frontend): redesign <page>`. Push after each page so Claude sees it.
 - When a page is done, tick it in §3 (add ✅) and log it in §6.
+
+
+## 2026-10-31 — Current-main coverage and free maps (Codex)
+
+At the owner’s request, audited main `b27d6e7` and connected every missing human-facing backend workflow. See [FRONTEND_BACKEND_COVERAGE.md](FRONTEND_BACKEND_COVERAGE.md) for the 73-route inventory, new pages, test evidence and live validation limits. See [MAPS.md](MAPS.md) for shared free street maps, optional Google Embed configuration and offline fallback. Existing patient/public/staff redesigns remain the visual reference. New regression suites cover onboarding privacy/decisions, S3 multipart POSTs, pool role isolation and free map URLs.

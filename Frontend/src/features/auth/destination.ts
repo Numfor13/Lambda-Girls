@@ -12,7 +12,12 @@ export function safeReturn(raw: string | null | undefined): string | null {
   )
     return null
   const path = raw.split(/[?#]/)[0]
-  if (path === "/" || path.startsWith("/sign-in") || path.startsWith("/auth/"))
+  if (
+    path === "/" ||
+    path.startsWith("/sign-in") ||
+    path.startsWith("/staff/sign-in") ||
+    path.startsWith("/auth/")
+  )
     return null
   return raw
 }

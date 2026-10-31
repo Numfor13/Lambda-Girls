@@ -114,7 +114,12 @@ export interface Payment {
   amount_xaf: number
   fapshi_ref: string
   status: PaymentStatus
-  receipt_data?: { reference?: string; amount?: number; timestamp?: number; payer_phone?: string }
+  receipt_data?: {
+    reference?: string
+    amount?: number
+    timestamp?: number
+    payer_phone?: string
+  }
   created_at: number
   confirmed_at: number | null
 }
@@ -171,43 +176,7 @@ export const SPECIALTIES = [
   { value: "pulmonology", label: "Pulmonology" },
 ] as const
 
-export type Specialty = typeof SPECIALTIES[number]["value"]
-
-export interface HospitalEntry {
-  name: string
-  city: string
-  role: string
-  from_year: number
-  to_year: number | null
-}
-
-export interface RecommendingHospital {
-  name: string
-  contact_person: string
-  phone: string
-  email: string
-}
-
-export interface DoctorApplication {
-  application_id: string
-  full_name: string
-  email: string
-  phone: string
-  specialty: Specialty
-  medical_school: string
-  graduation_year: number
-  years_experience: number
-  hospitals_worked: HospitalEntry[]
-  recommending_hospital: RecommendingHospital
-  document_s3_key: string
-  status: "pending" | "under_review" | "approved" | "rejected"
-  admin_notes?: string
-  called_hospital?: boolean
-  submitted_at: string
-  reviewed_at?: string | null
-  rejection_reason?: string
-  document_url?: string
-}
+export type Specialty = (typeof SPECIALTIES)[number]["value"]
 
 export interface SyncResponse {
   synced: boolean

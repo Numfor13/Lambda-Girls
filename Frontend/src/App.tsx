@@ -13,6 +13,19 @@ import { PageSpinner } from "@/design/components/primitives"
 import { flags } from "@/config/flags"
 import Landing from "@/features/landing/Landing"
 
+const LanguageHelp = lazy(() => import("@/features/public/LanguageHelp"))
+const AdminPaymentSimulation = lazy(
+  () => import("@/features/admin/AdminPaymentSimulation")
+)
+const DoctorApplicationForm = lazy(
+  () => import("@/features/doctor-application/DoctorApplicationForm")
+)
+const ApplicationStatus = lazy(
+  () => import("@/features/doctor-application/ApplicationStatus")
+)
+const AdminApplications = lazy(
+  () => import("@/features/admin/AdminApplications")
+)
 const HowItWorks = lazy(() => import("@/features/public/HowItWorks"))
 const About = lazy(() => import("@/features/public/About"))
 const HealthTips = lazy(() => import("@/features/services/HealthTips"))
@@ -111,6 +124,7 @@ const router = createBrowserRouter([
           { index: true, element: <Landing /> },
           { path: "how-it-works", element: <HowItWorks /> },
           { path: "about", element: <About /> },
+          { path: "languages", element: <LanguageHelp /> },
           ...(flags.health_tips
             ? [{ path: "tips", element: <HealthTips /> }]
             : []),
@@ -121,6 +135,9 @@ const router = createBrowserRouter([
               ]
             : []),
           { path: "sign-in", element: <SignIn /> },
+          { path: "staff/sign-in", element: <SignIn /> },
+          { path: "apply/doctor", element: <DoctorApplicationForm /> },
+          { path: "apply/status", element: <ApplicationStatus /> },
           ...(flags.prescriptions
             ? [
                 { path: "rx", element: <CodeLookup kind="rx" /> },
@@ -215,6 +232,8 @@ const router = createBrowserRouter([
                     { index: true, element: <AdminFacilities /> },
                     { path: "tips", element: <AdminTips /> },
                     { path: "appointments", element: <AdminAppointments /> },
+                    { path: "applications", element: <AdminApplications /> },
+                    { path: "payments", element: <AdminPaymentSimulation /> },
                     { path: "*", element: <NotFound /> },
                   ],
                 },

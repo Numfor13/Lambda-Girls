@@ -11,6 +11,9 @@ import {
   clearDemoSession,
   currentSession,
   getUserManager,
+  selectAuthMode,
+  getAuthMode,
+  type AuthMode,
   sessionFromUser,
   writeDemoSession,
   type Role,
@@ -23,7 +26,7 @@ interface AuthState {
   session: Session | null
   isLoading: boolean
   hasRole: (role: Role) => boolean
-  signIn: (returnTo?: string) => Promise<void>
+  signIn: (returnTo?: string, mode?: AuthMode) => Promise<void>
   signInDemo: (role: Role) => Session
   signOut: () => Promise<void>
 }
@@ -35,7 +38,7 @@ export function homeFor(session: Session | null): string {
   if (session.groups.includes("Doctor")) return "/doctor"
   if (session.groups.includes("Operator")) return "/operator"
   if (session.groups.includes("Admin")) return "/admin"
-  return "/app"
+  return session.groups.includes("Patient") ? "/app" : "/staff/sign-in?denied=1"
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -50,32 +53,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(s)
       setIsLoading(false)
     })
-    const um = getUserManager()
-    if (!um) return () => void (active = false)
-    const onLoaded = (
-      user: Parameters<Parameters<typeof um.events.addUserLoaded>[0]>[0]
-    ) => setSession(sessionFromUser(user))
-    const onUnloaded = () => setSession(null)
-    um.events.addUserLoaded(onLoaded)
-    um.events.addUserUnloaded(onUnloaded)
+    const cleanups = (["patient", "staff"] as const).map((mode) => {
+      const um = getUserManager(mode)
+      if (!um) return () => {}
+      const onLoaded = (
+        user: Parameters<Parameters<typeof um.events.addUserLoaded>[0]>[0]
+      ) => {
+        if (getAuthMode() === mode) setSession(sessionFromUser(user, mode))
+      }
+      const onUnloaded = () => {
+        if (getAuthMode() === mode) setSession(null)
+      }
+      um.events.addUserLoaded(onLoaded)
+      um.events.addUserUnloaded(onUnloaded)
+      um.events.addAccessTokenExpired(onUnloaded)
+      return () => {
+        um.events.removeUserLoaded(onLoaded)
+        um.events.removeUserUnloaded(onUnloaded)
+        um.events.removeAccessTokenExpired(onUnloaded)
+      }
+    })
     return () => {
       active = false
-      um.events.removeUserLoaded(onLoaded)
-      um.events.removeUserUnloaded(onUnloaded)
+      cleanups.forEach((clean) => clean())
     }
   }, [])
 
-  const signIn = useCallback(async (returnTo?: string) => {
-    const um = getUserManager()
-    if (um) {
-      await um.signinRedirect({
-        state: { returnTo: returnTo ?? window.location.pathname },
-      })
-    } else {
-      const target = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
-      window.location.assign(`/sign-in${target}`)
-    }
-  }, [])
+  const signIn = useCallback(
+    async (returnTo?: string, mode: AuthMode = "patient") => {
+      const um = getUserManager(mode)
+      if (um) {
+        selectAuthMode(mode)
+        clearDemoSession()
+        queryClient.clear()
+        setSession(null)
+        await um.signinRedirect({
+          state: { returnTo: returnTo ?? window.location.pathname },
+        })
+      } else {
+        const target = returnTo
+          ? `?returnTo=${encodeURIComponent(returnTo)}`
+          : ""
+        window.location.assign(
+          `${mode === "staff" ? "/staff/sign-in" : "/sign-in"}${target}`
+        )
+      }
+    },
+    [queryClient]
+  )
 
   const signInDemo = useCallback(
     (role: Role) => {

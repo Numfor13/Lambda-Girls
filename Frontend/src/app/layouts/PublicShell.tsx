@@ -23,7 +23,6 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "@/design/motion"
-import { flags } from "@/config/flags"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/design/components/Toast"
 
@@ -53,7 +52,11 @@ function PublicNav() {
       My account
     </Link>
   ) : (
-    <button type="button" onClick={() => navigate("/sign-in?returnTo=/app")} className={authClass}>
+    <button
+      type="button"
+      onClick={() => navigate("/sign-in?returnTo=/app")}
+      className={authClass}
+    >
       Sign in
     </button>
   )
@@ -78,7 +81,9 @@ function PublicNav() {
               className={({ isActive }) =>
                 cn(
                   "relative rounded-full px-4 py-2 text-label-l transition-colors duration-150",
-                  isActive ? "text-brand-900" : "text-ink-600 hover:text-ink-900"
+                  isActive
+                    ? "text-brand-900"
+                    : "text-ink-600 hover:text-ink-900"
                 )
               }
             >
@@ -98,7 +103,10 @@ function PublicNav() {
           ))}
         </nav>
         <div className="hidden items-center gap-1 lg:flex">
-          <span className="inline-flex h-10 items-center gap-1.5 px-2 text-label-l text-ink-600" title="Language">
+          <span
+            className="inline-flex h-10 items-center gap-1.5 px-2 text-label-l text-ink-600"
+            title="Language"
+          >
             <Globe className="size-4" aria-hidden />
             EN
           </span>
@@ -157,34 +165,28 @@ function PublicNav() {
 }
 
 export function LanguageSwitch({ light = false }: { light?: boolean }) {
-  const langs = [
-    { code: "en", label: "English", enabled: true },
-    { code: "fr", label: "Français", enabled: flags.i18n_fr },
-    { code: "pid", label: "Pidgin", enabled: flags.i18n_pid },
-  ]
   return (
-    <ul className="flex items-center gap-2 text-label-m" aria-label="Language">
-      {langs.map((l, i) => (
-        <li key={l.code} className="flex items-center gap-2">
-          {i > 0 && (
-            <span className={light ? "text-white/40" : "text-ink-400"}>·</span>
-          )}
-          <button
-            type="button"
-            aria-current={l.code === "en" ? "true" : undefined}
-            aria-disabled={!l.enabled}
-            title={l.enabled ? undefined : "Coming soon"}
+    <ul
+      className="flex flex-wrap items-center gap-2 text-label-m"
+      aria-label="Language help"
+    >
+      {[
+        { code: "en", label: "English" },
+        { code: "fr", label: "Français" },
+        { code: "pid", label: "Pidgin" },
+      ].map((l) => (
+        <li key={l.code}>
+          <Link
+            to={"/languages?locale=" + l.code}
             className={cn(
-              "inline-flex min-h-10 min-w-10 items-center justify-center lg:min-h-0 lg:min-w-0",
+              "inline-flex min-h-10 items-center rounded-full px-2 hover:underline",
               light
                 ? "text-white/75 hover:text-white"
-                : "text-ink-600 hover:text-ink-900",
-              l.code === "en" && (light ? "text-white" : "text-ink-900"),
-              !l.enabled && "cursor-default"
+                : "text-ink-600 hover:text-ink-900"
             )}
           >
             {l.label}
-          </button>
+          </Link>
         </li>
       ))}
     </ul>
@@ -204,6 +206,9 @@ const FOOTER_COLUMNS = [
     title: "CareBridge",
     links: [
       { to: "/about", label: "About us" },
+      { to: "/apply/doctor", label: "Join as a doctor" },
+      { to: "/apply/status", label: "Application status" },
+      { to: "/staff/sign-in", label: "Staff sign in" },
       { to: "/how-it-works", label: "How it works" },
       { to: "/about#providers", label: "For healthcare providers" },
     ],
@@ -225,13 +230,24 @@ export function PublicFooter() {
       <div className="relative z-10 container-page">
         <Reveal className="flex flex-col items-start justify-between gap-8 border-b border-white/12 py-14 lg:flex-row lg:items-end lg:py-20">
           <p className="max-w-[16ch] text-display-m text-white">
-            Good care starts with <em className="text-mint-200 italic">one simple step.</em>
+            Good care starts with{" "}
+            <em className="text-mint-200 italic">one simple step.</em>
           </p>
           <div className="flex flex-wrap gap-3">
-            <ButtonLink to="/app/triage" variant="light" size="lg" icon={Activity}>
+            <ButtonLink
+              to="/app/triage"
+              variant="light"
+              size="lg"
+              icon={Activity}
+            >
               Check symptoms
             </ButtonLink>
-            <ButtonLink to="/app/facilities" variant="outline-light" size="lg" trailing="arrow">
+            <ButtonLink
+              to="/app/facilities"
+              variant="outline-light"
+              size="lg"
+              trailing="arrow"
+            >
               Find care near me
             </ButtonLink>
           </div>
@@ -251,7 +267,9 @@ export function PublicFooter() {
           </StaggerItem>
           {FOOTER_COLUMNS.map((col) => (
             <StaggerItem key={col.title}>
-              <p className="text-label-m tracking-[0.08em] text-white/65 uppercase">{col.title}</p>
+              <p className="text-label-m tracking-[0.08em] text-white/65 uppercase">
+                {col.title}
+              </p>
               {/* 40px rows on phones (thumb targets); tighter with a mouse. */}
               <ul className="mt-2 flex flex-col lg:mt-3">
                 {col.links.map((l) => (

@@ -1,4 +1,10 @@
-import { BookOpen, Building2, CalendarDays } from "lucide-react"
+import {
+  BookOpen,
+  Building2,
+  CalendarDays,
+  ClipboardCheck,
+  FlaskConical,
+} from "lucide-react"
 import type { NavDest } from "@/design/components/AppChrome"
 import { StaffShell } from "./StaffShell"
 const dests: NavDest[] = [
@@ -19,6 +25,18 @@ const dests: NavDest[] = [
     label: "Visits",
     icon: CalendarDays,
     match: (p) => p === "/admin/appointments",
+  },
+  {
+    to: "/admin/payments",
+    label: "Demo payments",
+    icon: FlaskConical,
+    match: (p) => p === "/admin/payments",
+  },
+  {
+    to: "/admin/applications",
+    label: "Applications",
+    icon: ClipboardCheck,
+    match: (p) => p === "/admin/applications",
   },
 ]
 export function AdminShell() {
