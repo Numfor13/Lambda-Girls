@@ -1,0 +1,148 @@
+{
+  "triage": {
+    "title": "Vérification des symptômes",
+    "disclaimer": "Cette vérification ne remplace pas un médecin. En cas d'urgence, appelez le 15 ou allez à l'hôpital le plus proche.",
+    "urgency": {
+      "RED": "Urgence",
+      "AMBER": "Consultez un médecin aujourd'hui",
+      "GREEN": "Non urgent"
+    },
+    "recommendation": {
+      "RED": "Rendez-vous immédiatement aux urgences. Allez à l'hôpital le plus proche disposant d'un service d'urgence.",
+      "AMBER": "Consultez un médecin aujourd'hui. Rendez-vous au centre de santé ou à l'hôpital le plus proche.",
+      "GREEN": "Non urgent. Reposez-vous et surveillez. Consultez un centre de santé si les symptômes s'aggravent ou durent plus de 3 jours."
+    },
+    "facility_needed": {
+      "emergency": "Service des urgences",
+      "general": "Centre de santé ou hôpital",
+      "pharmacy": "Pharmacie"
+    },
+    "questions": {
+      "age": "Quel âge a le patient ?",
+      "age_months": "Âge en mois (pour les enfants de moins de 5 ans)",
+      "is_pregnant": "La patiente est-elle enceinte ?",
+      "symptoms": "Quels symptômes le patient présente-t-il ?",
+      "resp_rate": "Respirations par minute (si comptées)"
+    },
+    "symptoms": {
+      "chest_pain": "Douleur ou oppression thoracique",
+      "stroke_symptoms": "Changement soudain du visage, du bras ou de la parole (AVC)",
+      "difficulty_breathing": "Grande difficulté à respirer",
+      "coughing_blood": "Toux avec du sang",
+      "vomiting_blood": "Vomissement de sang",
+      "loss_consciousness": "Perte de connaissance",
+      "severe_bleeding": "Saignement grave incontrôlé",
+      "seizure": "Crise convulsive en cours",
+      "high_fever_adult": "Forte fièvre (38,5 °C ou plus)",
+      "persistent_vomiting": "Vomissements depuis plus de 2 jours",
+      "severe_abdominal_pain": "Douleur abdominale intense",
+      "dehydration": "Signes de déshydratation",
+      "altered_mental_state": "Confusion ou état mental altéré",
+      "weakness_one_side": "Faiblesse ou engourdissement d'un côté du corps",
+      "jaundice": "Yeux ou peau jaunes (jaunisse)",
+      "unable_walk": "Incapable de marcher ou de se tenir debout sans aide",
+      "cough_mild": "Toux légère (moins de 2 semaines)",
+      "cold_flu": "Rhume ou grippe légère",
+      "headache_mild": "Mal de tête léger",
+      "skin_rash_mild": "Éruption cutanée légère",
+      "back_pain_mild": "Mal de dos léger",
+      "convulsions": "Convulsions",
+      "unconscious": "Inconscient ou ne réagit pas",
+      "unable_feed": "Incapable de téter ou de boire",
+      "severe_wasting": "Amaigrissement sévère",
+      "chest_indraw": "Tirage thoracique",
+      "fast_breathing": "Respiration rapide",
+      "fever_child": "Fièvre (enfant de moins de 5 ans)",
+      "ear_discharge": "Écoulement de l'oreille depuis plus de 2 semaines",
+      "palmar_pallor": "Paumes pâles (signe d'anémie)",
+      "ob_haemorrhage": "Saignement vaginal",
+      "ob_convulsion": "Convulsions pendant la grossesse",
+      "ob_prolonged_labour": "Travail prolongé ou bloqué",
+      "ob_no_fetal_movement": "Le bébé n'a pas bougé depuis plus de 12 heures",
+      "ob_fever_pregnancy": "Fièvre pendant la grossesse",
+      "ob_severe_headache": "Mal de tête intense avec vision trouble",
+      "ob_swollen_face_hands": "Visage ou mains enflés",
+      "ob_difficulty_breathing": "Difficulté à respirer pendant la grossesse",
+      "fever": "Fièvre",
+      "severe_headache": "Mal de tête intense",
+      "other": "Autre"
+    }
+  },
+  "ussd": {
+    "menu": {
+      "welcome": "Bienvenue sur HealthTrack.",
+      "find_hospital": "1. Trouver un hôpital proche",
+      "first_aid": "2. Conseils de premiers secours",
+      "symptom_check": "3. Vérifier mes symptômes",
+      "nurse_callback": "4. Rappel par une infirmière"
+    },
+    "first_aid": {
+      "title": "Premiers secours :",
+      "burns": "- Brûlure : refroidir à l'eau 10 min",
+      "choking": "- Étouffement : 5 tapes dans le dos",
+      "bleeding": "- Saignement : appuyer fort",
+      "return": "Répondez MENU pour revenir."
+    },
+    "triage_q1": "Vérification des symptômes :\nQ1 : Quel âge a le patient (en années) ? (entrez un nombre)",
+    "triage_q2": {
+      "prompt": "Q2 : Symptôme principal ? Répondez :",
+      "options": {
+        "fever": "1. Fièvre",
+        "difficulty_breathing": "2. Difficulté à respirer",
+        "chest_pain": "3. Douleur à la poitrine",
+        "severe_headache": "4. Mal de tête intense",
+        "other": "5. Autre"
+      }
+    },
+    "triage_done": {
+      "RED": "URGENT : Allez immédiatement aux urgences les plus proches ou appelez le 15.",
+      "AMBER": "Consultez un médecin aujourd'hui. Tapez MENU pour trouver un centre proche.",
+      "GREEN": "Vos symptômes ne semblent pas urgents. Reposez-vous, buvez de l'eau. Tapez MENU pour plus."
+    },
+    "facility_prompt": "Envoyez le nom de votre quartier (ex. Molyko) pour trouver un hôpital proche.",
+    "facility_searching": "Recherche d'hôpitaux près de {area}. Répondez MENU pour continuer.",
+    "callback_confirm": "Tapez YES pour être rappelé par une infirmière.",
+    "callback_done": "Une infirmière va vous rappeler bientôt. Prenez soin de vous.",
+    "invalid_choice": "Choix invalide.",
+    "enter_number": "Veuillez entrer un nombre."
+  },
+  "common": {
+    "app_name": "HealthTrack",
+    "ok": "OK",
+    "cancel": "Annuler",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "next": "Suivant",
+    "loading": "Chargement...",
+    "offline": "Vous êtes hors ligne. Nous enverrons ceci dès votre reconnexion.",
+    "error_generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "language": {
+      "en": "English",
+      "fr": "Français",
+      "pid": "Pidgin"
+    }
+  },
+  "consultation": {
+    "new": "Parler à un médecin",
+    "complaint_label": "Décrivez le problème",
+    "anonymous_notice": "Vous consultez de façon anonyme. Votre nom et votre numéro ne sont pas communiqués au médecin.",
+    "send": "Envoyer",
+    "message_placeholder": "Écrivez un message",
+    "status": {
+      "pending_payment": "En attente de paiement",
+      "paid": "En attente d'un médecin",
+      "open": "Le médecin examine votre demande",
+      "closed": "Terminée"
+    }
+  },
+  "payment": {
+    "pay_now": "Payer maintenant",
+    "amount": "Montant : {amount} FCFA",
+    "phone_label": "Numéro Mobile Money",
+    "status": {
+      "initiated": "Paiement lancé",
+      "confirmed": "Paiement confirmé",
+      "failed": "Échec du paiement"
+    }
+  }
+}

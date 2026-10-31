@@ -10,6 +10,7 @@ import { FacilityMap } from "@/design/components/FacilityMap"
 import { useGeolocation, useOnline } from "@/lib/hooks"
 import { formatDistance, haversineKm } from "@/lib/geo"
 import { CAPABILITY_LABELS, formatPhone, formatXaf, telHref } from "@/lib/format"
+import { googleDirections } from "@/lib/maps"
 import { cn } from "@/lib/utils"
 
 function Fact({
@@ -58,7 +59,7 @@ export default function FacilityDetail() {
 
   const distance = coords ? haversineKm(coords, facility) : null
   const directions = online
-    ? `https://www.openstreetmap.org/directions?to=${facility.latitude},${facility.longitude}`
+    ? googleDirections(facility)!
     : `geo:${facility.latitude},${facility.longitude}?q=${facility.latitude},${facility.longitude}(${encodeURIComponent(facility.name)})`
   const hours =
     typeof facility.opening_hours === "string"

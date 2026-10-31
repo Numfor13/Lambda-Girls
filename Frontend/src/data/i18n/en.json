@@ -1,0 +1,148 @@
+{
+  "triage": {
+    "title": "Symptom check",
+    "disclaimer": "This check does not replace a doctor. In an emergency, call 15 or go to the nearest hospital.",
+    "urgency": {
+      "RED": "Emergency",
+      "AMBER": "See a doctor today",
+      "GREEN": "Non-urgent"
+    },
+    "recommendation": {
+      "RED": "Seek emergency care immediately. Go to the nearest hospital with an emergency unit.",
+      "AMBER": "See a doctor today. Visit your nearest clinic or hospital.",
+      "GREEN": "Non-urgent. Rest and monitor. Visit a clinic if symptoms worsen or persist beyond 3 days."
+    },
+    "facility_needed": {
+      "emergency": "Emergency unit",
+      "general": "Clinic or hospital",
+      "pharmacy": "Pharmacy"
+    },
+    "questions": {
+      "age": "How old is the patient?",
+      "age_months": "Age in months (for children under 5)",
+      "is_pregnant": "Is the patient pregnant?",
+      "symptoms": "Which symptoms does the patient have?",
+      "resp_rate": "Breaths per minute (if counted)"
+    },
+    "symptoms": {
+      "chest_pain": "Chest pain or pressure",
+      "stroke_symptoms": "Sudden face, arm or speech change (stroke)",
+      "difficulty_breathing": "Severe difficulty breathing",
+      "coughing_blood": "Coughing up blood",
+      "vomiting_blood": "Vomiting blood",
+      "loss_consciousness": "Loss of consciousness",
+      "severe_bleeding": "Uncontrolled severe bleeding",
+      "seizure": "Active seizure",
+      "high_fever_adult": "High fever (38.5°C or more)",
+      "persistent_vomiting": "Vomiting for more than 2 days",
+      "severe_abdominal_pain": "Severe abdominal pain",
+      "dehydration": "Signs of dehydration",
+      "altered_mental_state": "Confusion or altered mental state",
+      "weakness_one_side": "Weakness or numbness on one side of the body",
+      "jaundice": "Yellow eyes or skin (jaundice)",
+      "unable_walk": "Unable to walk or stand without help",
+      "cough_mild": "Mild cough (less than 2 weeks)",
+      "cold_flu": "Common cold or mild flu",
+      "headache_mild": "Mild headache",
+      "skin_rash_mild": "Mild skin rash",
+      "back_pain_mild": "Mild back pain",
+      "convulsions": "Convulsions or fits",
+      "unconscious": "Unconscious or not responding",
+      "unable_feed": "Unable to feed or drink",
+      "severe_wasting": "Severe wasting (very thin)",
+      "chest_indraw": "Chest in-drawing",
+      "fast_breathing": "Fast breathing",
+      "fever_child": "Fever (child under 5)",
+      "ear_discharge": "Ear discharge for more than 2 weeks",
+      "palmar_pallor": "Pale palms (sign of anaemia)",
+      "ob_haemorrhage": "Vaginal bleeding",
+      "ob_convulsion": "Convulsions during pregnancy",
+      "ob_prolonged_labour": "Prolonged or blocked labour",
+      "ob_no_fetal_movement": "Baby has not moved for more than 12 hours",
+      "ob_fever_pregnancy": "Fever during pregnancy",
+      "ob_severe_headache": "Severe headache with blurred vision",
+      "ob_swollen_face_hands": "Swollen face or hands",
+      "ob_difficulty_breathing": "Difficulty breathing during pregnancy",
+      "fever": "Fever",
+      "severe_headache": "Severe headache",
+      "other": "Other"
+    }
+  },
+  "ussd": {
+    "menu": {
+      "welcome": "Welcome to HealthTrack.",
+      "find_hospital": "1. Find nearby hospital",
+      "first_aid": "2. First-aid tips",
+      "symptom_check": "3. Symptom check",
+      "nurse_callback": "4. Nurse callback"
+    },
+    "first_aid": {
+      "title": "Basic first-aid:",
+      "burns": "- Burns: cool with water 10 min",
+      "choking": "- Choking: 5 back blows",
+      "bleeding": "- Bleeding: apply pressure",
+      "return": "Reply MENU to return."
+    },
+    "triage_q1": "Symptom check:\nQ1: How old is the patient in years? (enter number)",
+    "triage_q2": {
+      "prompt": "Q2: Main symptom? Reply:",
+      "options": {
+        "fever": "1. Fever",
+        "difficulty_breathing": "2. Difficulty breathing",
+        "chest_pain": "3. Chest pain",
+        "severe_headache": "4. Severe headache",
+        "other": "5. Other"
+      }
+    },
+    "triage_done": {
+      "RED": "URGENT: Please go to the nearest emergency facility immediately or call 15.",
+      "AMBER": "Please see a doctor today. Type MENU to find a nearby clinic.",
+      "GREEN": "Your symptoms appear non-urgent. Rest, stay hydrated. Type MENU for more."
+    },
+    "facility_prompt": "Send your area name (e.g. Molyko) to find nearby hospitals.",
+    "facility_searching": "Searching for hospitals near {area}. Reply MENU to continue.",
+    "callback_confirm": "Type YES to request a nurse callback.",
+    "callback_done": "A nurse will call you back shortly. Stay safe.",
+    "invalid_choice": "Invalid choice.",
+    "enter_number": "Please enter a number."
+  },
+  "common": {
+    "app_name": "HealthTrack",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading...",
+    "offline": "You are offline. We will send this when you reconnect.",
+    "error_generic": "Something went wrong. Please try again.",
+    "language": {
+      "en": "English",
+      "fr": "Français",
+      "pid": "Pidgin"
+    }
+  },
+  "consultation": {
+    "new": "Talk to a doctor",
+    "complaint_label": "Describe the problem",
+    "anonymous_notice": "You are consulting anonymously. Your name and phone number are not shared with the doctor.",
+    "send": "Send",
+    "message_placeholder": "Type a message",
+    "status": {
+      "pending_payment": "Waiting for payment",
+      "paid": "Waiting for a doctor",
+      "open": "Doctor is reviewing",
+      "closed": "Closed"
+    }
+  },
+  "payment": {
+    "pay_now": "Pay now",
+    "amount": "Amount: {amount} XAF",
+    "phone_label": "Mobile Money number",
+    "status": {
+      "initiated": "Payment started",
+      "confirmed": "Payment confirmed",
+      "failed": "Payment failed"
+    }
+  }
+}

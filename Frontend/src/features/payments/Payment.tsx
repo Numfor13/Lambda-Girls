@@ -32,7 +32,10 @@ import { formatXaf } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { normalisePhone, rules } from "@/lib/form"
 import { useNow, useOnline } from "@/lib/hooks"
-import { findLocalConsultation, reconcileStatus } from "@/features/consult/actions"
+import {
+  findLocalConsultation,
+  reconcileStatus,
+} from "@/features/consult/actions"
 
 const POLL_MS = 3_000
 const TIMEOUT_MS = 120_000
@@ -40,6 +43,8 @@ const TIMEOUT_MS = 120_000
 interface Pending {
   paymentId: string
   startedAt: number
+  simulated?: boolean
+  amountXaf?: number
   shareUrl?: string
 }
 
@@ -55,6 +60,7 @@ function readPending(ref: string): Pending | null {
 }
 
 interface Summary {
+  amountXaf?: number
   patient: string
   request?: string
 }
@@ -80,7 +86,8 @@ function PaymentStatus({
       q.state.data?.status === "initiated" && !timedOut ? POLL_MS : false,
   })
   const status = payment.data?.status
-  const paidConsultation = status === "confirmed" ? payment.data?.consultation_id : undefined
+  const paidConsultation =
+    status === "confirmed" ? payment.data?.consultation_id : undefined
   useEffect(() => {
     if (paidConsultation) void reconcileStatus(paidConsultation, "paid")
   }, [paidConsultation])
@@ -119,13 +126,28 @@ function PaymentStatus({
     )
   }
 
-  const steps: { label: string; hint?: string; state: "done" | "current" | "next" }[] = [
-    { label: "Request sent to Mobile Money", state: "done" },
+  const steps: {
+    label: string
+    hint?: string
+    state: "done" | "current" | "next"
+  }[] = [
     {
-      label: timedOut ? "Taking longer than usual" : "Approve it on the paying phone",
-      hint: timedOut
-        ? "If the phone showed no prompt, start a new payment."
-        : "Enter the Mobile Money PIN when the prompt appears.",
+      label: pending.simulated
+        ? "Demo payment created"
+        : "Request sent to Mobile Money",
+      state: "done",
+    },
+    {
+      label: pending.simulated
+        ? "Administrator confirms the demo"
+        : timedOut
+          ? "Taking longer than usual"
+          : "Approve it on the paying phone",
+      hint: pending.simulated
+        ? "No money is charged."
+        : timedOut
+          ? "If the phone showed no prompt, start a new payment."
+          : "Enter the Mobile Money PIN when the prompt appears.",
       state: "current",
     },
     { label: "Your case joins the doctor queue", state: "next" },
@@ -148,12 +170,18 @@ function PaymentStatus({
           <div className="min-w-0">
             <p className="eyebrow">Payment</p>
             <h1 className="mt-2 text-headline-l">
-              {timedOut ? "Still waiting for confirmation" : "Confirming your payment…"}
+              {pending.simulated
+                ? "Waiting for demo confirmation"
+                : timedOut
+                  ? "Still waiting for confirmation"
+                  : "Confirming your payment…"}
             </h1>
             <p className="mt-2 max-w-[52ch] text-body-l text-ink-600">
-              {timedOut
-                ? "You can leave this page. If the money left the account, your case still reaches a doctor."
-                : "This page updates by itself. Most payments confirm in under a minute."}
+              {pending.simulated
+                ? "This demo waits for administrator confirmation. Keep the payment ID shown below."
+                : timedOut
+                  ? "You can leave this page. If the money left the account, your case still reaches a doctor."
+                  : "This page updates by itself. Most payments confirm in under a minute."}
             </p>
           </div>
         </div>
@@ -164,12 +192,16 @@ function PaymentStatus({
             <motion.div
               className="h-full rounded-full bg-brand-700"
               initial={false}
-              animate={{ width: `${Math.min(100, (elapsed / TIMEOUT_MS) * 100)}%` }}
+              animate={{
+                width: `${Math.min(100, (elapsed / TIMEOUT_MS) * 100)}%`,
+              }}
               transition={SPRING.slow}
             />
           </div>
           <p className="mt-2 flex justify-between text-label-m text-ink-600">
-            <span>{timedOut ? "Checks paused" : "Checking every few seconds"}</span>
+            <span>
+              {timedOut ? "Checks paused" : "Checking every few seconds"}
+            </span>
             <span className="tabular">{formatElapsed(elapsed)}</span>
           </p>
         </div>
@@ -181,7 +213,7 @@ function PaymentStatus({
                 <span
                   className={cn(
                     "absolute top-7 bottom-1 left-[11px] w-px",
-                    st.state === "done" ? "bg-brand-700" : "bg-ink-900/10",
+                    st.state === "done" ? "bg-brand-700" : "bg-ink-900/10"
                   )}
                   aria-hidden
                 />
@@ -190,21 +222,48 @@ function PaymentStatus({
                 className={cn(
                   "relative flex size-6 shrink-0 items-center justify-center rounded-full text-label-m",
                   st.state === "done" && "bg-brand-700 text-white",
-                  st.state === "current" && "bg-white text-brand-700 ring-2 ring-brand-700",
-                  st.state === "next" && "bg-cream text-ink-400 ring-1 ring-ink-900/10",
+                  st.state === "current" &&
+                    "bg-white text-brand-700 ring-2 ring-brand-700",
+                  st.state === "next" &&
+                    "bg-cream text-ink-400 ring-1 ring-ink-900/10"
                 )}
               >
-                {st.state === "done" ? <Check className="size-3.5" aria-hidden /> : i + 1}
+                {st.state === "done" ? (
+                  <Check className="size-3.5" aria-hidden />
+                ) : (
+                  i + 1
+                )}
               </span>
               <span className="min-w-0 pt-0.5">
-                <span className={cn("block text-label-l", st.state === "next" && "text-ink-400")}>
+                <span
+                  className={cn(
+                    "block text-label-l",
+                    st.state === "next" && "text-ink-400"
+                  )}
+                >
                   {st.label}
                 </span>
-                {st.hint && <span className="mt-0.5 block text-body-m text-ink-600">{st.hint}</span>}
+                {st.hint && (
+                  <span className="mt-0.5 block text-body-m text-ink-600">
+                    {st.hint}
+                  </span>
+                )}
               </span>
             </li>
           ))}
         </ol>
+
+        {pending.simulated && (
+          <Notice tone="info">
+            <p className="font-semibold">Demo payment · no money is charged</p>
+            <p className="mt-2">
+              An administrator can confirm this payment in Demo payments. No
+              Mobile Money prompt is sent.
+            </p>
+            <p className="mt-3">Payment ID</p>
+            <CopyRef value={pending.paymentId} className="mt-2" />
+          </Notice>
+        )}
 
         {payment.isError && (
           <Notice tone="error">{friendlyError(payment.error)}</Notice>
@@ -232,9 +291,18 @@ function PaymentStatus({
               Share payment link
             </Button>
           )}
-          {timedOut && (
+          {timedOut && !pending.simulated && (
             <Button variant="secondary" onClick={onRetry}>
               Start a new payment
+            </Button>
+          )}
+          {(pending.simulated || timedOut) && (
+            <Button
+              variant="secondary"
+              onClick={() => void payment.refetch()}
+              loading={payment.isFetching}
+            >
+              Check confirmation
             </Button>
           )}
           <ButtonLink to={`/app/consult/${consultRef}`} variant="ghost">
@@ -248,7 +316,10 @@ function PaymentStatus({
         className="flex flex-col gap-4 lg:sticky lg:top-6"
       >
         <OrderSummary {...summary} />
-        <motion.section variants={popIn} className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]">
+        <motion.section
+          variants={popIn}
+          className="rounded-xl bg-white p-5 shadow-[var(--shadow-elev-1)]"
+        >
           <p className="text-label-l text-ink-600">Payment reference</p>
           <CopyRef value={reference} className="mt-2" />
           <p className="mt-3 text-body-m text-ink-600">
@@ -274,16 +345,28 @@ function CopyRef({ value, className }: { value: string; className?: string }) {
     return () => window.clearTimeout(t)
   }, [copied])
   return (
-    <span className={cn("inline-flex max-w-full items-center gap-1 rounded-lg bg-cream py-1 pr-1 pl-3", className)}>
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 rounded-lg bg-cream py-1 pr-1 pl-3",
+        className
+      )}
+    >
       <span className="min-w-0 truncate text-code text-ink-900">{value}</span>
       <button
         type="button"
         onClick={() => {
-          void navigator.clipboard?.writeText(value).then(() => setCopied(true), () => undefined)
+          void navigator.clipboard?.writeText(value).then(
+            () => setCopied(true),
+            () => undefined
+          )
         }}
         className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-label-l text-brand-700 transition-colors hover:bg-white"
       >
-        {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        {copied ? (
+          <Check className="size-4" aria-hidden />
+        ) : (
+          <Copy className="size-4" aria-hidden />
+        )}
         <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
       </button>
     </span>
@@ -291,11 +374,19 @@ function CopyRef({ value, className }: { value: string; className?: string }) {
 }
 
 /** Who, what and how much: the same card on the pay form and while waiting. */
-function OrderSummary({ patient, request, className }: Summary & { className?: string }) {
+function OrderSummary({
+  patient,
+  request,
+  amountXaf,
+  className,
+}: Summary & { className?: string }) {
   return (
     <motion.section
       variants={popIn}
-      className={cn("rounded-xl bg-brand-800 p-6 text-white shadow-[var(--shadow-elev-2)]", className)}
+      className={cn(
+        "rounded-xl bg-brand-800 p-6 text-white shadow-[var(--shadow-elev-2)]",
+        className
+      )}
     >
       <dl className="space-y-3 text-body-l">
         <div className="flex justify-between gap-4">
@@ -304,11 +395,15 @@ function OrderSummary({ patient, request, className }: Summary & { className?: s
         </div>
         <div className="flex justify-between gap-4">
           <dt className="shrink-0 text-white/70">Request</dt>
-          <dd className="line-clamp-3 max-w-[70%] text-right font-medium">{request}</dd>
+          <dd className="line-clamp-3 max-w-[70%] text-right font-medium">
+            {request}
+          </dd>
         </div>
         <div className="flex items-baseline justify-between gap-4 border-t border-white/20 pt-4">
           <dt className="text-title-m">Amount</dt>
-          <dd className="text-headline-l text-white">{formatXaf(env.consultationFeeXaf)}</dd>
+          <dd className="text-headline-l text-white">
+            {formatXaf(amountXaf ?? env.consultationFeeXaf)}
+          </dd>
         </div>
       </dl>
     </motion.section>
@@ -348,6 +443,8 @@ export default function Payment() {
     onSuccess: (res) => {
       const next: Pending = {
         paymentId: res.payment_id,
+        simulated: res.simulated,
+        amountXaf: res.amount_xaf,
         startedAt: Date.now(),
         shareUrl: payer === "other" ? res.payment_url : undefined,
       }
@@ -356,7 +453,8 @@ export default function Payment() {
       const external =
         new URL(res.payment_url, window.location.origin).origin !==
         window.location.origin
-      if (payer === "me" && external) window.location.assign(res.payment_url)
+      if (!res.simulated && payer === "me" && external)
+        window.location.assign(res.payment_url)
     },
   })
 
@@ -380,7 +478,7 @@ export default function Payment() {
       <PaymentStatus
         consultRef={ref}
         pending={pending}
-        summary={summary}
+        summary={{ ...summary, amountXaf: pending.amountXaf }}
         onRetry={retry}
       />
     )

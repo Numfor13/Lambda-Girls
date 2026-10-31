@@ -14,7 +14,14 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_DOMAIN?: string
   readonly VITE_COGNITO_CLIENT_ID?: string
   readonly VITE_COGNITO_REDIRECT_URI?: string
+  readonly VITE_COGNITO_STAFF_AUTHORITY?: string
+  readonly VITE_COGNITO_STAFF_DOMAIN?: string
+  readonly VITE_COGNITO_STAFF_CLIENT_ID?: string
+  readonly VITE_COGNITO_STAFF_REDIRECT_URI?: string
+  readonly VITE_API_URL_I18N?: string
+  readonly VITE_API_URL_DOCTOR_APPLICATION?: string
   readonly VITE_CONSULTATION_FEE_XAF?: string
+  readonly VITE_GOOGLE_MAPS_EMBED_API_KEY?: string
   readonly VITE_OSM_TILE_URL?: string
   readonly [key: `VITE_FLAG_${string}`]: string | undefined
 }
